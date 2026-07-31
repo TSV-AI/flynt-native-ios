@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>FLYNT Native App Roadmap</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --page: #f4f3ef;
+        --surface: #fff;
+        --ink: #151515;
+        --muted: #706f6a;
+        --line: #deddd7;
+        --soft: #ebeae5;
+        --green: #2f8f5b;
+        --blue: #2168d5;
+        --gray: #9a9994;
+        --red: #c84545;
+        --focus: #2168d5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+        font-size: 15px;
+        line-height: 1.45;
+      }
+
+      button,
+      summary {
+        font: inherit;
+      }
+
+      button:focus-visible,
+      summary:focus-visible,
+      a:focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--focus) 35%, transparent);
+        outline-offset: 3px;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .page {
+        width: min(1080px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 52px 0 80px;
+      }
+
+      .eyebrow,
+      .section-kicker,
+      .detail-label,
+      .architecture-label {
+        margin: 0;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 820px;
+        margin: 9px 0 12px;
+        font-size: clamp(36px, 6vw, 72px);
+        font-weight: 650;
+        letter-spacing: -0.055em;
+        line-height: 0.96;
+      }
+
+      .intro {
+        max-width: 720px;
+        margin: 0;
+        color: var(--muted);
+        font-size: clamp(16px, 2.5vw, 20px);
+      }
+
+      .overview {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin: 36px 0 20px;
+      }
+
+      .metric {
+        min-width: 0;
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--surface);
+      }
+
+      .metric span,
+      .metric small {
+        display: block;
+        color: var(--muted);
+      }
+
+      .metric strong {
+        display: block;
+        margin: 4px 0 2px;
+        font-size: 38px;
+        font-weight: 650;
+        letter-spacing: -0.04em;
+        line-height: 1;
+      }
+
+      .progress {
+        height: 8px;
+        margin: 0 0 16px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--soft);
+      }
+
+      .progress > span {
+        display: block;
+        width: 0;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--green);
+        transition: width 300ms ease;
+      }
+
+      .ledger-meta {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 8px 20px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .architecture {
+        margin: 42px 0 0;
+        padding: 24px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .architecture h2 {
+        margin: 6px 0 18px;
+        font-size: clamp(23px, 3vw, 30px);
+        font-weight: 650;
+        letter-spacing: -0.035em;
+      }
+
+      .architecture-flow {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .architecture-node {
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--surface);
+      }
+
+      .architecture-node strong,
+      .architecture-node span {
+        display: block;
+      }
+
+      .architecture-node strong {
+        margin: 5px 0 4px;
+        font-size: 17px;
+        letter-spacing: -0.02em;
+      }
+
+      .architecture-node span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .architecture-note {
+        max-width: 780px;
+        margin: 18px 0 0;
+        color: var(--muted);
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px 22px;
+        margin: 30px 0 0;
+        padding: 17px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .dot {
+        width: 9px;
+        height: 9px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+      }
+
+      .completed {
+        background: var(--green);
+      }
+
+      .active {
+        background: var(--blue);
+      }
+
+      .planned {
+        background: var(--gray);
+      }
+
+      .blocked {
+        background: var(--red);
+      }
+
+      .phase-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 30px 0 0;
+      }
+
+      .phase-nav button {
+        min-height: 38px;
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .phase-nav button:hover {
+        color: var(--ink);
+        border-color: color-mix(in srgb, var(--ink) 30%, var(--line));
+      }
+
+      .track {
+        margin-top: 54px;
+      }
+
+      .track > header {
+        max-width: 740px;
+        margin-bottom: 26px;
+      }
+
+      .track > header h2 {
+        margin: 5px 0 6px;
+        font-size: clamp(28px, 4vw, 42px);
+        font-weight: 650;
+        letter-spacing: -0.045em;
+      }
+
+      .track > header p:last-child {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .groups {
+        display: grid;
+        gap: 42px;
+      }
+
+      .group {
+        scroll-margin-top: 20px;
+      }
+
+      .group-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        justify-content: space-between;
+        gap: 8px 20px;
+        margin-bottom: 12px;
+      }
+
+      .group-header h3 {
+        margin: 4px 0 0;
+        font-size: clamp(23px, 3vw, 30px);
+        font-weight: 650;
+        letter-spacing: -0.035em;
+      }
+
+      .group-counts {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .gate-list {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--surface);
+      }
+
+      details + details {
+        border-top: 1px solid var(--line);
+      }
+
+      summary {
+        display: grid;
+        grid-template-columns: 10px minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: start;
+        padding: 17px 18px;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      summary::-webkit-details-marker {
+        display: none;
+      }
+
+      summary:hover {
+        background: color-mix(in srgb, var(--page) 62%, transparent);
+      }
+
+      summary .dot {
+        margin-top: 6px;
+      }
+
+      .gate-title {
+        min-width: 0;
+        font-weight: 560;
+      }
+
+      .gate-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .chevron {
+        display: inline-block;
+        color: var(--muted);
+        font-size: 20px;
+        line-height: 0.8;
+        transition: transform 160ms ease;
+      }
+
+      details[open] .chevron {
+        transform: rotate(90deg);
+      }
+
+      .gate-detail {
+        display: grid;
+        gap: 15px;
+        margin: 0 18px 20px 40px;
+        padding: 18px;
+        border-radius: 14px;
+        background: var(--page);
+      }
+
+      .gate-detail p {
+        margin: 4px 0 0;
+      }
+
+      .empty,
+      .load-error {
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--surface);
+      }
+
+      .load-error {
+        border-color: color-mix(in srgb, var(--red) 35%, var(--line));
+      }
+
+      code {
+        padding: 2px 5px;
+        border-radius: 5px;
+        background: var(--soft);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.9em;
+      }
+
+      @media (max-width: 820px) {
+        .overview,
+        .architecture-flow {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 620px) {
+        .page {
+          width: min(100% - 24px, 1080px);
+          padding-top: 30px;
+        }
+
+        .overview {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .metric {
+          padding: 16px;
+        }
+
+        .architecture-flow {
+          grid-template-columns: 1fr;
+        }
+
+        summary {
+          grid-template-columns: 10px minmax(0, 1fr);
+        }
+
+        .gate-state {
+          grid-column: 2;
+        }
+
+        .gate-detail {
+          margin-left: 18px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        .progress > span,
+        .chevron {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header>
+        <p class="eyebrow">FLYNT · Native iOS program</p>
+        <h1>Build the native app<br />with the end in mind.</h1>
+        <p class="intro">
+          One living plan for architecture, interaction behavior, native capabilities,
+          App Store readiness, and evidence. Every completed line must have a
+          reproducible check behind it.
+        </p>
+      </header>
+
+      <section class="overview" aria-label="Native roadmap totals">
+        <article class="metric">
+          <span>Completed</span>
+          <strong id="completed-count">0</strong>
+          <small>Evidence recorded</small>
+        </article>
+        <article class="metric">
+          <span>In progress</span>
+          <strong id="active-count">0</strong>
+          <small>Current owned work</small>
+        </article>
+        <article class="metric">
+          <span>Planned</span>
+          <strong id="planned-count">0</strong>
+          <small>Not started yet</small>
+        </article>
+        <article class="metric">
+          <span>Blocked</span>
+          <strong id="blocked-count">0</strong>
+          <small>Decision or correction needed</small>
+        </article>
+      </section>
+
+      <div class="progress" aria-label="Overall roadmap progress">
+        <span id="progress-bar"></span>
+      </div>
+      <div class="ledger-meta">
+        <span id="progress-copy">Loading native ledger...</span>
+        <span id="ledger-date"></span>
+      </div>
+
+      <section class="architecture" aria-labelledby="architecture-title">
+        <p class="section-kicker">Target architecture</p>
+        <h2 id="architecture-title">Native where it matters. Shared where it is proven.</h2>
+        <div class="architecture-flow">
+          <article class="architecture-node">
+            <p class="architecture-label">Client</p>
+            <strong>Expo React Native</strong>
+            <span>Product UI, navigation, state, workouts, Trainer, and settings</span>
+          </article>
+          <article class="architecture-node">
+            <p class="architecture-label">Apple edge</p>
+            <strong>Swift and SwiftUI</strong>
+            <span>Widgets, App Intents, Spotify, advanced haptics, and future HealthKit</span>
+          </article>
+          <article class="architecture-node">
+            <p class="architecture-label">Application server</p>
+            <strong>Existing Vercel API</strong>
+            <span>Authoritative lifecycle, AI, durable workflows, idempotency, and policy</span>
+          </article>
+          <article class="architecture-node">
+            <p class="architecture-label">System of record</p>
+            <strong>Existing Supabase</strong>
+            <span>Authentication, Postgres, RLS, storage, programs, history, and media</span>
+          </article>
+        </div>
+        <p class="architecture-note">
+          The app binary is built with Xcode or EAS Build and distributed by Apple.
+          The backend stays on Vercel and Supabase. No Railway migration is required.
+        </p>
+      </section>
+
+      <div class="legend" aria-label="Status legend">
+        <span><i class="dot completed" aria-hidden="true"></i>Completed with evidence</span>
+        <span><i class="dot active" aria-hidden="true"></i>In progress</span>
+        <span><i class="dot planned" aria-hidden="true"></i>Planned</span>
+        <span><i class="dot blocked" aria-hidden="true"></i>Blocked</span>
+      </div>
+
+      <nav id="phase-nav" class="phase-nav" aria-label="Roadmap phases"></nav>
+
+      <section class="track" aria-labelledby="build-track-title">
+        <header>
+          <p class="section-kicker">Build track</p>
+          <h2 id="build-track-title">From clean repository to release candidate.</h2>
+          <p>
+            These phases are sequenced to protect backend truth, establish behavior
+            rules early, and keep native capability work from destabilizing the core
+            workout experience.
+          </p>
+        </header>
+        <div id="build-groups" class="groups" aria-live="polite"></div>
+      </section>
+
+      <section class="track" aria-labelledby="release-track-title">
+        <header>
+          <p class="section-kicker">Release track</p>
+          <h2 id="release-track-title">Friend-ready and App Store-ready are evidence states.</h2>
+          <p>
+            The app does not move forward because it looks complete. It moves when
+            the exact release build passes the required journey, isolation, native,
+            compliance, and rollback checks.
+          </p>
+        </header>
+        <div id="release-groups" class="groups" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script>
+      const completedCount = document.getElementById("completed-count");
+      const activeCount = document.getElementById("active-count");
+      const plannedCount = document.getElementById("planned-count");
+      const blockedCount = document.getElementById("blocked-count");
+      const progressBar = document.getElementById("progress-bar");
+      const progressCopy = document.getElementById("progress-copy");
+      const ledgerDate = document.getElementById("ledger-date");
+      const phaseNav = document.getElementById("phase-nav");
+      const buildGroups = document.getElementById("build-groups");
+      const releaseGroups = document.getElementById("release-groups");
+
+      const STATUS_LABELS = {
+        completed: "Completed",
+        active: "In progress",
+        planned: "Planned",
+        blocked: "Blocked",
+      };
+
+      function statusFromMarker(marker) {
+        if (marker.toLowerCase() === "x") return "completed";
+        if (marker === "~" || marker === "/") return "active";
+        if (marker === "!") return "blocked";
+        return "planned";
+      }
+
+      function slug(value) {
+        return value
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+      }
+
+      function parseLedger(markdown) {
+        const lines = markdown.split(/\r?\n/);
+        const records = [];
+        let track = "";
+        let section = "";
+
+        for (let index = 0; index < lines.length; index += 1) {
+          const line = lines[index];
+
+          if (line === "## Native build phases") {
+            track = "build";
+            section = "";
+            continue;
+          }
+          if (line === "## Friend-ready native release gates") {
+            track = "release";
+            section = "";
+            continue;
+          }
+          if (line.startsWith("## ") && track) {
+            track = "";
+            section = "";
+            continue;
+          }
+          if (!track) continue;
+
+          if (line.startsWith("### ")) {
+            section = line.slice(4).trim();
+            continue;
+          }
+
+          const checkbox = line.match(/^- \[([ x!~/])\] (.+)$/i);
+          if (!checkbox || !section) continue;
+
+          const detailLines = [];
+          while (
+            index + 1 < lines.length &&
+            /^\s{2,}\S/.test(lines[index + 1]) &&
+            !/^\s*-\s+\[[ x!~/]\]/i.test(lines[index + 1])
+          ) {
+            detailLines.push(lines[index + 1].trim());
+            index += 1;
+          }
+
+          const details = {
+            evidence: "",
+            exit: "",
+            context: [],
+          };
+          for (const detail of detailLines) {
+            if (detail.startsWith("Evidence:")) {
+              details.evidence = detail.slice("Evidence:".length).trim();
+            } else if (detail.startsWith("Evidence required:")) {
+              details.evidence = detail.slice("Evidence required:".length).trim();
+            } else if (detail.startsWith("Exit check:")) {
+              details.exit = detail.slice("Exit check:".length).trim();
+            } else {
+              details.context.push(detail);
+            }
+          }
+
+          records.push({
+            track,
+            section,
+            status: statusFromMarker(checkbox[1]),
+            text: checkbox[2].trim(),
+            evidence: details.evidence,
+            exit: details.exit,
+            context: details.context.join(" "),
+          });
+        }
+
+        return records;
+      }
+
+      function findMetadata(markdown) {
+        const updated = markdown.match(/^Last updated:\s*(.+?)\s*$/m)?.[1] ?? "Unknown";
+        const repository =
+          markdown.match(/^Native client repository:\s*(.+?)\s*$/m)?.[1] ?? "Unknown";
+        return { updated, repository };
+      }
+
+      function createDetailBlock(label, copy) {
+        const block = document.createElement("div");
+        const heading = document.createElement("p");
+        heading.className = "detail-label";
+        heading.textContent = label;
+        const body = document.createElement("p");
+        body.textContent = copy;
+        block.append(heading, body);
+        return block;
+      }
+
+      function createGate(item) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+
+        const dot = document.createElement("i");
+        dot.className = `dot ${item.status}`;
+        dot.setAttribute("aria-hidden", "true");
+
+        const title = document.createElement("span");
+        title.className = "gate-title";
+        title.textContent = item.text;
+
+        const state = document.createElement("span");
+        state.className = "gate-state";
+        state.append(document.createTextNode(STATUS_LABELS[item.status]));
+
+        const chevron = document.createElement("span");
+        chevron.className = "chevron";
+        chevron.setAttribute("aria-hidden", "true");
+        chevron.textContent = "›";
+        state.append(chevron);
+
+        summary.append(dot, title, state);
+        summary.addEventListener("click", (event) => {
+          event.preventDefault();
+          details.open = !details.open;
+        });
+
+        const content = document.createElement("div");
+        content.className = "gate-detail";
+        content.append(
+          createDetailBlock(
+            item.status === "completed" ? "Recorded evidence" : "Evidence required",
+            item.evidence ||
+              (item.status === "completed"
+                ? "Passing evidence is recorded in the native ledger."
+                : "Reproduce this on the exact target build and record the result before changing its status."),
+          ),
+          createDetailBlock(
+            "Exit check",
+            item.exit || "The expected behavior is reproducible and the evidence is retained.",
+          ),
+        );
+        if (item.context) {
+          content.append(createDetailBlock("Context", item.context));
+        }
+
+        details.append(summary, content);
+        return details;
+      }
+
+      function sectionCounts(items) {
+        return {
+          completed: items.filter((item) => item.status === "completed").length,
+          active: items.filter((item) => item.status === "active").length,
+          planned: items.filter((item) => item.status === "planned").length,
+          blocked: items.filter((item) => item.status === "blocked").length,
+        };
+      }
+
+      function renderTrack(records, track, container) {
+        const grouped = new Map();
+        for (const record of records.filter((item) => item.track === track)) {
+          if (!grouped.has(record.section)) grouped.set(record.section, []);
+          grouped.get(record.section).push(record);
+        }
+
+        container.replaceChildren();
+        for (const [section, items] of grouped) {
+          const wrapper = document.createElement("section");
+          wrapper.className = "group";
+          wrapper.id = `${track}-${slug(section)}`;
+
+          const header = document.createElement("div");
+          header.className = "group-header";
+
+          const headingBlock = document.createElement("div");
+          const kicker = document.createElement("p");
+          kicker.className = "section-kicker";
+          kicker.textContent = track === "build" ? "Native phase" : "Acceptance tier";
+          const heading = document.createElement("h3");
+          heading.textContent = section;
+          headingBlock.append(kicker, heading);
+
+          const counts = sectionCounts(items);
+          const countCopy = document.createElement("span");
+          countCopy.className = "group-counts";
+          const parts = [
+            `${counts.completed} complete`,
+            `${counts.planned} planned`,
+          ];
+          if (counts.active) parts.splice(1, 0, `${counts.active} active`);
+          if (counts.blocked) parts.push(`${counts.blocked} blocked`);
+          countCopy.textContent = parts.join(" · ");
+          header.append(headingBlock, countCopy);
+
+          const list = document.createElement("div");
+          list.className = "gate-list";
+          for (const item of items) list.append(createGate(item));
+
+          wrapper.append(header, list);
+          container.append(wrapper);
+        }
+
+        if (grouped.size === 0) {
+          const empty = document.createElement("p");
+          empty.className = "empty";
+          empty.textContent = "No checklist items were found for this track.";
+          container.append(empty);
+        }
+
+        return grouped;
+      }
+
+      function renderNavigation(buildSections, releaseSections) {
+        phaseNav.replaceChildren();
+        for (const [section] of [...buildSections, ...releaseSections]) {
+          const track = buildSections.has(section) ? "build" : "release";
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = section.replace(/\s*\|.*$/, "");
+          button.addEventListener("click", () => {
+            document.getElementById(`${track}-${slug(section)}`)?.scrollIntoView({
+              behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                ? "auto"
+                : "smooth",
+              block: "start",
+            });
+          });
+          phaseNav.append(button);
+        }
+      }
+
+      function render(markdown) {
+        const records = parseLedger(markdown);
+        const metadata = findMetadata(markdown);
+        const counts = sectionCounts(records);
+        const total = records.length;
+        const percent = total === 0 ? 0 : Math.round((counts.completed / total) * 100);
+
+        completedCount.textContent = String(counts.completed);
+        activeCount.textContent = String(counts.active);
+        plannedCount.textContent = String(counts.planned);
+        blockedCount.textContent = String(counts.blocked);
+        progressBar.style.width = `${percent}%`;
+        progressCopy.textContent = `${percent}% of ${total} gates have recorded evidence`;
+        ledgerDate.textContent = `Ledger ${metadata.updated} · native repository ${metadata.repository}`;
+
+        const buildSections = renderTrack(records, "build", buildGroups);
+        const releaseSections = renderTrack(records, "release", releaseGroups);
+        renderNavigation(buildSections, releaseSections);
+      }
+
+      let lastRenderedStatus = "";
+
+      async function refreshStatus() {
+        try {
+          const response = await fetch("/status", { cache: "no-store" });
+          if (!response.ok) throw new Error(`Status request returned ${response.status}`);
+          const markdown = await response.text();
+          if (markdown === lastRenderedStatus) return;
+          lastRenderedStatus = markdown;
+          render(markdown);
+        } catch (error) {
+          completedCount.textContent = "0";
+          activeCount.textContent = "0";
+          plannedCount.textContent = "0";
+          blockedCount.textContent = "1";
+          progressCopy.textContent = "Native ledger could not be loaded";
+
+          const message = document.createElement("p");
+          message.className = "load-error";
+          message.textContent = `Could not read NATIVE_APP_STATUS.md: ${error.message}`;
+          buildGroups.replaceChildren(message);
+          releaseGroups.replaceChildren();
+        }
+      }
+
+      refreshStatus();
+      window.setInterval(refreshStatus, 3_000);
+    </script>
+  </body>
+</html>

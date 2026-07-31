@@ -1,40 +1,54 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
-import '@/global.css';
-
 import { Platform } from 'react-native';
 
-export const Colors = {
+export const palette = {
+  black: '#0B0B0B',
+  graphite: '#151515',
+  warmWhite: '#F7F6F2',
+  warmCard: '#E9E8E3',
+  warmLine: '#D8D6CF',
+  warmMuted: '#686761',
+  darkCanvas: '#1E1E1D',
+  darkCard: '#171716',
+  darkRaised: '#242423',
+  darkLine: '#353532',
+  darkMuted: '#AAA89F',
+  white: '#FFFFFF',
+  danger: '#B43B32',
+} as const;
+
+export const colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    canvas: palette.warmWhite,
+    card: palette.warmCard,
+    raised: palette.white,
+    ink: palette.black,
+    muted: palette.warmMuted,
+    line: palette.warmLine,
+    primaryFill: palette.black,
+    primaryText: palette.warmWhite,
+    danger: palette.danger,
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    canvas: palette.darkCanvas,
+    card: palette.darkCard,
+    raised: palette.darkRaised,
+    ink: palette.warmWhite,
+    muted: palette.darkMuted,
+    line: palette.darkLine,
+    primaryFill: palette.warmWhite,
+    primaryText: palette.black,
+    danger: '#E06A61',
   },
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+export type ColorMode = keyof typeof colors;
+export type Theme = (typeof colors)[ColorMode];
 
-export const Fonts = Platform.select({
+export const fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -44,22 +58,39 @@ export const Fonts = Platform.select({
     mono: 'monospace',
   },
   web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
+    sans: 'system-ui',
+    serif: 'Georgia',
+    rounded: 'system-ui',
+    mono: 'monospace',
   },
 });
 
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+export const spacing = {
+  xxs: 4,
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+  hero: 72,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const radius = {
+  sm: 12,
+  md: 18,
+  lg: 24,
+  pill: 999,
+} as const;
+
+export const type = {
+  display: { fontSize: 48, lineHeight: 50, fontWeight: '600' as const, letterSpacing: -2.2 },
+  title: { fontSize: 30, lineHeight: 35, fontWeight: '600' as const, letterSpacing: -1 },
+  body: { fontSize: 17, lineHeight: 24, fontWeight: '400' as const },
+  button: { fontSize: 17, lineHeight: 22, fontWeight: '600' as const },
+  label: { fontSize: 13, lineHeight: 17, fontWeight: '600' as const, letterSpacing: 0.8 },
+} as const;
+
+export function themeFor(mode: ColorMode): Theme {
+  return colors[mode];
+}

@@ -1,56 +1,43 @@
-# Welcome to your Expo app 👋
+# FLYNT Native
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+The premium native iPhone client for FLYNT. The app uses Expo React Native for
+the main product and focused Swift modules for Apple platform capabilities such
+as widgets, App Intents, Spotify App Remote, and advanced haptics.
 
-## Get started
+The existing FLYNT Vercel API and Supabase project remain the system of record.
+This client renders authoritative lifecycle and training state. It does not
+reimplement program logic.
 
-1. Install dependencies
+## Local requirements
 
-   ```bash
-   npm install
-   ```
+- Node 24.14.0
+- pnpm 11.9.0
+- Xcode 26.4 or newer for Expo SDK 57 iOS builds
+- iOS 16.4 or newer
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Commands
 
 ```bash
-npm run reset-project
+pnpm install
+pnpm typecheck
+pnpm lint
+pnpm copy:check
+pnpm doctor
+pnpm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Use a development build for native work. Expo Go is not a product target.
 
-### Other setup steps
+## Configuration
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+`EXPO_PUBLIC_API_BASE_URL` may point the client to another non-secret API
+environment. It defaults to `https://flynt.training`.
 
-## Learn more
+Never place Supabase service-role values or other server secrets in this app.
+Public client configuration and bearer sessions are the only supported client
+credentials.
 
-To learn more about developing your project with Expo, look at the following resources:
+Read `PROJECT_STATUS.md` before starting work. It is the living plan, release
+checklist, blocker register, and evidence ledger.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Copyright 2026 Three Sixty Vue LLC. All rights reserved.

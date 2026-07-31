@@ -1,98 +1,138 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import { radius, spacing, type } from '@/constants/theme';
+import { useFlyntTheme } from '@/hooks/use-flynt-theme';
+import { selection } from '@/lib/haptics';
 
 export default function HomeScreen() {
+  const { theme } = useFlyntTheme();
+
+  function navigate(path: '/create-account' | '/sign-in') {
+    void selection();
+    router.push(path);
+  }
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+    <View style={[styles.container, { backgroundColor: theme.canvas }]}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <View style={styles.brandRow}>
+          <Image
+            accessibilityIgnoresInvertColors
+            source={require('@/assets/images/splash-icon.png')}
+            style={[styles.mark, { tintColor: theme.ink }]}
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+          <Text style={[styles.wordmark, { color: theme.ink }]}>FLYNT</Text>
+        </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
+        <View style={styles.hero}>
+          <Text style={[styles.eyebrow, { color: theme.muted }]}>TRAIN WITH INTENT</Text>
+          <Text style={[styles.title, { color: theme.ink }]}>Training that learns you.</Text>
+          <Text style={[styles.body, { color: theme.muted }]}>
+            A thoughtful program, shaped around your life and refined as you train.
+          </Text>
+        </View>
+
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => navigate('/create-account')}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: theme.primaryFill, opacity: pressed ? 0.82 : 1 },
+            ]}
+          >
+            <Text style={[styles.primaryButtonText, { color: theme.primaryText }]}>
+              Create account
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => navigate('/sign-in')}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              {
+                borderColor: theme.line,
+                backgroundColor: theme.raised,
+                opacity: pressed ? 0.72 : 1,
+              },
+            ]}
+          >
+            <Text style={[styles.secondaryButtonText, { color: theme.ink }]}>Sign in</Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
   },
-  heroSection: {
+  brandRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing.sm,
+    minHeight: 44,
+  },
+  mark: {
+    width: 20,
+    height: 30,
+    resizeMode: 'contain',
+  },
+  wordmark: {
+    fontSize: 15,
+    lineHeight: 20,
+    letterSpacing: 3.6,
+    fontWeight: '700',
+  },
+  hero: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    justifyContent: 'center',
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  eyebrow: {
+    ...type.label,
   },
   title: {
-    textAlign: 'center',
+    ...type.display,
+    maxWidth: 340,
   },
-  code: {
-    textTransform: 'uppercase',
+  body: {
+    ...type.body,
+    maxWidth: 340,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  actions: {
+    gap: spacing.sm,
+  },
+  primaryButton: {
+    minHeight: 56,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  primaryButtonText: {
+    ...type.button,
+  },
+  secondaryButton: {
+    minHeight: 56,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  secondaryButtonText: {
+    ...type.button,
   },
 });
