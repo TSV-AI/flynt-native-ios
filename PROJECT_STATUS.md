@@ -8,9 +8,9 @@ Backend: Existing FLYNT Vercel API and workflows
 System of record: Existing FLYNT Supabase project `nnfxswxzjqocnlkoqsbl`
 Distribution: Apple App Store through App Store Connect
 
-Current source state: Native foundation, lifecycle navigation, and the PWA-referenced ready-state native preview are committed locally on `codex/native-foundation`
-Current local verification: Foundation checks passed on 2026-07-30; the corrected native preview passed lifecycle tests, type, lint, copy style, Expo Doctor 20 of 20, and a 2.7 MB iOS Hermes export from 1,282 modules on 2026-07-31. Final checks for the 2026-08-01 material and navigation refinements are recorded below.
-Current Simulator verification: Debug build, install, launch, Metro bundle, account entry, the Today, Plan, Progress, and Trainer tabs, top-right Profile & Settings journey, SwiftUI App Settings in light and dark modes, designed Profile, native material sheets, and the light-mode Today surface passed on iPhone 17 / iOS 26.5 through 2026-08-01.
+Current source state: Native foundation, lifecycle navigation, and the PWA-referenced ready-state native preview are committed locally on `codex/native-foundation`; the SwiftUI Today workout composition, native rest-timer sheet, authoritative boot boundary, Apple HIG design authority, first HIG remediation pass, and native authentication client are implemented in the working tree
+Current local verification: On 2026-08-01, seven authentication callback and validation tests, 11 authoritative boot tests, two lifecycle navigation tests, TypeScript, ESLint, copy style, and Expo Doctor 20 of 20 passed with pinned Node 24.14.0.
+Current Simulator verification: On 2026-08-01 the current source, including the Apple Authentication entitlement and native modules, built, installed, and launched on iPhone 17 / iOS 26.5. The latest incremental build completed in 12.1 seconds and exercised the SwiftUI Today workout cards, animated week selector, compact Stats and Guide controls, set completion, shared native rest-timer sheet, and iOS 26 native tab-bar timer accessory. The countdown persisted while switching from Today to Plan and reopened from the accessory. The earlier HIG pass exercised native tab semantics, Plan-to-Today day routing, modal focus containment, pinned Trainer composition, and light and dark appearance switching. Live authentication still awaits external provider configuration.
 Current TestFlight verification: Not started
 Current physical iPhone verification: Not started
 
@@ -34,9 +34,205 @@ Current physical iPhone verification: Not started
 - No local Xcode, Swift, Node, CocoaPods, build, install, or Simulator-launch
   blocker remains. The machine now uses Xcode 26.6, Swift 6.3.3, and the
   repository-pinned Node 24.14.0 plus pnpm 11.9.0.
-- Product-level work remains before TestFlight: authoritative session and
-  `/api/app-state` injection, runtime lifecycle transitions, signing and Apple
-  Developer enrollment, and physical-device verification.
+- Product-level work remains before TestFlight: add the Supabase publishable key
+  to the build environment, allowlist `flynt://auth-callback`, configure the
+  Apple provider and app capability, verify the existing Google provider for
+  the native callback, complete account-linking policy, exercise live
+  authentication and token refresh, verify live `/api/app-state` and account
+  switching, bind authoritative program data, complete signing and Apple
+  Developer enrollment, and verify on a physical iPhone.
+
+## Native authentication client | 2026-08-01
+
+- Implemented in source: Supabase Auth now uses a lazy SDK 57 client with PKCE,
+  automatic foreground token refresh, disabled browser URL auto-detection, and
+  one Keychain-backed SecureStore adapter. The Supabase session storage key is
+  the same session read by authoritative boot, so access tokens are not copied
+  into a second client store.
+- Implemented in source: signed-out account entry supports native Sign in with
+  Apple, Google through the system authentication session, and passwordless
+  email. Sign-in email does not create unknown accounts, account creation can
+  create an account, and both return through `flynt://auth-callback`.
+- Implemented in source: Apple uses Expo's system-rendered authentication
+  button, a cryptographically secure nonce and state, the native identity
+  token exchange, and one-time name metadata capture. Google uses Supabase
+  PKCE and `ASWebAuthenticationSession` through Expo WebBrowser. Callback code
+  exchange, legacy token callbacks, denial, malformed links, cancellation,
+  retry, and safe user-facing errors are handled without logging credentials.
+- Implemented in source: Supabase local sign-out is centralized with lifecycle
+  teardown and an unconditional local Keychain clear, so an offline account is
+  not trapped. Session refresh starts only while the app is active.
+- Verified locally: seven deterministic authentication callback and email
+  validation tests passed. TypeScript, ESLint, copy style, and Expo Doctor 20
+  of 20 passed after the SDK 57 packages and app configuration were added.
+- Verified in Simulator: a regenerated iOS project installed
+  `ExpoAppleAuthentication`, `ExpoCrypto`, and `ExpoWebBrowser`; scheme `FLYNT`
+  built, installed, and launched on iPhone 17 / iOS 26.5. Simulator inspection
+  found and corrected a callback-route cold-launch ordering defect, then the
+  incremental rebuild passed in 19.4 seconds. The signed-out home and account
+  entry were exercised after signing out of the ready preview. The runtime
+  snapshot exposed the system Apple button, Google button, labeled email field,
+  secure-link action, and Back action. With no publishable key configured, a
+  valid development email produced the intended safe configuration message.
+- Evidence boundary: the repository has no configured
+  `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. No live email, Google, or Apple
+  exchange was attempted. Apple requires the final App ID capability and
+  Supabase provider audience configuration. Account reconciliation for existing
+  Google, email, hidden-email Apple, and duplicate identities remains
+  server-policy work before production acceptance.
+
+## Apple HIG design authority | 2026-08-01
+
+- Implemented in repository guidance: Apple's current Human Interface
+  Guidelines now govern iOS behavior, interaction semantics, accessibility, and
+  native component selection for every coding agent working in this repository.
+- Implemented in repository guidance: `docs/APPLE_HIG_BASELINE.md` defines one
+  efficient authority order, mandatory seven-question design pass, platform
+  rules mapped to current first-party Apple pages, a source-grounded decision
+  note, repeatable definition-of-done checklist, official Apple source index,
+  update cadence, and an owner-approved departure record. FLYNT product policy
+  is labeled separately so it cannot be misrepresented as Apple guidance.
+- Implemented in repository guidance: `docs/INTERACTION_SYSTEM.md` is explicitly
+  subordinate to the Apple baseline and remains the FLYNT-specific expression
+  layer. The PWA remains authoritative for product content, feature coverage,
+  brand direction, and established information hierarchy.
+- Verified locally: documentation diff hygiene and repository copy-style checks
+  passed after the authority, source map, agent rules, and checklist were added.
+- Evidence boundary: this is implemented as development policy and design-review
+  criteria. Existing screens have not been retroactively certified against the
+  full checklist. Dynamic Type extremes, VoiceOver, Switch Control, Reduce
+  Transparency, smallest-device, and physical-iPhone audits remain outstanding.
+
+## First HIG remediation pass | 2026-08-01
+
+- Implemented in source: the hand-built Expo Router UI tab bar was replaced by
+  Expo Router 57 native tabs with four persistent top-level destinations, SF
+  Symbols, native tab roles, system selection behavior, and iOS 26 tab-bar
+  minimization. On iOS 26 the system owns the adaptive Liquid Glass material and
+  ignores legacy background and blur appearance properties. FLYNT therefore
+  uses a dark bar in dark appearance and the system light material in light
+  appearance, with semantic selected and unselected colors in each mode.
+- Implemented in source: native material sheets now provide an opaque Reduce
+  Transparency fallback, expand to a larger detent when text scale is elevated,
+  declare modal accessibility content, hide the presenting screen, and hide the
+  native tab bar while presented. The shared top-right control is now one React
+  Native accessibility element labeled `Open menu and settings`, with native
+  Liquid Glass visual treatment and an opaque fallback.
+- Implemented in source: Today takes its selected day directly from the route,
+  so choosing a day in Plan cannot leave stale Friday content visible. Recovery
+  days show duration instead of a false zero-percent workout. Prescribed reps
+  render as entered values rather than placeholder text. Small low-contrast
+  preview labels were moved to semantic theme colors or raised to at least 11
+  points, and Today light surfaces now use shared semantic palette entries.
+- Implemented in source: Progress history rows no longer expose chevrons or
+  button behavior without a detail destination. Trainer uses a fixed composer
+  above the native tab bar, a distinct input label and placeholder, and concise
+  preview-only delivery copy. Passive navigation haptics were removed from the
+  app shell and lifecycle escape paths. The attention lifecycle now exposes the
+  existing authoritative retry action.
+- Verified locally: TypeScript, ESLint, 11 authoritative boot tests, two
+  lifecycle navigation tests, copy style, and Expo Doctor 20 of 20 passed with
+  repository-pinned Node 24.14.0 after implementation.
+- Verified in Simulator: scheme `FLYNT` built, installed, and launched on
+  iPhone 17 / iOS 26.5 in 17.2 seconds. Runtime snapshots exposed Today, Plan,
+  Progress, and Trainer as native `tab` elements; exposed the settings button
+  with its intended label; confirmed Plan Monday rendered Monday exercises;
+  and showed only the sheet Close action while Guide was presented.
+- Remaining evidence boundary: the Expo UI 57 SwiftUI segmented Picker and
+  Toggle bridge still exposes unlabeled duplicate control nodes in the runtime
+  accessibility snapshot even though the labeled native controls are present.
+  This pass does not claim that Settings is VoiceOver-complete. Largest Dynamic
+  Type, Switch Control, Bold Text, Reduce Transparency in Simulator settings,
+  smallest-device, TestFlight, and physical-iPhone checks remain outstanding.
+- Product-data boundary: workout, progress, Trainer, profile, and preference
+  content remains development preview data. This pass makes incomplete actions
+  honest but does not invent server persistence, history detail, export,
+  deletion, or Trainer delivery behavior.
+
+## SwiftUI Today workout composition | 2026-08-01
+
+- Implemented in source: Today now renders as one Expo UI 57 SwiftUI hierarchy
+  inside the native tab destination. The page uses SwiftUI ScrollView, VStack,
+  HStack, ProgressView, DisclosureGroup, Button, TextField, Divider, and SF
+  Symbols. The FLYNT mark remains the real product asset through one fixed-size
+  React Native host inside the native top bar.
+- Implemented in source: each exercise is a native disclosure surface with the
+  system chevron and expansion behavior. Expanded cards retain Stats and Guide,
+  prescribed set count, load and rep fields, completion controls, rest context,
+  and one-open-card accordion state. Stats and Guide remain connected to the
+  existing native material sheets. Card elevation uses a restrained semantic
+  shadow in both appearances so secondary controls do not inherit a heavy halo.
+- Implemented in source: the week selector, progress display, workout cards,
+  fields, and completion actions use native semantic controls while preserving
+  FLYNT colors, continuous rounded geometry, restrained elevation, the existing
+  Plan-to-Today day route, and 44-point interaction targets.
+- Implemented in source: the selected week day uses one persistent native
+  surface whose offset and neighboring widths use the shared responsive motion
+  token, with Reduce Motion disabling the spring. Tapped-day state remains
+  local to the mounted Today screen so route mutation cannot destroy the
+  animation context, while a day routed from Plan still takes precedence.
+  Stats and Guide are compact secondary controls with SF Symbols and 44-point
+  interaction targets rather than prominent primary buttons.
+- Implemented in source: completing a non-final set starts a settings-aware rest
+  timer from an absolute end timestamp. Quick, Adaptive, and Full recovery
+  settings use the PWA multipliers and 15-second rounding. Unchecking, skipping,
+  or completing the exercise dismisses the timer, while completing the exercise
+  advances to the next incomplete exercise.
+- Implemented in source: the rest timer uses the same `NativeMaterialSheet`
+  wrapper, drag indicator, adaptive material, dismissal behavior, and header
+  pattern as the other app sheets. It provides a progress track, 15-second
+  adjustments, a full-width center Skip action, and app-standard tabular system
+  numerals.
+- Implemented in source: timer ownership moved from Today into one app-level
+  provider so countdown state survives native tab navigation. Minimizing the
+  sheet preserves the timer and reveals Expo Router 57's iOS 26 native
+  `NativeTabs.BottomAccessory` above the tab bar. The accessory uses a `NEXT UP`
+  eyebrow above the exercise title, keeps remaining time on the trailing edge,
+  omits a redundant leading timer icon, preserves normal tab interaction, and
+  reopens the sheet.
+  Skip remains the explicit timer-cancellation action. A semantic translucent
+  progress tint fills the native accessory and contracts with remaining time:
+  strongly contrasted matte warm white over system glass in dark appearance
+  and dark ink in light appearance, without replacing the system material. A
+  clipped duplicate content layer gives the filled region inverse icon and text
+  colors while the unfilled region retains normal theme colors, so contrast
+  changes precisely as the moving progress boundary crosses each element. The
+  fill, clipping mask, and native accessory share the same semantic pill radius,
+  so the moving boundary retains the outer capsule curvature. The accessory and sheet
+  fills use one shared UI-thread linear interpolation token between timestamp
+  updates, eliminating visible one-second width steps without re-rendering the
+  full workout at display refresh rate. Reduce Motion disables interpolation.
+- Implemented in source: the sheet readout is a dedicated 64-point numeric
+  region. Progress and the 15-second and Skip controls occupy a separate lower
+  footer so timer hierarchy remains clear without crowding the sheet header.
+- Implemented in source: the Today set-progress `ProgressView` now uses a native
+  SwiftUI ease transition keyed to completed-set progress rather than snapping
+  between values.
+- Verified locally: seven authentication tests, 11 authoritative boot tests,
+  two lifecycle navigation tests, TypeScript, ESLint, copy style, and Expo
+  Doctor 20 of 20 passed with the repository's pinned Node 24.14.0 runtime.
+- Verified in Simulator: scheme `FLYNT` built, installed, and launched on iPhone
+  17 / iOS 26.5 in 11.9 seconds. Runtime inspection exposed every day and
+  exercise disclosure as a labeled button, every set value as a labeled native
+  text field, completion controls as labeled buttons, and Stats and Guide as
+  native actions. Both expanded and collapsed card layouts passed visual review.
+  A non-final set completion presented the shared native rest-timer sheet;
+  countdown, progress, adjustment controls, expanded Skip action, swipe and close
+  dismissal, and the established inverse sheet material passed visual review.
+  Minimizing revealed a labeled native bottom accessory, switching from Today
+  to Plan preserved the absolute countdown, and tapping the accessory reopened
+  the timer sheet. The revised `NEXT UP` hierarchy, exercise title, trailing
+  countdown, and removed leading timer icon passed visual review in dark
+  appearance. The contracting matte progress tint and split-contrast text mask
+  were visually verified in dark appearance; light appearance remains source-implemented but not yet
+  visually verified in Simulator. The UI-thread interpolation and SwiftUI
+  progress animation compile and launch in Simulator; frame-level motion review
+  on a recorded Simulator or physical device remains outstanding.
+- Evidence boundary: all workout content and set values remain development
+  preview data. Authoritative workout binding, persistence, interrupted-session
+  recovery, process-termination persistence, lock-screen behavior, largest
+  Dynamic Type, a complete VoiceOver journey, light appearance visual review,
+  physical iPhone, and TestFlight verification remain outstanding.
 
 ## Lifecycle navigation foundation | 2026-07-31
 
@@ -49,11 +245,37 @@ Current physical iPhone verification: Not started
 - Verified locally: TypeScript, ESLint, copy style, and an iOS Expo export passed
   with the bundled Node 24.14.0 runtime. The export produced a 2.4 MB Hermes
   bundle from 1,128 modules.
-- Simulator account-entry rendering is verified. Still not verified:
-  authoritative session and `/api/app-state` injection, loading and retry
-  fixtures, runtime lifecycle transitions, TestFlight, or a physical iPhone.
+- Simulator account-entry and ready-preview rendering are verified. The
+  authoritative boot boundary and failure fixtures are now recorded below.
+  Live authenticated lifecycle transitions, TestFlight, and physical iPhone
+  behavior remain unverified.
 - Roadmap maintenance: the dashboard load error now names the actual
   `PROJECT_STATUS.md` ledger.
+
+## Authoritative app boot boundary | 2026-08-01
+
+- Implemented in source: production boot reads only the Keychain-backed session,
+  extracts its access token without logging it, requests `/api/app-state` with a
+  bearer header, validates the response with the existing Zod contract, and
+  routes from the server-owned lifecycle. No athlete state renders while boot
+  is loading or after a boot failure.
+- Implemented in source: one guarded native boot route provides explicit loading
+  and failure states. Recoverable failures provide Try again, Settings, and Sign
+  out. Sign out is centralized so every lifecycle clears secure session state
+  and removes in-memory app state through the same path.
+- Verified locally: 11 deterministic tests passed for no session, malformed
+  session, authenticated token use, slow response, 401, 403, 409, 429, 500,
+  offline, and malformed server response. A rejected or malformed session is
+  cleared. Other failures preserve the session for retry or explicit sign out.
+- Verified locally: TypeScript, ESLint, copy style, diff hygiene, and Expo Doctor
+  20 of 20 passed after implementation.
+- Verified in Simulator: scheme `FLYNT` built, installed, and launched on iPhone
+  17 / iOS 26.5 in 21.4 seconds. The development ready fixture still routes to
+  the native app shell after the guarded boot integration.
+- Not yet verified: a real Supabase session, token refresh, live production API
+  response, account switching, cached-shell stale labeling, boot failure UI in
+  Simulator, TestFlight, or a physical iPhone. The preview fixture remains
+  development-only and does not count as authoritative server evidence.
 
 ## PWA-referenced ready-state native preview | 2026-07-31
 
@@ -83,14 +305,23 @@ Current physical iPhone verification: Not started
   for the server-owned next-workout recommendation in one decision surface.
   Guide content sits directly on the glass surface without a nested white card.
 - Settings interaction decision: Settings remains a pushed page. Binary choices
-  remain inline switches, multi-option preferences use bottom sheets on iPhone
-  and may adapt to popovers on iPad, and alerts are limited to blocking messages
-  while final destructive confirmation uses a bottom action sheet on iPhone.
+  remain inline switches, short multi-option preferences use system menu
+  pickers with checkmarked selection, and reminder time uses the system compact
+  time picker with hour and minute wheels. Alerts are limited to blocking
+  messages while final destructive confirmation uses a bottom action sheet on
+  iPhone.
 - Settings rebuild implemented in source: App Settings now uses Expo UI 57.0.8
   SwiftUI Form, Section, Toggle, Button, and segmented Picker controls. System,
   Light, and Dark appearance choices are inline and update shared app theme
-  state immediately. Both segmented controls use the larger native control
-  size. Sign Out is separated near the bottom. Export Data and Delete Account
+  state immediately. Spotify position, progression style, and rest duration
+  now use native menu-style Pickers, and reminder time uses the native
+  time-only DatePicker. Their values use the semantic foreground tint while
+  Settings switches use the same semantic monochrome treatment: black in light
+  appearance and neutral graphite in dark appearance. The graphite preserves
+  clear separation from the native white thumb. Native Toggle continues to own
+  the thumb, track, animation, state, and accessibility behavior. Both segmented
+  controls use the larger native control size. Sign Out is separated near the
+  bottom. Export Data and Delete Account
   use the same 50-point, 16-point-radius button geometry as the Profile actions.
   In light mode Sign Out is black with warm-white text. Export is white with a
   subtle boundary, and Delete uses a translucent red fill with matching red
@@ -126,7 +357,13 @@ Current physical iPhone verification: Not started
   than a second modal. The restored full-width bottom navigation uses SF
   Symbols and native glass, stays dark in both app appearances, and passed
   Simulator review. The light-mode Today canvas, `#FAFAFA` exercise cards, and
-  restrained card bevel also passed Simulator visual review.
+  restrained card bevel also passed Simulator visual review. On 2026-08-01 the
+  persistent selected-day surface was recorded moving through intermediate
+  positions from Monday to Friday. The Spotify, progression, and rest system
+  menus displayed checkmarked options, and the reminder control displayed the
+  native hour, minute, and AM or PM wheels. The three enabled Settings toggles
+  were then verified with black native tracks in light appearance and graphite
+  native tracks with clearly separated white thumbs in dark appearance.
 - Still not verified: authoritative account data, server reads or writes,
   offline and error states, Dynamic Type extremes, VoiceOver journeys,
   TestFlight, or a physical iPhone.
@@ -296,7 +533,7 @@ rewriting the workout application.
   Evidence: `.node-version` and `package.json` pin Node 24.14.0 and pnpm 11.9.0. Expo 57.0.9, React Native 0.86.2, and React 19.2.3 are lockfile-pinned. Xcode 26.6 and Swift 6.3.3 are installed and verified. CocoaPods and Ruby pinning plus a clean independent bootstrap remain outstanding.
   Exit check: Two independent installs produce the same working development build.
 - [~] Establish Expo Router navigation for signed-out, consultation, building, ready, and attention lifecycles.
-  Evidence: Exhaustive lifecycle-to-destination mapping, guarded routes, and shared lifecycle scaffolds were implemented on 2026-07-31. Two mocked mapping and route-coverage tests, TypeScript, ESLint, copy style, and iOS export passed. Authoritative session and app-state injection, loading and retry fixtures, and runtime transition evidence remain outstanding.
+  Evidence: Exhaustive lifecycle-to-destination mapping, guarded routes, and shared lifecycle scaffolds were implemented on 2026-07-31. On 2026-08-01 the guarded loading and boot-failure route was added and the Keychain session plus validated `/api/app-state` result became the production navigation input. Thirteen boot and navigation tests, TypeScript, ESLint, copy style, Expo Doctor, and an iOS Simulator build passed. Live authenticated runtime transitions remain outstanding.
   Exit check: No lifecycle can fall through to a blank screen or dead end.
 - [ ] Add generated TypeScript API contracts and runtime validation for every mobile endpoint.
   Evidence: The current authoritative `/api/app-state` lifecycle, preferences, profile, program, build, conversation, and workout schemas were ported with Zod validation on 2026-07-30. Generation, remaining endpoints, and fixture coverage remain outstanding.
@@ -316,8 +553,8 @@ rewriting the workout application.
 
 ### Phase 2 | Native design and behavior system
 
-- [ ] Translate the approved FLYNT color, type, spacing, radius, elevation, and material tokens into a typed native theme.
-  Evidence: Initial typed light and dark color, type, spacing, and radius tokens were implemented in `src/constants/theme.ts` on 2026-07-30. A component gallery and device evidence remain outstanding.
+- [~] Translate the approved FLYNT color, type, spacing, radius, elevation, and material tokens into a typed native theme.
+  Evidence: Initial typed light and dark color, type, spacing, and radius tokens were implemented in `src/constants/theme.ts` on 2026-07-30. On 2026-08-01 Apple's current HIG became the repository design authority through `AGENTS.md`, `docs/APPLE_HIG_BASELINE.md`, and the linked FLYNT interaction system. A completed token audit, component gallery, and device evidence remain outstanding.
   Exit check: Product screens do not hard-code competing visual values.
 - [~] Define the navigation model and exact ownership of stacks, tabs, sheets, full-screen covers, menus, and alerts.
   Evidence: Lifecycle stacks, the PWA-aligned four-tab ready shell, top-right Settings push, native settings action sheets, system confirmation, and draggable exercise form sheets were implemented and exercised in Simulator on 2026-07-31. Remaining deep links and lifecycle detail ownership are incomplete.
@@ -343,20 +580,20 @@ rewriting the workout application.
 
 ### Phase 3 | Identity, legal, and authoritative boot
 
-- [ ] Implement Supabase session storage with iOS Keychain or SecureStore and foreground token refresh.
-  Evidence: A Keychain-backed SecureStore adapter using `WHEN_UNLOCKED_THIS_DEVICE_ONLY` was implemented on 2026-07-30. Supabase integration, refresh, revocation, and reinstall tests remain outstanding.
+- [~] Implement Supabase session storage with iOS Keychain or SecureStore and foreground token refresh.
+  Evidence: A Keychain-backed SecureStore adapter using `WHEN_UNLOCKED_THIS_DEVICE_ONLY` was implemented on 2026-07-30. On 2026-08-01 the Supabase client was connected to that adapter with one shared storage key, persisted PKCE sessions, foreground-only automatic refresh, and local sign-out cleanup. Live refresh, revocation, reinstall, and account-switch tests remain outstanding.
   Exit check: Tokens never use plain AsyncStorage and a revoked session cannot display cached account data.
-- [ ] Implement passwordless email authentication and native deep-link or universal-link return handling.
-  Evidence required: Real OTP flow from Mail back into the development build and TestFlight build.
+- [~] Implement passwordless email authentication and native deep-link or universal-link return handling.
+  Evidence: Native email entry, separate create versus sign-in behavior, PKCE callback exchange, safe failure states, and seven callback and validation fixtures were implemented on 2026-08-01. Real Mail return awaits the Supabase publishable key and redirect allowlist.
   Exit check: Links cannot establish a session for the wrong app environment.
-- [ ] Implement Sign in with Apple and reconcile identity linking with existing Google and email accounts.
-  Evidence required: New, returning, hidden-email, revoked-credential, and account-link tests.
+- [~] Implement Sign in with Apple and reconcile identity linking with existing Google and email accounts.
+  Evidence: The Expo SDK 57 native Apple button, secure nonce and state, Supabase identity-token exchange, one-time Apple name capture, iOS entitlement, and native module build were implemented on 2026-08-01. Apple provider configuration plus new, returning, hidden-email, revoked-credential, and account-link tests remain outstanding.
   Exit check: The primary account can be recovered without creating duplicates.
-- [ ] Decide whether Google remains in V1 and, if retained, implement the native Google flow.
-  Evidence required: Product decision plus App Review login-services compliance review.
+- [~] Decide whether Google remains in V1 and, if retained, implement the native Google flow.
+  Evidence: The owner retained Google alongside Apple and email on 2026-08-01. The native client now starts Google through Supabase PKCE in the iOS system authentication session and returns through the shared callback. Live provider and account-link verification remain outstanding.
   Exit check: Authentication options satisfy Apple guideline 4.8.
-- [ ] Implement authoritative app boot from `/api/app-state` with cached shell, stale-data labeling, retry, sign out, and account isolation.
-  Evidence required: Offline, slow, 401, 403, 409, 429, 500, and malformed-response fixtures.
+- [~] Implement authoritative app boot from `/api/app-state` with cached shell, stale-data labeling, retry, sign out, and account isolation.
+  Evidence: On 2026-08-01 the Keychain session, bearer request, Zod response validation, server lifecycle routing, loading state, retry state, Settings escape, centralized sign out, and 11 deterministic failure fixtures were implemented. The ready development fixture passed a fresh iOS Simulator build and launch. The Supabase client, PKCE account entry, foreground refresh wiring, and local sign-out were then implemented. Live authentication, refresh, account switching, cached shell, and stale labeling remain outstanding.
   Exit check: No prior athlete data flashes after account switching.
 - [ ] Port Terms, Safety Notice, Privacy Notice, data export, and in-app account deletion.
   Evidence required: Reviewer-visible screens and a production deletion run that removes the account and revokes linked Sign in with Apple tokens.
@@ -406,8 +643,8 @@ rewriting the workout application.
 - [ ] Implement local draft recovery without treating local state as published server truth.
   Evidence required: Force quit, low-memory termination, offline completion, and conflict tests.
   Exit check: The athlete can recover work without duplicating the server session.
-- [ ] Implement the rest timer with background-safe timing based on absolute timestamps.
-  Evidence required: Lock screen, background, clock change, interruption, and notification tests.
+- [~] Implement the rest timer with background-safe timing based on absolute timestamps.
+  Evidence: Absolute-end-time countdown, foreground reconciliation, PWA duration modes, set transition rules, shared native material sheet, root timer ownership, and the iOS 26 native tab-bar accessory were implemented and verified in iPhone 17 Simulator on 2026-08-01. The countdown persisted across Today-to-Plan navigation and reopened from the accessory. Lock screen, process termination, clock change, interruption, notification, pre-iOS-26 fallback, and physical-device tests remain outstanding.
   Exit check: Timer drift remains bounded and the workout never depends on an active JavaScript interval.
 - [ ] Port exercise guides, instructional visuals, pending-media state, and retry behavior.
   Evidence required: Published, pending, failed, replaced, and cached media fixtures.
@@ -505,8 +742,8 @@ rewriting the workout application.
 
 ### Phase 10 | App Store compliance and release
 
-- [ ] Keep the current App Review Guidelines and Human Interface Guidelines linked in the native repository and review them at each release milestone.
-  Evidence required: Dated compliance review in this ledger.
+- [~] Keep the current App Review Guidelines and Human Interface Guidelines linked in the native repository and review them at each release milestone.
+  Evidence: On 2026-08-01 the current Apple HIG was reviewed and converted into a dated repository baseline with official links, mandatory agent workflow, acceptance checklist, and departure record. App Review Guidelines review and repeated release-milestone reviews remain outstanding.
   Exit check: Requirements are checked against current Apple text, not memory.
 - [ ] Confirm the app provides substantial native utility beyond a repackaged website.
   Evidence required: Native workout execution, notifications, widgets, haptics, offline recovery, and platform behavior.

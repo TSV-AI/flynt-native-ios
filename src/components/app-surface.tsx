@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, radius, spacing, type } from '@/constants/theme';
 import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
-import { selection } from '@/lib/haptics';
 
 type AppScreenProps = PropsWithChildren<{
   eyebrow?: string;
@@ -17,17 +16,23 @@ type AppScreenProps = PropsWithChildren<{
   showsBackButton?: boolean;
   testID?: string;
   backgroundColor?: ColorValue;
+  footer?: ReactNode;
+  modalActive?: boolean;
 }>;
 
-export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle, showsBackButton = false, children, testID, backgroundColor }: AppScreenProps) {
+export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle, showsBackButton = false, children, testID, backgroundColor, footer, modalActive = false }: AppScreenProps) {
   const { mode, theme } = useFlyntTheme();
   function openSettings() {
-    void selection();
     router.push('/settings');
   }
   return (
     <View style={[styles.screen, { backgroundColor: backgroundColor ?? theme.canvas }]} testID={testID}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView
+        accessibilityElementsHidden={modalActive}
+        importantForAccessibility={modalActive ? 'no-hide-descendants' : 'auto'}
+        style={styles.safeArea}
+        edges={['top']}
+      >
         <View style={styles.topbar}>
           {showsBackButton ? (
             <>
@@ -58,7 +63,7 @@ export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle,
             </>
           )}
         </View>
-        <ScrollView contentContainerStyle={styles.content} keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
+        <ScrollView automaticallyAdjustContentInsets contentContainerStyle={styles.content} keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
           {title ? (
             <View style={styles.hero}>
               {eyebrow ? <Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text> : null}
@@ -69,6 +74,7 @@ export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle,
           {children}
           <View style={styles.bottomSpace} />
         </ScrollView>
+        {footer}
       </SafeAreaView>
     </View>
   );
@@ -114,7 +120,7 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.45 },
   title: { marginTop: 10, fontSize: 38, lineHeight: 38, fontWeight: '600', letterSpacing: -1.95 },
   intro: { marginTop: 12, fontSize: 15, lineHeight: 21, letterSpacing: -0.2, maxWidth: 360 },
-  bottomSpace: { height: 112 },
+  bottomSpace: { height: 32 },
   card: { borderRadius: 24, padding: 16, shadowColor: palette.black, shadowOpacity: 0.2, shadowRadius: 17, shadowOffset: { width: 0, height: 10 } },
   action: { minHeight: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   actionText: { ...type.button },

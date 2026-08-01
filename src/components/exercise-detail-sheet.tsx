@@ -5,7 +5,6 @@ import { NativeMaterialSheet } from '@/components/native-material-sheet';
 import { NativeSymbol } from '@/components/native-symbol';
 import { radius, spacing, themeFor } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
-import { selection } from '@/lib/haptics';
 
 type ExerciseDetailSheetProps = {
   isPresented: boolean;
@@ -20,7 +19,6 @@ export function ExerciseDetailSheet({ isPresented, mode, name, onDismiss }: Exer
   const sheetTheme = themeFor(isDarkSheet ? 'dark' : 'light');
 
   function close() {
-    void selection();
     onDismiss();
   }
 
@@ -121,16 +119,16 @@ function GuideContent({ name }: { name: string }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 }, safeArea: { flex: 1 },
   header: { minHeight: 86, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg },
-  headerCopy: { flex: 1, gap: 4 }, eyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '700', letterSpacing: 1.2 }, title: { fontSize: 22, lineHeight: 27, fontWeight: '600', letterSpacing: -0.6 },
+  headerCopy: { flex: 1, gap: 4 }, eyebrow: { fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.2 }, title: { fontSize: 22, lineHeight: 27, fontWeight: '600', letterSpacing: -0.6 },
   close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
-  sectionLabel: { fontSize: 10, lineHeight: 14, fontWeight: '700', letterSpacing: 1.1 }, supporting: { marginTop: 4, fontSize: 11, lineHeight: 16 },
+  sectionLabel: { fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 1.1 }, supporting: { marginTop: 4, fontSize: 12, lineHeight: 17 },
   signalHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }, signalCopy: { flex: 1 }, signalTitle: { marginTop: spacing.xs, fontSize: 24, lineHeight: 28, fontWeight: '600', letterSpacing: -0.7 }, signalDetail: { marginTop: spacing.xs, fontSize: 13, lineHeight: 19 },
-  deltaBadge: { minWidth: 62, minHeight: 62, borderRadius: 31, alignItems: 'center', justifyContent: 'center' }, deltaValue: { fontSize: 20, lineHeight: 22, fontWeight: '700' }, deltaUnit: { fontSize: 9, lineHeight: 11, fontWeight: '700', letterSpacing: 1 },
+  deltaBadge: { minWidth: 62, minHeight: 62, borderRadius: 31, alignItems: 'center', justifyContent: 'center' }, deltaValue: { fontSize: 20, lineHeight: 22, fontWeight: '700' }, deltaUnit: { fontSize: 11, lineHeight: 13, fontWeight: '700', letterSpacing: 1 },
   history: { marginTop: spacing.xs }, historyHeading: { minHeight: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }, historyCaption: { fontSize: 11, lineHeight: 14 },
-  historyRow: { minHeight: 58, flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth }, historyRail: { width: 20, height: 58, alignItems: 'center' }, historyDot: { position: 'absolute', top: 24, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5, zIndex: 1 }, historyLine: { position: 'absolute', top: 29, bottom: -30, width: 1 }, historyDate: { width: 56, fontSize: 10, lineHeight: 14, fontWeight: '700', letterSpacing: 0.7 }, historyLoad: { width: 78, fontSize: 20, lineHeight: 24, fontWeight: '600', letterSpacing: -0.4 }, historyUnit: { fontSize: 9, fontWeight: '700' }, historyMeta: { flex: 1, fontSize: 11, lineHeight: 15, textAlign: 'right' },
-  nextTarget: { paddingTop: spacing.lg, borderTopWidth: StyleSheet.hairlineWidth }, targetHeading: { marginTop: spacing.xs, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }, targetLoad: { fontSize: 34, lineHeight: 39, fontWeight: '600', letterSpacing: -1.1 }, targetUnit: { fontSize: 15, fontWeight: '600' }, recommendationBadge: { minHeight: 34, justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.pill, paddingHorizontal: spacing.sm }, recommendationText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }, guidanceCopy: { marginTop: spacing.xs, fontSize: 14, lineHeight: 21 },
-  visual: { minHeight: 150, justifyContent: 'flex-end', paddingVertical: spacing.sm }, visualLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.1 }, visualTitle: { marginTop: spacing.xs, fontSize: 24, lineHeight: 29, fontWeight: '600' },
+  historyRow: { minHeight: 58, flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth }, historyRail: { width: 20, height: 58, alignItems: 'center' }, historyDot: { position: 'absolute', top: 24, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5, zIndex: 1 }, historyLine: { position: 'absolute', top: 29, bottom: -30, width: 1 }, historyDate: { width: 56, fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 0.7 }, historyLoad: { width: 78, fontSize: 20, lineHeight: 24, fontWeight: '600', letterSpacing: -0.4 }, historyUnit: { fontSize: 11, fontWeight: '700' }, historyMeta: { flex: 1, fontSize: 11, lineHeight: 15, textAlign: 'right' },
+  nextTarget: { paddingTop: spacing.lg, borderTopWidth: StyleSheet.hairlineWidth }, targetHeading: { marginTop: spacing.xs, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }, targetLoad: { fontSize: 34, lineHeight: 39, fontWeight: '600', letterSpacing: -1.1 }, targetUnit: { fontSize: 15, fontWeight: '600' }, recommendationBadge: { minHeight: 34, justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.pill, paddingHorizontal: spacing.sm }, recommendationText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }, guidanceCopy: { marginTop: spacing.xs, fontSize: 14, lineHeight: 21 },
+  visual: { minHeight: 150, justifyContent: 'flex-end', paddingVertical: spacing.sm }, visualLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.1 }, visualTitle: { marginTop: spacing.xs, fontSize: 24, lineHeight: 29, fontWeight: '600' },
   executionLabel: { marginTop: spacing.sm }, step: { minHeight: 68, flexDirection: 'row', gap: spacing.md, alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth }, stepNumber: { width: 28, fontSize: 11 }, stepCopy: { flex: 1, fontSize: 14, lineHeight: 21 },
   targets: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, target: { minHeight: 38, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.pill, justifyContent: 'center', paddingHorizontal: spacing.md }, targetText: { fontSize: 12, fontWeight: '600' },
 });

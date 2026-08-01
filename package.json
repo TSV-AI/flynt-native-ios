@@ -11,8 +11,10 @@
     "@expo/ui": "~57.0.8",
     "@supabase/supabase-js": "^2.111.0",
     "expo": "~57.0.9",
+    "expo-apple-authentication": "~57.0.1",
     "expo-blur": "~57.0.2",
     "expo-constants": "~57.0.8",
+    "expo-crypto": "~57.0.1",
     "expo-dev-client": "~57.0.10",
     "expo-font": "~57.0.1",
     "expo-glass-effect": "~57.0.1",
@@ -23,6 +25,7 @@
     "expo-splash-screen": "~57.0.5",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.2",
+    "expo-web-browser": "~57.0.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
@@ -49,11 +52,13 @@
     "web": "expo start --web",
     "status:dashboard": "node ./scripts/serve-native-app-roadmap.mjs",
     "lint": "expo lint",
+    "test:auth": "node --test src/lib/auth-flow.test.mjs",
+    "test:boot": "node --test src/lib/authoritative-boot.test.mjs",
     "test:navigation": "node --test src/navigation/lifecycle.test.mjs",
     "typecheck": "tsc --noEmit",
     "copy:check": "node ./scripts/check-copy-style.mjs",
     "doctor": "expo-doctor",
-    "check": "pnpm test:navigation && pnpm typecheck && pnpm lint && pnpm copy:check && pnpm doctor"
+    "check": "pnpm test:auth && pnpm test:boot && pnpm test:navigation && pnpm typecheck && pnpm lint && pnpm copy:check && pnpm doctor"
   },
   "private": true
 }

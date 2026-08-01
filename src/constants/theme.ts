@@ -14,6 +14,9 @@ export const palette = {
   darkMuted: '#AAA89F',
   white: '#FFFFFF',
   danger: '#B43B32',
+  todayCanvas: '#F2F2F1',
+  todayCard: '#FAFAFA',
+  darkControlActive: '#636366',
 } as const;
 
 export const colors = {
@@ -26,6 +29,8 @@ export const colors = {
     line: palette.warmLine,
     primaryFill: palette.black,
     primaryText: palette.warmWhite,
+    controlActive: palette.black,
+    restTimerProgressFill: 'rgba(11,11,11,0.86)',
     danger: palette.danger,
   },
   dark: {
@@ -37,6 +42,8 @@ export const colors = {
     line: palette.darkLine,
     primaryFill: palette.warmWhite,
     primaryText: palette.black,
+    controlActive: palette.darkControlActive,
+    restTimerProgressFill: 'rgba(247,246,242,0.88)',
     danger: '#E06A61',
   },
 } as const;

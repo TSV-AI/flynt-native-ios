@@ -4,8 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { radius, spacing, type } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
-import { selection } from '@/lib/haptics';
-import { clearSecureSession } from '@/lib/secure-session';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 
 type LifecyclePlaceholderProps = {
@@ -24,16 +22,14 @@ export function LifecyclePlaceholder({
   onAction,
 }: LifecyclePlaceholderProps) {
   const { theme } = useFlyntTheme();
-  const { signOut: leaveAuthenticatedFlow } = useLifecycleNavigation();
+  const { signOut: clearAuthenticatedFlow } = useLifecycleNavigation();
 
   async function openSettings() {
-    await selection();
     router.push('/lifecycle-settings' as Href);
   }
 
   async function signOut() {
-    await clearSecureSession();
-    leaveAuthenticatedFlow();
+    await clearAuthenticatedFlow();
     router.replace('/');
   }
 
@@ -42,7 +38,7 @@ export function LifecyclePlaceholder({
       <SafeAreaView style={styles.content} edges={['top', 'bottom']}>
         <View style={styles.copy}>
           <Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text>
-          <Text style={[styles.title, { color: theme.ink }]}>{title}</Text>
+          <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
           <Text style={[styles.body, { color: theme.muted }]}>{body}</Text>
         </View>
 

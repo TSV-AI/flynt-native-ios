@@ -1,17 +1,46 @@
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FirstRunIntroduction } from '@/components/first-run-introduction';
 import { radius, spacing, type } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
-import { selection } from '@/lib/haptics';
+import { hasSeenFirstRunIntroduction, markFirstRunIntroductionSeen } from '@/lib/first-run';
 
 export default function HomeScreen() {
   const { theme } = useFlyntTheme();
+  const [showIntroduction, setShowIntroduction] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    void hasSeenFirstRunIntroduction()
+      .then((seen) => {
+        if (mounted) setShowIntroduction(!seen);
+      })
+      .catch(() => {
+        if (mounted) setShowIntroduction(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   function navigate(path: '/create-account' | '/sign-in') {
-    void selection();
     router.push(path);
+  }
+
+  function finishIntroduction() {
+    setShowIntroduction(false);
+    void markFirstRunIntroductionSeen();
+  }
+
+  if (showIntroduction === null) {
+    return <View style={[styles.container, { backgroundColor: theme.canvas }]} />;
+  }
+
+  if (showIntroduction) {
+    return <FirstRunIntroduction onFinish={finishIntroduction} />;
   }
 
   return (

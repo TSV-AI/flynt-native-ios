@@ -1,9 +1,9 @@
 import {
   Button as SwiftButton,
+  DatePicker,
   Form,
   HStack,
   Host,
-  Image as SwiftImage,
   Picker,
   Section,
   Spacer,
@@ -18,6 +18,7 @@ import {
   controlSize,
   foregroundColor,
   frame,
+  datePickerStyle,
   listRowBackground,
   listRowInsets,
   listRowSeparator,
@@ -46,28 +47,43 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { radius, spacing, themeFor } from '@/constants/theme';
 import { NativeMaterialSheet } from '@/components/native-material-sheet';
 import { NativeSymbol } from '@/components/native-symbol';
-import { type ChoiceKind, SettingsChoiceSheet } from '@/components/settings-choice-sheet';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { selection } from '@/lib/haptics';
-import { clearSecureSession } from '@/lib/secure-session';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 import { useSettingsPreferences } from '@/providers/settings-preferences-provider';
 
 type Panel = 'profile' | 'app';
 type ProfileSheet = 'personal' | 'training' | null;
 
-function NativeValueButton({ label, value, danger = false, onPress }: { label: string; value?: string; danger?: boolean; onPress: () => void }) {
+function NativeMenuPicker({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: readonly string[]; value: string }) {
   const { theme } = useFlyntTheme();
   return (
-    <SwiftButton modifiers={[buttonStyle('plain')]} onPress={() => { void selection(); onPress(); }}>
-      <HStack spacing={8}>
-        <SwiftText modifiers={[foregroundColor(danger ? theme.danger : theme.ink)]}>{label}</SwiftText>
-        <Spacer />
-        {value ? <SwiftText modifiers={[foregroundColor(theme.muted)]}>{value}</SwiftText> : null}
-        <SwiftImage color={theme.muted} size={13} systemName="chevron.right" />
-      </HStack>
-    </SwiftButton>
+    <Picker<string>
+      label={label}
+      modifiers={[pickerStyle('menu'), tint(theme.ink)]}
+      onSelectionChange={(next) => {
+        void selection();
+        onChange(next);
+      }}
+      selection={value}
+    >
+      {options.map((option) => <SwiftText key={option} modifiers={[tag(option)]}>{option}</SwiftText>)}
+    </Picker>
   );
+}
+
+function dateForReminderTime(value: string) {
+  const match = /^(\d{1,2}):(\d{2})\s(AM|PM)$/.exec(value);
+  if (!match) return new Date(2000, 0, 1, 8, 0);
+  const hour = Number(match[1]) % 12 + (match[3] === 'PM' ? 12 : 0);
+  return new Date(2000, 0, 1, hour, Number(match[2]));
+}
+
+function reminderTimeForDate(value: Date) {
+  const hour = value.getHours();
+  const displayHour = hour % 12 || 12;
+  const minute = String(value.getMinutes()).padStart(2, '0');
+  return `${displayHour}:${minute} ${hour >= 12 ? 'PM' : 'AM'}`;
 }
 
 function NativeCenteredButton({ label, treatment, onPress }: { label: string; treatment: 'signout' | 'export' | 'delete'; onPress: () => void }) {
@@ -199,7 +215,7 @@ function ProfileEditSheet({
             </View>
             <Text accessibilityRole="header" style={[styles.sheetTitle, { color: theme.ink }]}>{activeRow?.label ?? title}</Text>
             <View style={styles.sheetHeaderSide}>
-              <Pressable accessibilityLabel="Close" accessibilityRole="button" onPress={() => { void selection(); onClose(); }} style={[styles.sheetCloseButton, { backgroundColor: theme.card }]}>
+              <Pressable accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={[styles.sheetCloseButton, { backgroundColor: theme.card }]}>
                 <NativeSymbol color={theme.ink} name="xmark" size={16} />
               </Pressable>
             </View>
@@ -264,17 +280,20 @@ export default function SettingsScreen() {
     reminders,
     setReminders,
     reminderTime,
+    setReminderTime,
     progression,
     setProgression,
     progressionStyle,
+    setProgressionStyle,
     restTimers,
     setRestTimers,
     restLength,
+    setRestLength,
     spotifyDisplay,
+    setSpotifyDisplay,
   } = useSettingsPreferences();
   const [panel, setPanel] = useState<Panel>('profile');
   const [profileSheet, setProfileSheet] = useState<ProfileSheet>(null);
-  const [choiceSheet, setChoiceSheet] = useState<ChoiceKind | null>(null);
   const [name, setName] = useState('Luke');
   const [age, setAge] = useState('35');
   const [height, setHeight] = useState(`5′ 11″`);
@@ -285,8 +304,7 @@ export default function SettingsScreen() {
   const [equipment, setEquipment] = useState('Full gym');
 
   async function performSignOut() {
-    await clearSecureSession();
-    signOut();
+    await signOut();
     router.replace('/');
   }
 
@@ -335,18 +353,19 @@ export default function SettingsScreen() {
   }
 
   function openTrainer() {
-    void selection();
     router.dismissTo('/(tabs)/trainer');
   }
 
-  function openChoice(kind: ChoiceKind) {
-    void selection();
-    setChoiceSheet(kind);
-  }
+  const modalActive = profileSheet !== null;
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.canvas }]} testID="screen-settings">
       <SafeAreaView edges={['top']} style={styles.safeArea}>
+        <View
+          accessibilityElementsHidden={modalActive}
+          importantForAccessibility={modalActive ? 'no-hide-descendants' : 'auto'}
+          style={styles.baseContent}
+        >
         <View style={styles.topbar}>
           <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
             <NativeSymbol color={theme.ink} name="chevron.left" size={18} />
@@ -358,7 +377,7 @@ export default function SettingsScreen() {
         <Host colorScheme={mode} seedColor={mode === 'light' ? '#0B0B0B' : undefined} style={styles.panelPicker}>
           <Picker<Panel>
             modifiers={[pickerStyle('segmented'), controlSize('large'), frame({ height: 40 })]}
-            onSelectionChange={(next) => { void selection(); setPanel(next); }}
+            onSelectionChange={setPanel}
             selection={panel}
           >
             <SwiftText modifiers={[tag('profile')]}>Profile</SwiftText>
@@ -374,7 +393,7 @@ export default function SettingsScreen() {
               </View>
               <Text accessibilityRole="header" style={[styles.profileName, { color: theme.ink }]}>{name || 'Your profile'}</Text>
               <Text style={[styles.profileIdentity, { color: theme.muted }]}>{goal} · {experience}</Text>
-              <Pressable accessibilityRole="button" onPress={() => { void selection(); setProfileSheet('personal'); }} style={({ pressed }) => [styles.editProfileButton, { borderColor: theme.line, opacity: pressed ? 0.55 : 1 }]}>
+              <Pressable accessibilityRole="button" onPress={() => setProfileSheet('personal')} style={({ pressed }) => [styles.editProfileButton, { borderColor: theme.line, opacity: pressed ? 0.55 : 1 }]}>
                 <Text style={[styles.editProfileText, { color: theme.ink }]}>Edit Personal Details</Text>
               </Pressable>
             </View>
@@ -397,7 +416,7 @@ export default function SettingsScreen() {
               <Text style={[styles.contextTitle, { color: theme.ink }]}>Built around {schedule.toLowerCase()} of focused training.</Text>
               <Text style={[styles.contextBody, { color: theme.muted }]}>Your current plan prioritizes {goal.toLowerCase()} with {equipment.toLowerCase()} access and recovery-aware progression.</Text>
               <View style={styles.contextActions}>
-                <Pressable accessibilityRole="button" onPress={() => { void selection(); setProfileSheet('training'); }} style={({ pressed }) => [styles.primaryProfileAction, { backgroundColor: theme.primaryFill, opacity: pressed ? 0.72 : 1 }]}>
+                <Pressable accessibilityRole="button" onPress={() => setProfileSheet('training')} style={({ pressed }) => [styles.primaryProfileAction, { backgroundColor: theme.primaryFill, opacity: pressed ? 0.72 : 1 }]}>
                   <Text style={[styles.primaryProfileActionText, { color: theme.primaryText }]}>Edit Training Profile</Text>
                 </Pressable>
                 <Pressable accessibilityRole="button" onPress={openTrainer} style={({ pressed }) => [styles.secondaryProfileAction, { borderColor: theme.line, opacity: pressed ? 0.55 : 1 }]}>
@@ -417,7 +436,7 @@ export default function SettingsScreen() {
                     frame({ height: 40 }),
                     ...(mode === 'light' ? [tint('#0B0B0B')] : []),
                   ]}
-                  onSelectionChange={(next) => { void selection(); setPreference(next as typeof preference); }}
+                  onSelectionChange={(next) => setPreference(next as typeof preference)}
                   selection={preference}
                 >
                   <SwiftText modifiers={[tag('system')]}>System</SwiftText>
@@ -427,19 +446,27 @@ export default function SettingsScreen() {
               </Section>
 
               <Section modifiers={[listRowBackground('transparent')]} title="Music">
-                <NativeValueButton label="Spotify Player" onPress={() => openChoice('spotify')} value={spotifyDisplay} />
+                <NativeMenuPicker label="Spotify Player" onChange={setSpotifyDisplay} options={['Bar', 'Pill', 'Hidden']} value={spotifyDisplay} />
               </Section>
 
               <Section modifiers={[listRowBackground('transparent')]} title="Workout">
-                <SwiftToggle isOn={reminders} label="Workout Reminders" onIsOnChange={setReminders} />
-                {reminders ? <NativeValueButton label="Reminder Time" onPress={() => openChoice('reminder')} value={reminderTime} /> : null}
-                <SwiftToggle isOn={progression} label="Automatic Progression" onIsOnChange={setProgression} />
-                {progression ? <NativeValueButton label="Progression Style" onPress={() => openChoice('progression')} value={progressionStyle} /> : null}
-                <SwiftToggle isOn={restTimers} label="Rest Timers" onIsOnChange={setRestTimers} />
-                {restTimers ? <NativeValueButton label="Rest Duration" onPress={() => openChoice('rest')} value={restLength} /> : null}
+                <SwiftToggle isOn={reminders} label="Workout Reminders" modifiers={[tint(theme.controlActive)]} onIsOnChange={setReminders} />
+                {reminders ? (
+                  <DatePicker
+                    displayedComponents={['hourAndMinute']}
+                    modifiers={[datePickerStyle('compact'), tint(theme.ink)]}
+                    onDateChange={(next) => setReminderTime(reminderTimeForDate(next))}
+                    selection={dateForReminderTime(reminderTime)}
+                    title="Reminder Time"
+                  />
+                ) : null}
+                <SwiftToggle isOn={progression} label="Automatic Progression" modifiers={[tint(theme.controlActive)]} onIsOnChange={setProgression} />
+                {progression ? <NativeMenuPicker label="Progression Style" onChange={setProgressionStyle} options={['Conservative', 'Balanced', 'Assertive', 'Custom']} value={progressionStyle} /> : null}
+                <SwiftToggle isOn={restTimers} label="Rest Timers" modifiers={[tint(theme.controlActive)]} onIsOnChange={setRestTimers} />
+                {restTimers ? <NativeMenuPicker label="Rest Duration" onChange={setRestLength} options={['Quick', 'Adaptive', 'Full recovery']} value={restLength} /> : null}
               </Section>
 
-              <Section footer={<SwiftText>FLYNT for iOS Preview</SwiftText>} modifiers={[listRowBackground('transparent')]} title="Account & Data">
+              <Section footer={<SwiftText>Preview settings are local. Account actions connect after authentication.</SwiftText>} modifiers={[listRowBackground('transparent')]} title="Account & Data">
                 <VStack
                   modifiers={[
                     listRowBackground('transparent'),
@@ -456,6 +483,7 @@ export default function SettingsScreen() {
             </Form>
           </Host>
         )}
+        </View>
 
       {profileSheet ? (
         <ProfileEditSheet
@@ -480,11 +508,6 @@ export default function SettingsScreen() {
           weight={weight}
         />
       ) : null}
-      <SettingsChoiceSheet
-        isPresented={choiceSheet !== null}
-        kind={choiceSheet ?? 'spotify'}
-        onDismiss={() => setChoiceSheet(null)}
-      />
       </SafeAreaView>
     </View>
   );
@@ -493,6 +516,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   safeArea: { flex: 1 },
+  baseContent: { flex: 1 },
   topbar: { height: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm },
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topbarTitle: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.2 },
@@ -509,10 +533,10 @@ const styles = StyleSheet.create({
   editProfileText: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
   metricsRail: { minHeight: 88, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, marginTop: 32 },
   profileMetric: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  metricLabel: { fontSize: 9, lineHeight: 12, fontWeight: '700', letterSpacing: 1.1 },
+  metricLabel: { fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.1 },
   metricValue: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.25 },
   trainerContext: { paddingTop: 32 },
-  contextEyebrow: { fontSize: 10, lineHeight: 13, fontWeight: '700', letterSpacing: 1.25 },
+  contextEyebrow: { fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.25 },
   contextTitle: { maxWidth: 315, marginTop: 10, fontSize: 28, lineHeight: 32, fontWeight: '600', letterSpacing: -1 },
   contextBody: { maxWidth: 325, marginTop: 11, fontSize: 15, lineHeight: 22 },
   contextActions: { gap: 10, marginTop: 24 },
@@ -526,7 +550,7 @@ const styles = StyleSheet.create({
   rowValue: { flexShrink: 1, fontSize: 14, lineHeight: 19, textAlign: 'right' },
   sheet: { flex: 1 },
   sheetSafeArea: { flex: 1 },
-  sheetHeader: { minHeight: 58, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.sm },
+  sheetHeader: { minHeight: 72, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.sm, paddingTop: 14 },
   sheetHeaderSide: { width: 64, alignItems: 'flex-end', justifyContent: 'center' },
   sheetBackButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   sheetTitle: { flex: 1, fontSize: 17, lineHeight: 22, fontWeight: '600', textAlign: 'center' },

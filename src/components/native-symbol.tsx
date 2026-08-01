@@ -1,7 +1,9 @@
-import { Button, Host, Image as SwiftImage } from '@expo/ui/swift-ui';
-import { buttonBorderShape, buttonStyle, controlSize, frame } from '@expo/ui/swift-ui/modifiers';
+import { Host, Image as SwiftImage } from '@expo/ui/swift-ui';
+import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import type { ComponentProps } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
 
 type SFSymbol = NonNullable<ComponentProps<typeof SwiftImage>['systemName']>;
 
@@ -30,25 +32,30 @@ export function GlassSymbolButton({
   colorScheme: 'light' | 'dark';
   onPress: () => void;
 }) {
+  const reduceTransparency = useReduceTransparency();
+  const content = <NativeSymbol color={color} name={name} size={17} />;
   return (
-    <View accessibilityLabel={accessibilityLabel} accessibilityRole="button" style={styles.buttonHost}>
-      <Host colorScheme={colorScheme} style={styles.buttonHost}>
-        <Button
-          modifiers={[
-            controlSize('large'),
-            buttonBorderShape('circle'),
-            frame({ width: 44, height: 44 }),
-            buttonStyle('glass'),
-          ]}
-          onPress={onPress}
-        >
-          <SwiftImage color={color} size={17} systemName={name} />
-        </Button>
-      </Host>
-    </View>
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.buttonHost, pressed && styles.pressed]}
+    >
+      {isGlassEffectAPIAvailable() && !reduceTransparency ? (
+        <GlassView colorScheme={colorScheme} glassEffectStyle="regular" isInteractive style={styles.glass}>
+          {content}
+        </GlassView>
+      ) : (
+        <View style={[styles.glass, { backgroundColor: colorScheme === 'dark' ? '#2A2A29' : '#E9E8E3' }]}>
+          {content}
+        </View>
+      )}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  buttonHost: { width: 44, height: 44 },
+  buttonHost: { width: 44, height: 44, borderRadius: 22 },
+  glass: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  pressed: { opacity: 0.72 },
 });

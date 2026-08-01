@@ -11,7 +11,8 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "supportsTablet": false,
-      "bundleIdentifier": "com.threesixtyvue.flynt"
+      "bundleIdentifier": "com.threesixtyvue.flynt",
+      "usesAppleSignIn": true
     },
     "web": {
       "output": "static",
@@ -32,7 +33,9 @@
         {
           "configureAndroidBackup": true
         }
-      ]
+      ],
+      "expo-apple-authentication",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

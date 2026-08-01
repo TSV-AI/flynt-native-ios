@@ -3,6 +3,12 @@
 This document defines the default behavior language for the native app.
 Exceptions require a product reason and an update here.
 
+Apple's current Human Interface Guidelines govern platform behavior,
+accessibility, and native component selection. Read
+`docs/APPLE_HIG_BASELINE.md` first for the authority order, mandatory design
+pass, and completion checklist. This document specializes that standard for
+FLYNT without replacing it.
+
 ## Core principles
 
 - Native controls first.

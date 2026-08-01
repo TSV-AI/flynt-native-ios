@@ -26,9 +26,35 @@ export default function TrainerScreen() {
     setMessage('');
   }
 
+  const composer = (
+    <View style={[styles.composerArea, { backgroundColor: theme.canvas, borderTopColor: theme.line }]}>
+      <View style={[styles.composer, { backgroundColor: theme.raised, borderColor: theme.line }]}>
+        <TextInput
+          accessibilityLabel="Message Trainer"
+          multiline
+          onChangeText={setMessage}
+          placeholder="Ask about your training"
+          placeholderTextColor={theme.muted}
+          style={[styles.input, { color: theme.ink }]}
+          value={message}
+        />
+        <Pressable
+          accessibilityLabel="Send message"
+          accessibilityRole="button"
+          disabled={!message.trim()}
+          onPress={send}
+          style={[styles.send, { backgroundColor: theme.primaryFill, opacity: message.trim() ? 1 : 0.32 }]}
+        >
+          <Text style={[styles.sendText, { color: theme.primaryText }]}>↑</Text>
+        </Pressable>
+      </View>
+      <Text style={[styles.previewNote, { color: theme.muted }]}>Preview only. Messages are not sent.</Text>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex} keyboardVerticalOffset={24}>
-      <AppScreen eyebrow="YOUR COACH" title="Trainer" intro="Ask about today, your plan, or an adjustment you need." testID="screen-trainer">
+      <AppScreen eyebrow="YOUR COACH" footer={composer} title="Trainer" intro="Ask about today, your plan, or an adjustment you need." testID="screen-trainer">
         <View style={appSurfaceStyles.section}>
           <View style={[styles.coachBubble, { backgroundColor: theme.raised, borderColor: theme.line }]}>
             <Text style={[appSurfaceStyles.cardTitle, { color: theme.ink }]}>Good morning. Lower Power is ready.</Text>
@@ -54,27 +80,6 @@ export default function TrainerScreen() {
           ))}
         </View>
 
-        <View style={[styles.composer, { backgroundColor: theme.raised, borderColor: theme.line }]}>
-          <TextInput
-            accessibilityLabel="Message Trainer"
-            multiline
-            onChangeText={setMessage}
-            placeholder="Message Trainer"
-            placeholderTextColor={theme.muted}
-            style={[styles.input, { color: theme.ink }]}
-            value={message}
-          />
-          <Pressable
-            accessibilityLabel="Send message"
-            accessibilityRole="button"
-            disabled={!message.trim()}
-            onPress={send}
-            style={[styles.send, { backgroundColor: theme.primaryFill, opacity: message.trim() ? 1 : 0.32 }]}
-          >
-            <Text style={[styles.sendText, { color: theme.primaryText }]}>↑</Text>
-          </Pressable>
-        </View>
-        <Text style={[styles.previewNote, { color: theme.muted }]}>Preview messages stay on this device and are not sent.</Text>
       </AppScreen>
     </KeyboardAvoidingView>
   );
@@ -88,7 +93,8 @@ const styles = StyleSheet.create({
   prompts: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.lg },
   prompt: { minHeight: 44, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.pill, justifyContent: 'center', paddingHorizontal: spacing.md },
   promptText: { fontSize: 14, lineHeight: 18, fontWeight: '600' },
-  composer: { minHeight: 58, flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.lg, marginTop: spacing.xl, padding: spacing.xs, paddingLeft: spacing.md },
+  composerArea: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  composer: { minHeight: 58, flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.lg, padding: spacing.xs, paddingLeft: spacing.md },
   input: { flex: 1, minHeight: 44, maxHeight: 110, fontSize: 17, lineHeight: 22, paddingVertical: 11 },
   send: { width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   sendText: { fontSize: 25, lineHeight: 28, fontWeight: '600' },

@@ -7,7 +7,11 @@ import {
   type PresentationDetent,
 } from '@expo/ui/swift-ui/modifiers';
 import type { ReactNode } from 'react';
+import { useEffect } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
+import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
+import { useModalPresentation } from '@/providers/modal-presentation-provider';
 
 type NativeMaterialSheetProps = {
   children: ReactNode;
@@ -18,7 +22,19 @@ type NativeMaterialSheetProps = {
 };
 
 export function NativeMaterialSheet({ children, colorScheme, detents, isPresented, onDismiss }: NativeMaterialSheetProps) {
-  const { width } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
+  const reduceTransparency = useReduceTransparency();
+  const { setModalPresented } = useModalPresentation();
+  const backgroundColor = colorScheme === 'dark'
+    ? reduceTransparency ? '#18181A' : '#18181ADD'
+    : reduceTransparency ? '#F7F6F2' : '#F7F6F2E8';
+  const effectiveDetents = fontScale >= 1.35 ? [{ fraction: 0.94 } satisfies PresentationDetent] : detents;
+
+  useEffect(() => {
+    if (!isPresented) return;
+    setModalPresented(true);
+    return () => setModalPresented(false);
+  }, [isPresented, setModalPresented]);
 
   return (
     <Host colorScheme={colorScheme} pointerEvents="none" style={[styles.host, { width }]}>
@@ -31,14 +47,14 @@ export function NativeMaterialSheet({ children, colorScheme, detents, isPresente
       >
         <Group
           modifiers={[
-            presentationDetents(detents),
+            presentationDetents(effectiveDetents),
             presentationDragIndicator('visible'),
-            presentationBackground(colorScheme === 'dark' ? '#18181ADD' : '#F7F6F2E8'),
+            presentationBackground(backgroundColor),
             environment('colorScheme', colorScheme),
           ]}
         >
           <RNHostView>
-            <View style={styles.content}>{children}</View>
+            <View accessibilityViewIsModal style={styles.content}>{children}</View>
           </RNHostView>
         </Group>
       </BottomSheet>

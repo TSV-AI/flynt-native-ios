@@ -3,6 +3,7 @@ export const motion = {
     quick: 160,
     standard: 240,
     deliberate: 360,
+    continuousProgress: 1100,
   },
   spring: {
     responsive: {

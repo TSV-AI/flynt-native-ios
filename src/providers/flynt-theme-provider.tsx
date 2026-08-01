@@ -1,5 +1,5 @@
-import { createContext, type PropsWithChildren, useContext, useMemo, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { createContext, type PropsWithChildren, useContext, useLayoutEffect, useMemo, useState } from 'react';
+import { Appearance, useColorScheme } from 'react-native';
 
 import { type ColorMode, themeFor } from '@/constants/theme';
 
@@ -20,6 +20,10 @@ export function FlyntThemeProvider({ children }: PropsWithChildren) {
   const [preference, setPreference] = useState<ThemePreference>(previewPreference);
   const mode = preference === 'system' ? systemMode : preference;
   const value = useMemo(() => ({ mode, preference, setPreference, theme: themeFor(mode) }), [mode, preference]);
+
+  useLayoutEffect(() => {
+    Appearance.setColorScheme(preference === 'system' ? 'unspecified' : preference);
+  }, [preference]);
 
   return <FlyntThemeContext.Provider value={value}>{children}</FlyntThemeContext.Provider>;
 }
