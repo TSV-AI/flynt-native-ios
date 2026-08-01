@@ -8,11 +8,14 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@expo/ui": "~57.0.8",
     "@supabase/supabase-js": "^2.111.0",
     "expo": "~57.0.9",
+    "expo-blur": "~57.0.2",
     "expo-constants": "~57.0.8",
     "expo-dev-client": "~57.0.10",
     "expo-font": "~57.0.1",
+    "expo-glass-effect": "~57.0.1",
     "expo-haptics": "~57.0.1",
     "expo-linking": "~57.0.4",
     "expo-router": "~57.0.9",
@@ -46,10 +49,11 @@
     "web": "expo start --web",
     "status:dashboard": "node ./scripts/serve-native-app-roadmap.mjs",
     "lint": "expo lint",
+    "test:navigation": "node --test src/navigation/lifecycle.test.mjs",
     "typecheck": "tsc --noEmit",
     "copy:check": "node ./scripts/check-copy-style.mjs",
     "doctor": "expo-doctor",
-    "check": "pnpm typecheck && pnpm lint && pnpm copy:check && pnpm doctor"
+    "check": "pnpm test:navigation && pnpm typecheck && pnpm lint && pnpm copy:check && pnpm doctor"
   },
   "private": true
 }

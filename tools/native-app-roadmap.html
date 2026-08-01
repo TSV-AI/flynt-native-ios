@@ -858,7 +858,7 @@
 
           const message = document.createElement("p");
           message.className = "load-error";
-          message.textContent = `Could not read NATIVE_APP_STATUS.md: ${error.message}`;
+          message.textContent = `Could not read PROJECT_STATUS.md: ${error.message}`;
           buildGroups.replaceChildren(message);
           releaseGroups.replaceChildren();
         }

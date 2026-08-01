@@ -1,0 +1,121 @@
+import type { PropsWithChildren, ReactNode } from 'react';
+import { router } from 'expo-router';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, type ColorValue } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { palette, radius, spacing, type } from '@/constants/theme';
+import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
+import { useFlyntTheme } from '@/hooks/use-flynt-theme';
+import { selection } from '@/lib/haptics';
+
+type AppScreenProps = PropsWithChildren<{
+  eyebrow?: string;
+  title?: string;
+  intro?: string;
+  headerAccessory?: ReactNode;
+  topbarTitle?: string;
+  showsBackButton?: boolean;
+  testID?: string;
+  backgroundColor?: ColorValue;
+}>;
+
+export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle, showsBackButton = false, children, testID, backgroundColor }: AppScreenProps) {
+  const { mode, theme } = useFlyntTheme();
+  function openSettings() {
+    void selection();
+    router.push('/settings');
+  }
+  return (
+    <View style={[styles.screen, { backgroundColor: backgroundColor ?? theme.canvas }]} testID={testID}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.topbar}>
+          {showsBackButton ? (
+            <>
+              <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
+                <NativeSymbol color={theme.ink} name="chevron.left" size={18} />
+              </Pressable>
+              <Text style={[styles.topbarTitle, { color: theme.ink }]}>{topbarTitle}</Text>
+              <View style={styles.backButton} />
+            </>
+          ) : (
+            <>
+              <Image
+                accessibilityLabel="FLYNT"
+                source={mode === 'dark'
+                  ? require('@/assets/images/flynt-mark-light.png')
+                  : require('@/assets/images/flynt-mark-ink.png')}
+                style={styles.mark}
+              />
+              {headerAccessory ?? (
+                <GlassSymbolButton
+                  accessibilityLabel="Open menu and settings"
+                  color={theme.ink}
+                  colorScheme={mode}
+                  name="ellipsis"
+                  onPress={openSettings}
+                />
+              )}
+            </>
+          )}
+        </View>
+        <ScrollView contentContainerStyle={styles.content} keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
+          {title ? (
+            <View style={styles.hero}>
+              {eyebrow ? <Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text> : null}
+              <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
+              {intro ? <Text style={[styles.intro, { color: theme.muted }]}>{intro}</Text> : null}
+            </View>
+          ) : null}
+          {children}
+          <View style={styles.bottomSpace} />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+export function PreviewBadge() { return null; }
+
+export function Card({ children }: PropsWithChildren) {
+  const { theme } = useFlyntTheme();
+  return <View style={[styles.card, { backgroundColor: theme.card }]}>{children}</View>;
+}
+
+type ActionButtonProps = PropsWithChildren<{ onPress: () => void; secondary?: boolean; disabled?: boolean }>;
+
+export function ActionButton({ children, onPress, secondary = false, disabled = false }: ActionButtonProps) {
+  const { theme } = useFlyntTheme();
+  return (
+    <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.action, { backgroundColor: secondary ? theme.card : theme.primaryFill, opacity: disabled ? 0.4 : pressed ? 0.76 : 1 }]}>
+      <Text style={[styles.actionText, { color: secondary ? theme.ink : theme.primaryText }]}>{children}</Text>
+    </Pressable>
+  );
+}
+
+export const appSurfaceStyles = StyleSheet.create({
+  section: { gap: spacing.sm, marginTop: spacing.lg },
+  sectionTitle: { ...type.label },
+  cardTitle: { ...type.button },
+  body: { ...type.body },
+  meta: { fontSize: 12, lineHeight: 17, fontWeight: '500' },
+  row: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  divider: { height: StyleSheet.hairlineWidth },
+});
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  safeArea: { flex: 1 },
+  topbar: { height: 58, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  mark: { width: 28, height: 42.5, resizeMode: 'contain' },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  topbarTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600' },
+  content: { paddingHorizontal: 18 },
+  hero: { paddingHorizontal: 4, paddingTop: 14, paddingBottom: 26 },
+  eyebrow: { fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.45 },
+  title: { marginTop: 10, fontSize: 38, lineHeight: 38, fontWeight: '600', letterSpacing: -1.95 },
+  intro: { marginTop: 12, fontSize: 15, lineHeight: 21, letterSpacing: -0.2, maxWidth: 360 },
+  bottomSpace: { height: 112 },
+  card: { borderRadius: 24, padding: 16, shadowColor: palette.black, shadowOpacity: 0.2, shadowRadius: 17, shadowOffset: { width: 0, height: 10 } },
+  action: { minHeight: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
+  actionText: { ...type.button },
+});

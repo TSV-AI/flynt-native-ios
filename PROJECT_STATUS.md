@@ -1,6 +1,6 @@
 # FLYNT native app plan and release ledger
 
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 Planning repository: `/Users/lukemcglynn/FLYNT-Native`
 Native client repository: `/Users/lukemcglynn/FLYNT-Native`
 Target client: Expo React Native development build with focused Swift modules
@@ -8,9 +8,9 @@ Backend: Existing FLYNT Vercel API and workflows
 System of record: Existing FLYNT Supabase project `nnfxswxzjqocnlkoqsbl`
 Distribution: Apple App Store through App Store Connect
 
-Current source state: Native foundation committed locally on `codex/native-foundation`
-Current local verification: Type, lint, Expo Doctor, iOS JavaScript export, and mobile web review passed
-Current Simulator verification: Build attempted and blocked by local Xcode and Swift version
+Current source state: Native foundation, lifecycle navigation, and the PWA-referenced ready-state native preview are committed locally on `codex/native-foundation`
+Current local verification: Foundation checks passed on 2026-07-30; the corrected native preview passed lifecycle tests, type, lint, copy style, Expo Doctor 20 of 20, and a 2.7 MB iOS Hermes export from 1,282 modules on 2026-07-31. Final checks for the 2026-08-01 material and navigation refinements are recorded below.
+Current Simulator verification: Debug build, install, launch, Metro bundle, account entry, the Today, Plan, Progress, and Trainer tabs, top-right Profile & Settings journey, SwiftUI App Settings in light and dark modes, designed Profile, native material sheets, and the light-mode Today surface passed on iPhone 17 / iOS 26.5 through 2026-08-01.
 Current TestFlight verification: Not started
 Current physical iPhone verification: Not started
 
@@ -31,11 +31,105 @@ Current physical iPhone verification: Not started
 
 ## Active blockers
 
-- The machine has Xcode 16.4 with Swift 6.1. Expo SDK 57 requires Xcode 26.4,
-  and its Apple package requires Swift tools 6.2. The generated Xcode workspace
-  and CocoaPods installation are healthy, but the Simulator build stops at the
-  Swift tools version check. JavaScript checks run with the bundled Node 24
-  runtime. Simulator launch evidence requires an Xcode update.
+- No local Xcode, Swift, Node, CocoaPods, build, install, or Simulator-launch
+  blocker remains. The machine now uses Xcode 26.6, Swift 6.3.3, and the
+  repository-pinned Node 24.14.0 plus pnpm 11.9.0.
+- Product-level work remains before TestFlight: authoritative session and
+  `/api/app-state` injection, runtime lifecycle transitions, signing and Apple
+  Developer enrollment, and physical-device verification.
+
+## Lifecycle navigation foundation | 2026-07-31
+
+- Implemented in source: one exhaustive mapping from all six authoritative
+  lifecycle values to signed-out, consultation, building, ready, and attention
+  destinations, plus guarded Expo Router routes and shared lifecycle state
+  scaffolds with Settings and sign-out access.
+- Verified locally: two Node tests passed with mocked authoritative lifecycle
+  values and confirmed that every destination has a concrete native route.
+- Verified locally: TypeScript, ESLint, copy style, and an iOS Expo export passed
+  with the bundled Node 24.14.0 runtime. The export produced a 2.4 MB Hermes
+  bundle from 1,128 modules.
+- Simulator account-entry rendering is verified. Still not verified:
+  authoritative session and `/api/app-state` injection, loading and retry
+  fixtures, runtime lifecycle transitions, TestFlight, or a physical iPhone.
+- Roadmap maintenance: the dashboard load error now names the actual
+  `PROJECT_STATUS.md` ledger.
+
+## PWA-referenced ready-state native preview | 2026-07-31
+
+- Corrected product direction: the PWA remains the source of truth for FLYNT
+  content, tone, hierarchy, brand, and visual identity. Native work may move or
+  restyle controls only when the result adds clear iPhone usability or value.
+- Implemented in source: the PWA navigation model with Today, Plan, Progress,
+  and Trainer in the bottom bar, plus Profile & Settings behind the top-right
+  control. The inaccurate fifth Settings tab and floating iOS 26 tab treatment
+  were removed.
+- Implemented in source: the real PWA light and ink FLYNT mark assets, dark
+  ready-state palette, compact seven-day selector, numbered workout cards,
+  expandable set entry, progress, plan, history, Trainer composer, and the full
+  Profile and App settings information architecture.
+- Native refinements implemented in source: at least 44-point touch targets,
+  semantic haptics, native switches, numeric keyboards, system confirmation and
+  action sheets, push and back navigation, and draggable Stats and Guide native
+  SwiftUI sheets with native detents while Today remains visible behind them.
+- Native sheet refinement implemented in source: a shared Expo UI 57 SwiftUI
+  BottomSheet owns native detents, the system grabber, rounded presentation
+  chrome, and the home-indicator safe area. Its background follows the intended
+  inverse appearance: dark over light mode and bright warm white over dark
+  mode. Content and presentation colors use the same mode-dependent value. The
+  redundant divider below the exercise title was removed. Stats no
+  longer uses a generic decorative bar chart. It presents recent completed top
+  sets, the load change with stable effort and pain context, and a clear slot
+  for the server-owned next-workout recommendation in one decision surface.
+  Guide content sits directly on the glass surface without a nested white card.
+- Settings interaction decision: Settings remains a pushed page. Binary choices
+  remain inline switches, multi-option preferences use bottom sheets on iPhone
+  and may adapt to popovers on iPad, and alerts are limited to blocking messages
+  while final destructive confirmation uses a bottom action sheet on iPhone.
+- Settings rebuild implemented in source: App Settings now uses Expo UI 57.0.8
+  SwiftUI Form, Section, Toggle, Button, and segmented Picker controls. System,
+  Light, and Dark appearance choices are inline and update shared app theme
+  state immediately. Both segmented controls use the larger native control
+  size. Sign Out is separated near the bottom. Export Data and Delete Account
+  use the same 50-point, 16-point-radius button geometry as the Profile actions.
+  In light mode Sign Out is black with warm-white text. Export is white with a
+  subtle boundary, and Delete uses a translucent red fill with matching red
+  border and label. Routine helper paragraphs and custom floating card groups
+  were removed.
+- Profile rebuild implemented in source: Profile is a designed FLYNT surface,
+  not a settings form. It uses a strong identity hero, personal metrics rail,
+  editorial Trainer context, and focused Personal Details and Training Profile
+  sheets. Trainer retains the top-right Settings path.
+- Architecture boundary: all dashboard fixtures are explicitly development-only
+  preview data. They do not prescribe, revise, save, or represent authoritative
+  server state. The production lifecycle still defaults to signed out until the
+  session and `/api/app-state` boot milestone lands.
+- Verified locally: TypeScript, ESLint, copy style, both lifecycle mapping tests,
+  Expo Doctor 20 of 20, and a 2.7 MB iOS Hermes export from 1,282 modules passed
+  after the corrected implementation on 2026-07-31.
+- Re-verified locally on 2026-08-01 after the sheet, navigation, and Today
+  refinements: both lifecycle navigation tests, TypeScript, ESLint, copy style,
+  and Expo Doctor 20 of 20 passed with Node 24.14.0.
+- Verified in Simulator: the four bottom destinations, top-right Settings push
+  and back path, Profile and App sections, native switches, set inputs, active
+  exercise expansion, and draggable inverted Stats and Guide native sheets
+  rendered on iPhone 17 with iOS 26.5. The rebuilt development client linked
+  Expo UI and Expo Glass Effect successfully. SwiftUI Settings control alignment,
+  functional Light and Dark appearance switching, the designed Profile surface,
+  Settings access from Trainer, and the corrected brighter white sheet over
+  dark mode also passed Simulator review. The inset week track, fitted selected
+  day, taller segmented controls, and separated privacy actions passed visual
+  review in the same Simulator. On 2026-08-01 the shared sheet was verified to
+  paint through the home-indicator safe area, and the light-mode Guide sheet was
+  verified with a dark presentation background and light content. Training
+  Profile choices were verified as drill-in content within one sheet rather
+  than a second modal. The restored full-width bottom navigation uses SF
+  Symbols and native glass, stays dark in both app appearances, and passed
+  Simulator review. The light-mode Today canvas, `#FAFAFA` exercise cards, and
+  restrained card bevel also passed Simulator visual review.
+- Still not verified: authoritative account data, server reads or writes,
+  offline and error states, Dynamic Type extremes, VoiceOver journeys,
+  TestFlight, or a physical iPhone.
 
 ## Foundation verification | 2026-07-30
 
@@ -48,6 +142,10 @@ Current physical iPhone verification: Not started
 - CocoaPods: 113 dependencies and 112 pods installed successfully.
 - Simulator build: reached Xcode and failed because package `apple` requires
   Swift tools 6.2 while the installed version is 6.1.
+- Simulator re-verification on 2026-07-31: after installing Xcode 26.6,
+  Swift 6.3.3, and the iOS 26.5 runtime, scheme `FLYNT` built, installed, and
+  launched successfully. Metro bundled 1,288 modules on private IPv4 localhost,
+  and the native account-entry screen rendered with Create account and Sign in.
 - Visual review: the account entry screen passed a 402 by 874 mobile web review
   in dark appearance. Create account, Sign in, and both back paths navigated.
 - Copy style: `pnpm copy:check` enforces the no-em-dash rule across repository
@@ -192,13 +290,13 @@ rewriting the workout application.
 ### Phase 1 | Clean native foundation
 
 - [ ] Create a clean Expo TypeScript repository with development builds and no copied browser UI.
-  Evidence: The fresh local Expo SDK 57 TypeScript repository was created at `/Users/lukemcglynn/FLYNT-Native` on 2026-07-30. Browser starter UI was removed, development-build dependencies were added, and no GitHub remote was created. Type, lint, Doctor, production JavaScript export, CocoaPods, and mobile web review passed. Simulator launch remains blocked by Swift 6.1.
+  Evidence: The fresh local Expo SDK 57 TypeScript repository was created at `/Users/lukemcglynn/FLYNT-Native` on 2026-07-30. Browser starter UI was removed, development-build dependencies were added, and no GitHub remote was created. Type, lint, Doctor, production JavaScript export, CocoaPods, mobile web review, and a native iOS 26.5 Simulator build and launch passed.
   Exit check: `main` contains only intentional native code, configuration, tests, and documentation.
 - [ ] Pin Node, Expo SDK, React Native, Xcode, CocoaPods, Ruby, and package-manager versions.
-  Evidence: `.node-version` and `package.json` pin Node 24.14.0 and pnpm 11.9.0. Expo 57.0.9, React Native 0.86.2, and React 19.2.3 are lockfile-pinned. Xcode 26.4 is documented as required, while this machine currently has 16.4. CocoaPods and Ruby pinning plus a clean bootstrap remain outstanding.
+  Evidence: `.node-version` and `package.json` pin Node 24.14.0 and pnpm 11.9.0. Expo 57.0.9, React Native 0.86.2, and React 19.2.3 are lockfile-pinned. Xcode 26.6 and Swift 6.3.3 are installed and verified. CocoaPods and Ruby pinning plus a clean independent bootstrap remain outstanding.
   Exit check: Two independent installs produce the same working development build.
-- [ ] Establish Expo Router navigation for signed-out, consultation, building, ready, and attention lifecycles.
-  Evidence required: State-driven navigation test with mocked authoritative responses.
+- [~] Establish Expo Router navigation for signed-out, consultation, building, ready, and attention lifecycles.
+  Evidence: Exhaustive lifecycle-to-destination mapping, guarded routes, and shared lifecycle scaffolds were implemented on 2026-07-31. Two mocked mapping and route-coverage tests, TypeScript, ESLint, copy style, and iOS export passed. Authoritative session and app-state injection, loading and retry fixtures, and runtime transition evidence remain outstanding.
   Exit check: No lifecycle can fall through to a blank screen or dead end.
 - [ ] Add generated TypeScript API contracts and runtime validation for every mobile endpoint.
   Evidence: The current authoritative `/api/app-state` lifecycle, preferences, profile, program, build, conversation, and workout schemas were ported with Zod validation on 2026-07-30. Generation, remaining endpoints, and fixture coverage remain outstanding.
@@ -221,11 +319,11 @@ rewriting the workout application.
 - [ ] Translate the approved FLYNT color, type, spacing, radius, elevation, and material tokens into a typed native theme.
   Evidence: Initial typed light and dark color, type, spacing, and radius tokens were implemented in `src/constants/theme.ts` on 2026-07-30. A component gallery and device evidence remain outstanding.
   Exit check: Product screens do not hard-code competing visual values.
-- [ ] Define the navigation model and exact ownership of stacks, tabs, sheets, full-screen covers, menus, and alerts.
-  Evidence required: Navigation map covering every lifecycle and deep link.
+- [~] Define the navigation model and exact ownership of stacks, tabs, sheets, full-screen covers, menus, and alerts.
+  Evidence: Lifecycle stacks, the PWA-aligned four-tab ready shell, top-right Settings push, native settings action sheets, system confirmation, and draggable exercise form sheets were implemented and exercised in Simulator on 2026-07-31. Remaining deep links and lifecycle detail ownership are incomplete.
   Exit check: The same destination is not presented with conflicting patterns.
-- [ ] Build shared buttons, fields, list rows, cards, progress, empty states, errors, and loading states.
-  Evidence required: Interactive component gallery across supported text sizes and appearances.
+- [~] Build shared buttons, fields, list rows, cards, progress, empty states, errors, and loading states.
+  Evidence: Shared PWA-referenced app screen, real FLYNT mark, cards, actions, list rows, progress, fields, switches, and 44-point controls were implemented across the ready shell on 2026-07-31. Empty, error, loading, gallery, and accessibility matrices remain outstanding.
   Exit check: Feature screens compose primitives instead of inventing local variants.
 - [ ] Implement the haptic map as semantic functions, not raw vibration calls.
   Evidence: Initial semantic functions were implemented in `src/lib/haptics.ts` and documented in `docs/INTERACTION_SYSTEM.md` on 2026-07-30. Unit mapping and physical-device review remain outstanding.
@@ -299,8 +397,8 @@ rewriting the workout application.
 
 ### Phase 5 | Workout core
 
-- [ ] Build Today and Plan from the authoritative weekly program contract.
-  Evidence required: Seven-day, rest-day, recovery-day, long-title, and missing-visual fixtures.
+- [~] Build Today and Plan from the authoritative weekly program contract.
+  Evidence: PWA-referenced Today and seven-day Plan preview surfaces with training and recovery states, set progress, day selection, and native tab navigation were implemented and verified in Simulator on 2026-07-31. The data is development-only and authoritative contract injection plus the complete fixture matrix remain outstanding.
   Exit check: The program remains readable at large text sizes and on the smallest supported phone.
 - [ ] Build workout execution with set completion, reps, load, RPE, pain, notes, rest, and elapsed time.
   Evidence required: Full session, partial session, edited session, and interrupted-session runs.
@@ -323,14 +421,14 @@ rewriting the workout application.
 
 ### Phase 6 | Progress, Trainer, settings, and media
 
-- [ ] Port Progress history, workout detail, charts, weekly decisions, and block context.
-  Evidence required: Empty, one-week, six-week, recovery-week, and block-transition fixtures.
+- [~] Port Progress history, workout detail, charts, weekly decisions, and block context.
+  Evidence: A PWA-referenced Progress preview with four-week metrics, a strength trend, and recent training rows rendered in Simulator on 2026-07-31. Authoritative history, details, decisions, block context, and the complete fixture matrix remain outstanding.
   Exit check: Historical program versions remain immutable and understandable.
-- [ ] Port post-consultation Trainer chat and explicit program-change approval.
-  Evidence required: Stream, stop, retry, reload, decline, approve, and duplicate approval tests.
+- [~] Port post-consultation Trainer chat and explicit program-change approval.
+  Evidence: A conversation-first Trainer preview with request chips, multiline native composer, local send behavior, and explicit preview labeling rendered in Simulator on 2026-07-31. Server streaming, persistence, proposal approval, retry, and duplication evidence remain outstanding.
   Exit check: No proposed program change applies before approval.
-- [ ] Port profile, preferences, avatar, reminders, appearance, progression, rest, export, and deletion.
-  Evidence required: Account round-trip and same-device two-user isolation test.
+- [~] Port profile, preferences, avatar, reminders, appearance, progression, rest, export, and deletion.
+  Evidence: Top-right Profile & Settings now contains PWA-aligned Profile and App sections, personal fields, Trainer report context, appearance, Spotify placement, reminders, notification test, progression, rest, sign out, export, and deletion. Native switches, segmented choices, action sheets, and confirmation rendered in Simulator on 2026-07-31. Authoritative account round trips, avatar editing, export, deletion, and isolation evidence remain outstanding.
   Exit check: All current account controls are available natively.
 - [ ] Add native media caching with bounded storage and version-aware invalidation.
   Evidence required: Offline guide access, cache eviction, media revision, and low-storage tests.
