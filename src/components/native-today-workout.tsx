@@ -417,7 +417,7 @@ function ExerciseSheetContent({
               accessibilityLabel('Close exercise'),
             ]}
           >
-            <SwiftUIImage color={theme.ink} size={16} systemName="xmark" />
+            <SwiftUIImage color={theme.ink} size={17} systemName="xmark" />
           </Button>
         </HStack>
 
@@ -556,7 +556,7 @@ function ExerciseSheetContent({
   );
 }
 
-function ExerciseStatsPage({ exercise, onBack, onClose, theme }: { exercise: PreviewExercise; onBack: () => void; onClose: () => void; theme: Theme }) {
+function ExerciseStatsPage({ exercise, itemBackground, onBack, onClose, theme }: { exercise: PreviewExercise; itemBackground: string; onBack: () => void; onClose: () => void; theme: Theme }) {
   const sessions = [
     { date: 'JUL 03', load: '205 LB', meta: '5 reps · RPE 8' },
     { date: 'JUL 10', load: '210 LB', meta: '5 reps · RPE 8' },
@@ -630,7 +630,7 @@ function ExerciseStatsPage({ exercise, onBack, onClose, theme }: { exercise: Pre
             spacing={7}
             modifiers={[
               padding({ all: spacing.md }),
-              background(theme.raised, shapes.roundedRectangle({ cornerRadius: 16, roundedCornerStyle: 'continuous' })),
+              background(itemBackground, shapes.roundedRectangle({ cornerRadius: 16, roundedCornerStyle: 'continuous' })),
               strokeBorder({ color: theme.line, style: { lineWidth: 0.5 }, shape: 'roundedRectangle', cornerRadius: 16 }),
             ]}
           >
@@ -679,17 +679,17 @@ export function NativeTodayWorkout({
   const reduceMotion = useReducedMotion();
   const { setModalPresented } = useModalPresentation();
   const [sheetDetent, setSheetDetent] = useState<PresentationDetent>(expandedSheetDetent);
-  const [spotifySheetDetent, setSpotifySheetDetent] = useState<PresentationDetent>(expandedSheetDetent);
   const [sheetPage, setSheetPage] = useState<'exercise' | 'stats'>('exercise');
   const contentWidth = width - 32;
   const daySelectorWidth = contentWidth - 8;
   const dayColumnWidth = daySelectorWidth / 7;
-  const canvas = mode === 'dark' ? '#1A1A1A' : theme.canvas;
+  const canvas = mode === 'dark' ? '#111111' : theme.canvas;
   const input = mode === 'light' ? '#F2F2F1' : theme.raised;
-  const exerciseSurface = '#232322';
-  const sheetInput = exerciseSurface;
-  const mediaBackground = 'rgba(20,20,20,0.20)';
-  const sheetContentOverlay = 'rgba(15,15,15,0.90)';
+  const sheetItemBackground = '#222222';
+  const exerciseEntryBackground = 'rgba(34,34,34,0.90)';
+  const sheetInput = exerciseEntryBackground;
+  const mediaBackground = exerciseEntryBackground;
+  const sheetContentOverlay = 'rgba(23,23,23,0.90)';
   const outline = mode === 'light' ? 'rgba(216,214,207,0.72)' : 'rgba(255,255,255,0.10)';
   const sheetPresented = selectedExercise >= 0 && selectedExercise < exercises.length;
   const exercise = sheetPresented ? exercises[selectedExercise] : null;
@@ -914,10 +914,7 @@ export function NativeTodayWorkout({
           >
             <Group
               modifiers={[
-                presentationDetents([expandedSheetDetent, 'medium'], {
-                  selection: spotifySheetDetent,
-                  onSelectionChange: setSpotifySheetDetent,
-                }),
+                presentationDetents([expandedSheetDetent]),
                 presentationBackgroundInteraction({ type: 'enabledUpThrough', detent: expandedSheetDetent }),
                 presentationDragIndicator('visible'),
                 nativeSheetMaterial,
@@ -997,6 +994,7 @@ export function NativeTodayWorkout({
                     <TabView.Tab value="stats">
                       <ExerciseStatsPage
                         exercise={exercise}
+                        itemBackground={sheetItemBackground}
                         onBack={() => setSheetPage('exercise')}
                         onClose={() => onSelectExercise(-1)}
                         theme={theme}

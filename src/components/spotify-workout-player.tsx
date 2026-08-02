@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
-import { NativeSymbol } from '@/components/native-symbol';
+import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { selection } from '@/lib/haptics';
 import { useSpotify } from '@/providers/spotify-provider';
@@ -21,6 +21,7 @@ import { useSpotify } from '@/providers/spotify-provider';
 const spotifyIcon = require('../../assets/images/spotify-icon.png') as ImageSourcePropType;
 const spotifyGreen = '#1ED760';
 const spotifyBlack = '#191414';
+const sheetItemBackground = '#222222';
 const previewArtwork = 'https://i.scdn.co/image/ab67706f00000002f367481f06b565250cc7b139';
 
 type VisualTrack = {
@@ -267,18 +268,20 @@ export function SpotifyLauncher({ onPress, variant }: SpotifyLauncherProps) {
   );
 }
 
-export function SpotifyPlayerContent() {
+export function SpotifyPlayerContent({ onClose }: { onClose: () => void }) {
   const visual = useVisualPlayer();
   const { mode } = useFlyntTheme();
 
-  return <SpotifySheetContent visual={visual} darkSheet={mode === 'dark'} />;
+  return <SpotifySheetContent visual={visual} darkSheet={mode === 'dark'} onClose={onClose} />;
 }
 
 function SpotifySheetContent({
   darkSheet,
+  onClose,
   visual,
 }: {
   darkSheet: boolean;
+  onClose: () => void;
   visual: ReturnType<typeof useVisualPlayer>;
 }) {
   const initialPosition = visual.isPreview && visual.track?.uri === previewTracks[0].uri
@@ -292,6 +295,18 @@ function SpotifySheetContent({
 
   return (
     <View style={styles.sheet}>
+      <View style={styles.sheetHeader}>
+        <View style={styles.sheetBrand}>
+          <SpotifyMark color="#FFFFFF" size={26} />
+        </View>
+        <GlassSymbolButton
+          accessibilityLabel="Close Spotify player"
+          color={ink}
+          colorScheme={darkSheet ? 'dark' : 'light'}
+          name="xmark"
+          onPress={onClose}
+        />
+      </View>
       {loading ? (
         <SpotifyLoadingState color={ink} />
       ) : visual.connected && visual.track ? (
@@ -365,10 +380,6 @@ function SpotifySheetContent({
                 name="forward.fill"
                 onPress={visual.next}
               />
-            </View>
-
-            <View accessibilityLabel="Playback provided by Spotify" style={styles.attribution}>
-              <SpotifyMark color="#FFFFFF" size={16} />
             </View>
           </View>
 
@@ -544,11 +555,13 @@ const styles = StyleSheet.create({
   waveBar: { backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 999, width: 3 },
   pillWaveBar: { backgroundColor: 'rgba(255,255,255,0.72)', width: 2.5 },
   sheet: { flex: 1 },
-  connectedPlayer: { flex: 1, paddingTop: 14 },
+  sheetHeader: { alignItems: 'center', flexDirection: 'row', height: 64, justifyContent: 'space-between', paddingHorizontal: 16 },
+  sheetBrand: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
+  connectedPlayer: { flex: 1 },
   nowPlayingCard: { borderCurve: 'continuous', borderRadius: 28, height: 210, marginHorizontal: 14, overflow: 'hidden', paddingHorizontal: 18, paddingTop: 20 },
   nowPlayingSummary: { alignItems: 'center', flexDirection: 'row', gap: 13 },
   playerArtwork: { borderRadius: 8, height: 78, shadowColor: '#000000', shadowOffset: { height: 9, width: 0 }, shadowOpacity: 0.3, shadowRadius: 11, width: 78 },
-  artworkPlaceholder: { alignItems: 'center', backgroundColor: '#262624', justifyContent: 'center' },
+  artworkPlaceholder: { alignItems: 'center', backgroundColor: sheetItemBackground, justifyContent: 'center' },
   nowPlayingCopy: { flex: 1, minWidth: 0 },
   nowPlayingTitle: { color: '#FFFFFF', fontSize: 21, fontWeight: '700', letterSpacing: -0.72, lineHeight: 23 },
   nowPlayingArtist: { color: 'rgba(255,255,255,0.55)', fontSize: 14, lineHeight: 16, marginTop: 6 },
@@ -559,7 +572,6 @@ const styles = StyleSheet.create({
   remainingTime: { textAlign: 'right' },
   playerControls: { alignItems: 'center', flexDirection: 'row', height: 54, justifyContent: 'space-around', marginHorizontal: '6%', marginTop: 14 },
   playerControl: { alignItems: 'center', flex: 1, height: 54, justifyContent: 'center', minWidth: 54 },
-  attribution: { bottom: 15, height: 16, position: 'absolute', right: 16, width: 16 },
   disabled: { opacity: 0.46 },
   controlPressed: { opacity: 0.72, transform: [{ scale: 0.94 }] },
   queueHeading: { alignItems: 'center', alignSelf: 'center', flexDirection: 'row', height: 44, justifyContent: 'space-between', paddingHorizontal: 8, width: '90%' },
@@ -571,7 +583,7 @@ const styles = StyleSheet.create({
   queue: { alignSelf: 'center', flex: 1, width: '90%' },
   queueContent: { paddingBottom: 22 },
   queueRow: { alignItems: 'center', flexDirection: 'row', gap: 9, minHeight: 58, paddingHorizontal: 6, paddingVertical: 8 },
-  currentQueueRow: { backgroundColor: 'rgba(255,255,255,0.055)', borderCurve: 'continuous', borderRadius: 14, marginVertical: 5, minHeight: 48, paddingHorizontal: 14, paddingVertical: 4 },
+  currentQueueRow: { backgroundColor: sheetItemBackground, borderCurve: 'continuous', borderRadius: 14, marginVertical: 5, minHeight: 48, paddingHorizontal: 14, paddingVertical: 4 },
   currentQueueRowLight: { backgroundColor: 'rgba(255,255,255,0.42)', shadowColor: '#111110', shadowOffset: { height: 8, width: 0 }, shadowOpacity: 0.08, shadowRadius: 11 },
   queueRowPressed: { opacity: 0.66 },
   currentDot: { backgroundColor: spotifyGreen, borderRadius: 3, height: 6, marginLeft: -4, width: 6 },

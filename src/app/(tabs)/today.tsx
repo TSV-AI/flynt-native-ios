@@ -110,7 +110,7 @@ export default function TodayScreen() {
         selectedExercise={selectedExercise}
         spotifyBar={spotifyDisplay === 'Bar' ? <SpotifyLauncher onPress={() => setSpotifyPlayerOpen(true)} variant="bar" /> : undefined}
         spotifyPill={spotifyDisplay === 'Pill' ? <SpotifyLauncher onPress={() => setSpotifyPlayerOpen(true)} variant="pill" /> : undefined}
-        spotifySheet={<SpotifyPlayerContent />}
+        spotifySheet={<SpotifyPlayerContent onClose={() => setSpotifyPlayerOpen(false)} />}
         spotifySheetPresented={spotifyPlayerOpen}
         onSpotifySheetDismissed={() => setSpotifyPlayerOpen(false)}
         theme={theme}

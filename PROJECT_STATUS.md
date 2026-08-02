@@ -66,8 +66,11 @@ Current physical iPhone verification: Not started
   sheet now share one semantic sheet-surface token in both appearances, removing
   the background-color shift when an exercise opens.
 - Implemented in source as a reversible FLYNT surface test: Today uses
-  `#1A1A1A` in dark appearance while light appearance retains the shared page
+  `#111111` in dark appearance while light appearance retains the shared page
   canvas. The exercise sheet and other primary tabs are unchanged.
+- Verified in the running Simulator development build on 2026-08-02: the Today
+  dark-appearance canvas rendered as `#111111` while its cards, Spotify player,
+  native tab bar, and exercise sheet treatment remained unchanged.
 - Implemented in source as a FLYNT presentation decision: the exercise sheet
   uses one native SwiftUI regular-material presentation background with medium
   and 98-percent fractional detents. The fractional expanded state avoids the
@@ -96,14 +99,31 @@ Current physical iPhone verification: Not started
   fresh native build.
 - Implemented in source: the exercise sheet header now presents only the
   exercise name and close action. The repeated reps, RPE, and rest subtitle was
-  removed.
-- Implemented in source as a reversible FLYNT surface test: the full exercise
-  artwork card uses `#141414` at 20-percent opacity with a continuous rounded
-  shape and no outline. Load and Reps inputs retain their explicit `#232322`
-  surface and existing control outline. The artwork itself remains fully opaque,
-  and Today thumbnails are unchanged.
+  removed. Its native SwiftUI Close action and Spotify's React Native Close
+  action share the same 44-point circular glass treatment, 17-point X symbol,
+  appearance handling, and accessibility semantics while remaining native to
+  their respective view hosts.
+- Verified in the running Simulator development build on 2026-08-02: the
+  exercise sheet rendered the matched glass X without changing its title,
+  artwork, logging layout, or sheet geometry. The runtime accessibility snapshot
+  exposed the control as the labeled `Close exercise` button.
+- Implemented in source as a FLYNT surface vocabulary decision: `sheet item
+  background` means neutral cards, inputs, and highlights inside a sheet, while
+  `item background` or `primary item background` means equivalent surfaces
+  directly on a page. The current dark sheet item background is `#222222`.
+  The stats recommendation card, Spotify selected queue item, and Spotify
+  artwork placeholder use that value at full opacity. The exercise visual card
+  and Load and Reps inputs use `#222222` at 90-percent opacity. Branded artwork
+  gradients and semantic control states remain distinct. Today page items are
+  unchanged.
+- Verified in the running Simulator development build on 2026-08-02: dark
+  appearance rendered the Exercise stats recommendation card and Spotify
+  selected-track highlight with the `#222222` sheet item background. The
+  exercise visual card and Load and Reps inputs were reverified with the
+  90-percent treatment. The `#111111` primary background and `#171717` secondary
+  sheet background remained unchanged.
 - Implemented in source as a reversible FLYNT contrast test: the native exercise
-  sheet presentation remains unchanged, with a separate 90-percent `#0F0F0F`
+  sheet presentation remains unchanged, with a separate 90-percent `#171717`
   layer filling the sheet behind the exercise and stats pages.
 - Implemented in source: the temporary light-surface contrast treatment was
   removed. Sheet text, dividers, icons, status controls, stats content, and
@@ -112,14 +132,39 @@ Current physical iPhone verification: Not started
   rounded presentation, drag indicator, layout, and controls while the separate
   content layer filled the visible sheet behind them.
 - Implemented in source on 2026-08-02: the Spotify player sheet now uses its own
-  bottom-most `#0F0F0F` at 90-percent content layer, matching the existing
+  bottom-most `#171717` at 90-percent content layer, matching the existing
   exercise sheet treatment. Spotify artwork, playback controls, queue, and
   actions render above that layer. The exercise sheet treatment is unchanged.
+- Implemented in source on 2026-08-02: opening the Spotify sheet now resets its
+  presentation to the shared 98-percent expanded height, matching the exercise
+  sheet's expanded geometry. Spotify no longer offers a shorter medium detent.
+- Verified in the running Simulator development build on 2026-08-02: reopening
+  Spotify rendered the single 98-percent presentation rather than its previous
+  shorter position.
 - Verified in the running Simulator development build on 2026-08-02: the
   Spotify player retained its native sheet detent, drag indicator, rounded
   presentation, artwork, controls, and queue while the matching layer filled
-  the sheet behind all player content in dark appearance. Light appearance and
-  Reduce Transparency remain to be verified for the Spotify layer.
+  the sheet behind all player content in dark appearance. The shared layer's
+  `#171717` revision was visually reverified on the Spotify sheet. Light
+  appearance and Reduce Transparency remain to be verified for the Spotify
+  layer.
+- Implemented and verified in the running Simulator development build on
+  2026-08-02: the Spotify sheet now provides a dedicated 64-point header row
+  with the white Spotify mark in a 44-point leading slot and a labeled 44-point
+  glass Close control on the trailing side. The player removes its former
+  redundant top padding, so the medium detent keeps the artwork, playback
+  controls, and visible queue content clear of the header. The header provides
+  10 points of vertical breathing room around each control and a 16-point
+  horizontal inset.
+  Selecting Close dismissed the sheet directly to Today. Expanded-detent
+  Dynamic Type and VoiceOver order remain to be reverified.
+- Implemented in source on 2026-08-02: the redundant small Spotify mark was
+  removed from the bottom-right corner of the colored Now Playing card. The
+  white Spotify mark in the sheet header and the explicit Open Spotify action
+  remain unchanged.
+- Verified in the running Simulator development build on 2026-08-02: the Now
+  Playing card no longer rendered the bottom-right Spotify mark while the sheet
+  header logo and Open Spotify action remained present.
 - Implemented and verified in the running Simulator development build on
   2026-08-02: the Today header row now provides eight points of external
   vertical space around the unchanged 44-point ellipsis control. A held touch
