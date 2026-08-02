@@ -1,0 +1,86 @@
+diff --git a/build/swift-ui/modifiers/presentationModifiers.d.ts b/build/swift-ui/modifiers/presentationModifiers.d.ts
+index 36de99f5d92b1b0f2c340ba4508109f1a0b6045b..e448610eab533538c193fcabe9fe45474423bf49 100644
+--- a/build/swift-ui/modifiers/presentationModifiers.d.ts
++++ b/build/swift-ui/modifiers/presentationModifiers.d.ts
+@@ -58,6 +58,11 @@ export declare const presentationBackgroundInteraction: (interaction: Presentati
+ documentation](https://developer.apple.com/documentation/swiftui/view/presentationbackground(_:)).
+  */
+ export declare const presentationBackground: (color: string) => ModifierConfig;
++/**
++ * Uses a native SwiftUI material as the presented sheet's own background.
++ * This does not add another view or surface inside the sheet.
++ */
++export declare const presentationBackgroundMaterial: (material: "ultraThin" | "thin" | "regular" | "thick" | "ultraThick") => ModifierConfig;
+ /**
+  * Disables interactive dismissal of a sheet.
+  * @param isDisabled - Whether interactive dismiss is disabled (default: true).
+diff --git a/ios/Modifiers/PresentationModifiers.swift b/ios/Modifiers/PresentationModifiers.swift
+index f38528425a883a5d4dc0c1ad85e62dd278fc24b3..467d1f3ab1bdca816b222d34a86dc2b84a293619 100644
+--- a/ios/Modifiers/PresentationModifiers.swift
++++ b/ios/Modifiers/PresentationModifiers.swift
+@@ -207,12 +207,39 @@ internal struct InteractiveDismissDisabledModifier: ViewModifier, Record {
+ 
+ // MARK: - Presentation Background
+ 
++internal enum PresentationBackgroundMaterial: String, Enumerable {
++  case ultraThin
++  case thin
++  case regular
++  case thick
++  case ultraThick
++}
++
+ internal struct PresentationBackgroundModifier: ViewModifier, Record {
+   @Field var color: Color?
++  @Field var material: PresentationBackgroundMaterial?
+ 
++  @ViewBuilder
+   func body(content: Content) -> some View {
+-    if #available(iOS 16.4, tvOS 16.4, *), let color {
+-      content.presentationBackground(color)
++    if #available(iOS 16.4, tvOS 16.4, *) {
++      switch material {
++      case .ultraThin:
++        content.presentationBackground(.ultraThinMaterial)
++      case .thin:
++        content.presentationBackground(.thinMaterial)
++      case .regular:
++        content.presentationBackground {
++          ZStack {
++            Rectangle().fill(.regularMaterial)
++            Color.black.opacity(0.70)
++          }
++        }
++      case .thick:
++        content.presentationBackground(.thickMaterial)
++      case .ultraThick:
++        content.presentationBackground(.ultraThickMaterial)
++      case nil:
++        if let color {
++          content.presentationBackground(color)
++        } else {
++          content
++        }
++      }
+     } else {
+       content
+     }
+diff --git a/src/swift-ui/modifiers/presentationModifiers.ts b/src/swift-ui/modifiers/presentationModifiers.ts
+index a73238902a2163cadb800ddd24bd031b5725f7e3..06954763b51d4955824631f280a3f341e0dfea98 100644
+--- a/src/swift-ui/modifiers/presentationModifiers.ts
++++ b/src/swift-ui/modifiers/presentationModifiers.ts
+@@ -96,6 +96,14 @@ documentation](https://developer.apple.com/documentation/swiftui/view/presentati
+ export const presentationBackground = (color: string) =>
+   createModifier('presentationBackground', { color });
+ 
++/**
++ * Uses a native SwiftUI material as the presented sheet's own background.
++ * This does not add another view or surface inside the sheet.
++ */
++export const presentationBackgroundMaterial = (
++  material: 'ultraThin' | 'thin' | 'regular' | 'thick' | 'ultraThick'
++) => createModifier('presentationBackground', { material });
++
+ /**
+  * Disables interactive dismissal of a sheet.
+  * @param isDisabled - Whether interactive dismiss is disabled (default: true).

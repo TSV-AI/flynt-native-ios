@@ -10,7 +10,7 @@ Distribution: Apple App Store through App Store Connect
 
 Current source state: Native foundation, lifecycle navigation, the PWA-referenced ready-state preview, native icon, authentication client, rest-timer behavior, and the prior Today accordion are preserved in local checkpoint `ad23dd0` on `codex/native-foundation`. A reversible native-list Today experiment is implemented in the working tree.
 Current local verification: On 2026-08-01, seven authentication callback and validation tests, 11 authoritative boot tests, two lifecycle navigation tests, TypeScript, ESLint, copy style, and Expo Doctor 20 of 20 passed with pinned Node 24.14.0.
-Current Simulator verification: On 2026-08-01 the current source built, installed, and launched on iPhone 17 / iOS 26.5 in 15.0 seconds. The compact SwiftUI exercise list, large-first system exercise sheet, medium detent, Guide-style large layout, set entry, same-sheet paged Training History, native back action, set completion, and existing rest-timer presentation were exercised. The approved FLYNT icon remains installed. Live authentication still awaits external provider configuration.
+Current Simulator verification: On 2026-08-01 the current source built, installed, and launched on iPhone 17 / iOS 26.5 in 13.9 seconds. The compact SwiftUI exercise list, 98-percent expanded exercise sheet, medium detent, and native regular-material presentation background were exercised in dark appearance. Simulator comparison confirmed that the 98-percent detent remains visibly translucent while the 99-percent detent is rounded into the opaque near-full presentation behavior. The final 8-percent black material wash, light appearance, Reduce Transparency, Dynamic Type, and VoiceOver remain to be reverified for this material change. The approved FLYNT icon remains installed. Live authentication still awaits external provider configuration.
 Current TestFlight verification: Not started
 Current physical iPhone verification: Not started
 
@@ -65,17 +65,41 @@ Current physical iPhone verification: Not started
 - Implemented in source as a FLYNT surface decision: Today and its exercise
   sheet now share one semantic sheet-surface token in both appearances, removing
   the background-color shift when an exercise opens.
+- Implemented in source as a reversible FLYNT surface test: Today uses
+  `#1A1A1A` in dark appearance while light appearance retains the shared page
+  canvas. The exercise sheet and other primary tabs are unchanged.
+- Implemented in source as a FLYNT presentation decision: the exercise sheet
+  uses one native SwiftUI regular-material presentation background with medium
+  and 98-percent fractional detents. The fractional expanded state avoids the
+  discrete opaque transition observed at the system large detent while leaving
+  Today visible for context. Apple HIG Sheets and Materials guidance and the
+  SwiftUI `PresentationDetent.fraction(_:)` API were consulted. Apple supports
+  resizable sheets, fractional detents, and standard materials; the 98-percent
+  value is a FLYNT choice rather than an Apple-prescribed dimension.
+- Implemented in source as a reversible FLYNT contrast test: the regular sheet
+  material carries a 70-percent black wash as an intentionally strong visual
+  test to reduce its apparent luminosity
+  over the shared page canvas without changing the material thickness.
 - Implemented in source: the native tab bar now uses `chart.bar` and
   `chart.bar.fill` for Progress and `message` and `message.fill` for Trainer,
   preserving the unfilled default and filled selected-state convention.
 - Implemented in source: the exercise sheet header now presents only the
   exercise name and close action. The repeated reps, RPE, and rest subtitle was
-  removed. Exercise artwork now renders transparently on the sheet rather than
-  inside a separate background card.
-- Implemented in source as a FLYNT surface decision: the exercise artwork now
-  sits on the same semantic input fill and restrained outline used by Load and
-  Reps, with an 18-point continuous corner radius. The artwork remains
-  noninteractive content and does not introduce another glass material layer.
+  removed.
+- Implemented in source as a reversible FLYNT surface test: the full exercise
+  artwork card uses `#141414` at 20-percent opacity with a continuous rounded
+  shape and no outline. Load and Reps inputs retain their explicit `#232322`
+  surface and existing control outline. The artwork itself remains fully opaque,
+  and Today thumbnails are unchanged.
+- Implemented in source as a reversible FLYNT contrast test: the native exercise
+  sheet presentation remains unchanged, with a separate 90-percent `#0F0F0F`
+  layer filling the sheet behind the exercise and stats pages.
+- Implemented in source: the temporary light-surface contrast treatment was
+  removed. Sheet text, dividers, icons, status controls, stats content, and
+  native Load and Reps rendering again use the original dark-sheet palette.
+- Verified in Simulator: the exercise page retained its native sheet detent,
+  rounded presentation, drag indicator, layout, and controls while the separate
+  content layer filled the visible sheet behind them.
 - Implemented in source as a FLYNT density decision: Today exercise thumbnails
   now use that same input fill and outline treatment. Their size increases from
   72 by 54 points to 80 by 60 points, and the row minimum increases from 82 to

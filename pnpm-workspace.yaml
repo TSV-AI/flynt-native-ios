@@ -1,2 +1,4 @@
 allowBuilds:
   unrs-resolver: true
+patchedDependencies:
+  '@expo/ui@57.0.8': patches/@expo__ui@57.0.8.patch

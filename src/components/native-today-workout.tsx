@@ -43,6 +43,8 @@ import {
   multilineTextAlignment,
   offset,
   padding,
+  presentationBackgroundInteraction,
+  presentationBackgroundMaterial,
   presentationDetents,
   presentationDragIndicator,
   progressViewStyle,
@@ -108,6 +110,8 @@ type NativeSetRowProps = {
 };
 
 const dayShape = shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: 'continuous' });
+const expandedSheetDetent = { fraction: 0.98 } satisfies PresentationDetent;
+const nativeSheetMaterial = presentationBackgroundMaterial('regular');
 
 function exerciseSummary(detail: string): string {
   return detail.replace(/^\d+\s+sets\s+·\s*/i, '');
@@ -118,48 +122,49 @@ function ExerciseArtwork({
   backgroundColor,
   height,
   name,
-  outlineColor,
   width,
 }: {
   accessible?: boolean;
   backgroundColor: string;
   height: number;
   name: string;
-  outlineColor: string;
   width: number;
 }) {
   const source = getExerciseArtwork(name);
   if (!source) return null;
 
   return (
-    <RNHostView matchContents>
-      <View
-        accessibilityElementsHidden={!accessible}
-        accessibilityLabel={accessible ? `Two-position movement illustration for ${name}` : undefined}
-        accessibilityRole={accessible ? 'image' : undefined}
-        accessible={accessible}
-        importantForAccessibility={accessible ? 'yes' : 'no-hide-descendants'}
-        style={{
-          width,
-          height,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor,
-          borderColor: outlineColor,
-          borderCurve: 'continuous',
-          borderRadius: 18,
-          borderWidth: 0.5,
-          overflow: 'hidden',
-        }}
-      >
-        <Image
-          accessibilityIgnoresInvertColors
-          resizeMode="contain"
-          source={source}
-          style={{ width: '100%', height: '100%' }}
-        />
-      </View>
-    </RNHostView>
+    <Group
+      modifiers={[
+        background(backgroundColor, shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: 'continuous' })),
+      ]}
+    >
+      <RNHostView matchContents>
+        <View
+          accessibilityElementsHidden={!accessible}
+          accessibilityLabel={accessible ? `Two-position movement illustration for ${name}` : undefined}
+          accessibilityRole={accessible ? 'image' : undefined}
+          accessible={accessible}
+          importantForAccessibility={accessible ? 'yes' : 'no-hide-descendants'}
+          style={{
+            width,
+            height,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderCurve: 'continuous',
+            borderRadius: 18,
+            overflow: 'hidden',
+          }}
+        >
+          <Image
+            accessibilityIgnoresInvertColors
+            resizeMode="contain"
+            source={source}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </View>
+      </RNHostView>
+    </Group>
   );
 }
 
@@ -344,6 +349,7 @@ function ExerciseSheetContent({
   exerciseIndex,
   input,
   isLarge,
+  mediaBackground,
   mediaWidth,
   onAdvance,
   onClose,
@@ -358,6 +364,7 @@ function ExerciseSheetContent({
   exerciseIndex: number;
   input: string;
   isLarge: boolean;
+  mediaBackground: string;
   mediaWidth: number;
   onAdvance: () => void;
   onClose: () => void;
@@ -418,10 +425,9 @@ function ExerciseSheetContent({
             {artwork ? (
               <ExerciseArtwork
                 accessible
-                backgroundColor={input}
+                backgroundColor={mediaBackground}
                 height={190}
                 name={exercise.name}
-                outlineColor={outline}
                 width={mediaWidth}
               />
             ) : (
@@ -662,13 +668,17 @@ export function NativeTodayWorkout({
   const { width } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const { setModalPresented } = useModalPresentation();
-  const [sheetDetent, setSheetDetent] = useState<PresentationDetent>('large');
+  const [sheetDetent, setSheetDetent] = useState<PresentationDetent>(expandedSheetDetent);
   const [sheetPage, setSheetPage] = useState<'exercise' | 'stats'>('exercise');
   const contentWidth = width - 32;
   const daySelectorWidth = contentWidth - 8;
   const dayColumnWidth = daySelectorWidth / 7;
-  const canvas = theme.sheet;
+  const canvas = mode === 'dark' ? '#1A1A1A' : theme.canvas;
   const input = mode === 'light' ? '#F2F2F1' : theme.raised;
+  const exerciseSurface = '#232322';
+  const sheetInput = exerciseSurface;
+  const mediaBackground = 'rgba(20,20,20,0.20)';
+  const sheetContentOverlay = 'rgba(15,15,15,0.90)';
   const outline = mode === 'light' ? 'rgba(216,214,207,0.72)' : 'rgba(255,255,255,0.10)';
   const sheetPresented = selectedExercise >= 0 && selectedExercise < exercises.length;
   const exercise = sheetPresented ? exercises[selectedExercise] : null;
@@ -686,7 +696,7 @@ export function NativeTodayWorkout({
   }, [setModalPresented, sheetPresented]);
 
   function selectExercise(index: number) {
-    setSheetDetent('large');
+    setSheetDetent(expandedSheetDetent);
     setSheetPage('exercise');
     onSelectExercise(index);
   }
@@ -870,52 +880,62 @@ export function NativeTodayWorkout({
           >
             <Group
               modifiers={[
-                presentationDetents(['large', 'medium'], {
+                presentationDetents([expandedSheetDetent, 'medium'], {
                   selection: sheetDetent,
                   onSelectionChange: setSheetDetent,
                 }),
+                presentationBackgroundInteraction({ type: 'enabledUpThrough', detent: expandedSheetDetent }),
                 presentationDragIndicator('visible'),
+                nativeSheetMaterial,
                 environment('colorScheme', mode),
-                background(canvas),
               ]}
             >
               {exercise ? (
-                <TabView
-                  modifiers={[tabViewStyle({ type: 'page', indexDisplayMode: 'never' }), frame({ maxWidth: 1000, maxHeight: 1000 })]}
-                  selection={sheetPage}
-                >
-                  <TabView.Tab value="exercise">
-                    <ExerciseSheetContent
-                      advanceLabel={nextExerciseIndex === undefined ? 'Back to workout' : 'Next exercise'}
-                      completed={completed[selectedExercise]}
-                      exercise={exercise}
-                      exerciseIndex={selectedExercise}
-                      input={input}
-                      isLarge={sheetDetent === 'large'}
-                      mediaWidth={Math.min(width - spacing.xxl, 560)}
-                      onAdvance={() => {
-                        if (nextExerciseIndex === undefined) {
-                          onSelectExercise(-1);
-                          return;
-                        }
-                        selectExercise(nextExerciseIndex);
-                      }}
-                      onClose={() => onSelectExercise(-1)}
-                      onOpenStats={() => setSheetPage('stats')}
-                      onToggleSet={onToggleSet}
-                      outline={outline}
-                      theme={theme}
-                    />
-                  </TabView.Tab>
-                  <TabView.Tab value="stats">
-                    <ExerciseStatsPage
-                      exercise={exercise}
-                      onBack={() => setSheetPage('exercise')}
-                      onClose={() => onSelectExercise(-1)}
-                      theme={theme}
-                    />
-                  </TabView.Tab>
-                </TabView>
+                <ZStack>
+                  <Spacer
+                    modifiers={[
+                      frame({ maxWidth: 1000, maxHeight: 1000 }),
+                      background(sheetContentOverlay),
+                    ]}
+                  />
+                  <TabView
+                    modifiers={[tabViewStyle({ type: 'page', indexDisplayMode: 'never' }), frame({ maxWidth: 1000, maxHeight: 1000 })]}
+                    selection={sheetPage}
+                  >
+                    <TabView.Tab value="exercise">
+                      <ExerciseSheetContent
+                        advanceLabel={nextExerciseIndex === undefined ? 'Back to workout' : 'Next exercise'}
+                        completed={completed[selectedExercise]}
+                        exercise={exercise}
+                        exerciseIndex={selectedExercise}
+                        input={sheetInput}
+                        isLarge={sheetDetent !== 'medium'}
+                        mediaBackground={mediaBackground}
+                        mediaWidth={Math.min(width - spacing.xxl, 560)}
+                        onAdvance={() => {
+                          if (nextExerciseIndex === undefined) {
+                            onSelectExercise(-1);
+                            return;
+                          }
+                          selectExercise(nextExerciseIndex);
+                        }}
+                        onClose={() => onSelectExercise(-1)}
+                        onOpenStats={() => setSheetPage('stats')}
+                        onToggleSet={onToggleSet}
+                        outline={outline}
+                        theme={theme}
+                      />
+                    </TabView.Tab>
+                    <TabView.Tab value="stats">
+                      <ExerciseStatsPage
+                        exercise={exercise}
+                        onBack={() => setSheetPage('exercise')}
+                        onClose={() => onSelectExercise(-1)}
+                        theme={theme}
+                      />
+                    </TabView.Tab>
+                  </TabView>
+                </ZStack>
               ) : <Spacer />}
             </Group>
           </BottomSheet>
