@@ -26,7 +26,7 @@ export function SettingsPreferencesProvider({ children }: PropsWithChildren) {
   const [progressionStyle, setProgressionStyle] = useState('Balanced');
   const [restTimers, setRestTimers] = useState(true);
   const [restLength, setRestLength] = useState('Adaptive');
-  const [spotifyDisplay, setSpotifyDisplay] = useState('Bar');
+  const [spotifyDisplay, setSpotifyDisplay] = useState('Pill');
   const value = useMemo(() => ({
     reminders,
     setReminders,

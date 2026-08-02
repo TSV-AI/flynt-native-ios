@@ -18,7 +18,7 @@ diff --git a/ios/Modifiers/PresentationModifiers.swift b/ios/Modifiers/Presentat
 index f38528425a883a5d4dc0c1ad85e62dd278fc24b3..467d1f3ab1bdca816b222d34a86dc2b84a293619 100644
 --- a/ios/Modifiers/PresentationModifiers.swift
 +++ b/ios/Modifiers/PresentationModifiers.swift
-@@ -207,12 +207,39 @@ internal struct InteractiveDismissDisabledModifier: ViewModifier, Record {
+@@ -207,12 +207,44 @@ internal struct InteractiveDismissDisabledModifier: ViewModifier, Record {
  
  // MARK: - Presentation Background
  

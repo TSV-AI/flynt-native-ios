@@ -16,7 +16,12 @@
       },
       "supportsTablet": false,
       "bundleIdentifier": "com.threesixtyvue.flynt",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "spotify"
+        ]
+      }
     },
     "web": {
       "output": "static",

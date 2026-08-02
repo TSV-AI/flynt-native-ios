@@ -1,6 +1,6 @@
 # FLYNT native app plan and release ledger
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 Planning repository: `/Users/lukemcglynn/FLYNT-Native`
 Native client repository: `/Users/lukemcglynn/FLYNT-Native`
 Target client: Expo React Native development build with focused Swift modules
@@ -80,9 +80,20 @@ Current physical iPhone verification: Not started
   material carries a 70-percent black wash as an intentionally strong visual
   test to reduce its apparent luminosity
   over the shared page canvas without changing the material thickness.
-- Implemented in source: the native tab bar now uses `chart.bar` and
-  `chart.bar.fill` for Progress and `message` and `message.fill` for Trainer,
-  preserving the unfilled default and filled selected-state convention.
+- Implemented in source: the native tab bar now uses `text.page` and
+  `text.page.fill` for Plan, `chart.bar` and `chart.bar.fill` for Progress, and
+  `message` and `message.fill` for Trainer, preserving the unfilled default and
+  filled selected-state convention.
+- Verified locally on 2026-08-02: the installed SF Symbols 7 type catalog
+  contains `text.page` and `text.page.fill`, and focused ESLint passed for the
+  native tab layout. Whole-project TypeScript remains blocked by three existing
+  Spotify player type errors. A fresh Simulator build remains blocked by the
+  existing missing `SpotifyAppRemote.h` native dependency.
+- Verified in the running Simulator development build on 2026-08-02: Plan kept
+  its label, rendered `text.page.fill` while selected, and returned to the
+  unfilled `text.page` symbol after Today was selected. This verification used
+  the existing installed development build and current JavaScript bundle, not a
+  fresh native build.
 - Implemented in source: the exercise sheet header now presents only the
   exercise name and close action. The repeated reps, RPE, and rest subtitle was
   removed.
@@ -100,6 +111,20 @@ Current physical iPhone verification: Not started
 - Verified in Simulator: the exercise page retained its native sheet detent,
   rounded presentation, drag indicator, layout, and controls while the separate
   content layer filled the visible sheet behind them.
+- Implemented in source on 2026-08-02: the Spotify player sheet now uses its own
+  bottom-most `#0F0F0F` at 90-percent content layer, matching the existing
+  exercise sheet treatment. Spotify artwork, playback controls, queue, and
+  actions render above that layer. The exercise sheet treatment is unchanged.
+- Verified in the running Simulator development build on 2026-08-02: the
+  Spotify player retained its native sheet detent, drag indicator, rounded
+  presentation, artwork, controls, and queue while the matching layer filled
+  the sheet behind all player content in dark appearance. Light appearance and
+  Reduce Transparency remain to be verified for the Spotify layer.
+- Implemented and verified in the running Simulator development build on
+  2026-08-02: the Today header row now provides eight points of external
+  vertical space around the unchanged 44-point ellipsis control. A held touch
+  confirmed that the interactive glass expansion and lower edge remain fully
+  visible instead of clipping at the list-row boundary.
 - Implemented in source as a FLYNT density decision: Today exercise thumbnails
   now use that same input fill and outline treatment. Their size increases from
   72 by 54 points to 80 by 60 points, and the row minimum increases from 82 to
@@ -163,8 +188,9 @@ Current physical iPhone verification: Not started
   editable value with 12 through the numeric keyboard. The runtime snapshot
   exposed labeled load fields, rep
   fields, decrease and increase actions, and completion actions for every set.
-  The Today tab showed unfilled Progress and Trainer symbols, selecting Progress
-  produced `chart.bar.fill`, and visual review confirmed the 16-point exercise
+  The Today tab showed unfilled Plan, Progress, and Trainer symbols. Selecting
+  Plan produced `text.page.fill`, selecting Progress produced `chart.bar.fill`,
+  and visual review confirmed the 16-point exercise
   status inset, the raised 80-by-60-point thumbnails, and clean wrapping for the
   longest exercise name. A held row showed the 12-point thumbnail inset within
   its raised pressed surface. The ready-state preview verified the selector-first

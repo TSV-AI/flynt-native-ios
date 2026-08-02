@@ -56,7 +56,7 @@ import {
   tint,
   type PresentationDetent,
 } from '@expo/ui/swift-ui/modifiers';
-import { useEffect, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
@@ -87,11 +87,16 @@ type NativeTodayWorkoutProps = {
   onExerciseSheetDismissed: () => void;
   onFinishWorkout: () => void;
   onOpenSettings: () => void;
+  onSpotifySheetDismissed: () => void;
   onSelectExercise: (index: number) => void;
   onToggleSet: (exerciseIndex: number, setIndex: number) => void;
   progress: number;
   selectedDay: number;
   selectedExercise: number;
+  spotifyBar?: ReactElement;
+  spotifyPill?: ReactElement;
+  spotifySheet: ReactElement;
+  spotifySheetPresented: boolean;
   theme: Theme;
   totalSets: number;
   completedSets: number;
@@ -656,11 +661,16 @@ export function NativeTodayWorkout({
   onExerciseSheetDismissed,
   onFinishWorkout,
   onOpenSettings,
+  onSpotifySheetDismissed,
   onSelectExercise,
   onToggleSet,
   progress,
   selectedDay,
   selectedExercise,
+  spotifyBar,
+  spotifyPill,
+  spotifySheet,
+  spotifySheetPresented,
   theme,
   totalSets,
   week,
@@ -669,6 +679,7 @@ export function NativeTodayWorkout({
   const reduceMotion = useReducedMotion();
   const { setModalPresented } = useModalPresentation();
   const [sheetDetent, setSheetDetent] = useState<PresentationDetent>(expandedSheetDetent);
+  const [spotifySheetDetent, setSpotifySheetDetent] = useState<PresentationDetent>(expandedSheetDetent);
   const [sheetPage, setSheetPage] = useState<'exercise' | 'stats'>('exercise');
   const contentWidth = width - 32;
   const daySelectorWidth = contentWidth - 8;
@@ -712,23 +723,34 @@ export function NativeTodayWorkout({
       <Host colorScheme={mode} seedColor={theme.ink} style={{ flex: 1 }}>
         <ZStack>
           <List modifiers={[listStyle('plain'), scrollContentBackground('hidden'), background(canvas)]}>
-            <HStack modifiers={[...commonRow, frame({ width: contentWidth, height: 44 })]}>
-              <Spacer />
-              <RNHostView matchContents>
-                <GlassSymbolButton
-                  accessibilityLabel="Open menu and settings"
-                  color={theme.ink}
-                  colorScheme={mode}
-                  name="ellipsis"
-                  onPress={onOpenSettings}
-                />
-              </RNHostView>
-            </HStack>
+            <ZStack
+              alignment="center"
+              modifiers={[
+                ...commonRow,
+                frame({ width: contentWidth, height: 44 }),
+                padding({ vertical: 8 }),
+              ]}
+            >
+              {spotifyPill ? <RNHostView matchContents>{spotifyPill}</RNHostView> : null}
+              <HStack modifiers={[frame({ width: contentWidth, height: 44 })]}>
+                <Spacer />
+                <RNHostView matchContents>
+                  <GlassSymbolButton
+                    accessibilityLabel="Open menu and settings"
+                    color={theme.ink}
+                    colorScheme={mode}
+                    name="ellipsis"
+                    onPress={onOpenSettings}
+                  />
+                </RNHostView>
+              </HStack>
+            </ZStack>
 
             <ZStack
               modifiers={[
                 ...commonRow,
                 frame({ width: daySelectorWidth, height: 64 }),
+                padding({ top: 14 }),
               ]}
             >
               <VStack
@@ -814,6 +836,18 @@ export function NativeTodayWorkout({
               </HStack>
             )}
 
+            {spotifyBar ? (
+              <Group
+                modifiers={[
+                  ...commonRow,
+                  frame({ width: contentWidth }),
+                  padding({ horizontal: 4, bottom: spacing.md }),
+                ]}
+              >
+                <RNHostView matchContents>{spotifyBar}</RNHostView>
+              </Group>
+            ) : null}
+
             {day.kind === 'recovery' ? (
               <VStack alignment="leading" spacing={6} modifiers={[...commonRow, padding({ vertical: 18 })]}>
                 <NativeText modifiers={[font({ textStyle: 'headline' }), foregroundStyle(theme.ink)]}>
@@ -869,6 +903,40 @@ export function NativeTodayWorkout({
               </VStack>
             ) : null}
           </List>
+
+          <BottomSheet
+            isPresented={spotifySheetPresented}
+            modifiers={[environment('colorScheme', mode)]}
+            onDismiss={onSpotifySheetDismissed}
+            onIsPresentedChange={(presented) => {
+              if (!presented) onSpotifySheetDismissed();
+            }}
+          >
+            <Group
+              modifiers={[
+                presentationDetents([expandedSheetDetent, 'medium'], {
+                  selection: spotifySheetDetent,
+                  onSelectionChange: setSpotifySheetDetent,
+                }),
+                presentationBackgroundInteraction({ type: 'enabledUpThrough', detent: expandedSheetDetent }),
+                presentationDragIndicator('visible'),
+                nativeSheetMaterial,
+                environment('colorScheme', mode),
+              ]}
+            >
+              <ZStack>
+                <Spacer
+                  modifiers={[
+                    frame({ maxWidth: 1000, maxHeight: 1000 }),
+                    background(sheetContentOverlay),
+                  ]}
+                />
+                <RNHostView>
+                  <View style={styles.spotifySheetContent}>{spotifySheet}</View>
+                </RNHostView>
+              </ZStack>
+            </Group>
+          </BottomSheet>
 
           <BottomSheet
             isPresented={sheetPresented}
@@ -956,6 +1024,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  spotifySheetContent: { flex: 1 },
   exerciseRowArtwork: {
     width: 80,
     height: 60,

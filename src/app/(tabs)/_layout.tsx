@@ -32,7 +32,7 @@ export default function AppTabsLayout() {
         <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger disableTransparentOnScrollEdge name="plan">
-        <NativeTabs.Trigger.Icon sf={{ default: 'calendar', selected: 'calendar.circle.fill' }} />
+        <NativeTabs.Trigger.Icon sf={{ default: 'text.page', selected: 'text.page.fill' }} />
         <NativeTabs.Trigger.Label>Plan</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger disableTransparentOnScrollEdge name="progress">

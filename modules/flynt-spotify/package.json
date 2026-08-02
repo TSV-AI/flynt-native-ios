@@ -1,0 +1,13 @@
+{
+  "name": "flynt-spotify",
+  "version": "1.0.0",
+  "description": "FLYNT's typed Spotify iOS App Remote bridge.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

@@ -12,6 +12,7 @@ import { LifecycleNavigationProvider, useLifecycleNavigation } from '@/providers
 import { ModalPresentationProvider } from '@/providers/modal-presentation-provider';
 import { RestTimerProvider, useRestTimer } from '@/providers/rest-timer-provider';
 import { SettingsPreferencesProvider } from '@/providers/settings-preferences-provider';
+import { SpotifyProvider } from '@/providers/spotify-provider';
 
 function RootNavigator() {
   const { mode, theme } = useFlyntTheme();
@@ -81,13 +82,15 @@ export default function RootLayout() {
   return (
     <FlyntThemeProvider>
       <SettingsPreferencesProvider>
-        <ModalPresentationProvider>
-          <RestTimerProvider>
-            <LifecycleNavigationProvider>
-              <RootNavigator />
-            </LifecycleNavigationProvider>
-          </RestTimerProvider>
-        </ModalPresentationProvider>
+        <SpotifyProvider>
+          <ModalPresentationProvider>
+            <RestTimerProvider>
+              <LifecycleNavigationProvider>
+                <RootNavigator />
+              </LifecycleNavigationProvider>
+            </RestTimerProvider>
+          </ModalPresentationProvider>
+        </SpotifyProvider>
       </SettingsPreferencesProvider>
     </FlyntThemeProvider>
   );

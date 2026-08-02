@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 
 import { NativeTodayWorkout } from '@/components/native-today-workout';
+import { SpotifyLauncher, SpotifyPlayerContent } from '@/components/spotify-workout-player';
 import { previewExercisesByDay, previewWeek } from '@/features/app-preview-data';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { deliberateAction, selection } from '@/lib/haptics';
@@ -17,13 +18,14 @@ export default function TodayScreen() {
   const [daySelection, setDaySelection] = useState(() => ({ routedDay, selectedDay: routedDay }));
   const selectedDay = daySelection.routedDay === routedDay ? daySelection.selectedDay : routedDay;
   const [selectedExercise, setSelectedExercise] = useState(-1);
+  const [spotifyPlayerOpen, setSpotifyPlayerOpen] = useState(false);
   const [completedByDay, setCompletedByDay] = useState(() =>
     previewExercisesByDay.map((exercises) => exercises.map((exercise) => exercise.completed)),
   );
   const [finishedByDay, setFinishedByDay] = useState(() => previewWeek.map(() => false));
   const { mode, theme } = useFlyntTheme();
   const { start: startRestTimer, stop: stopRestTimer } = useRestTimer();
-  const { restLength, restTimers } = useSettingsPreferences();
+  const { restLength, restTimers, spotifyDisplay } = useSettingsPreferences();
   const day = previewWeek[selectedDay];
   const exercises = previewExercisesByDay[selectedDay];
   const completed = completedByDay[selectedDay];
@@ -88,7 +90,8 @@ export default function TodayScreen() {
   }
 
   return (
-    <NativeTodayWorkout
+    <>
+      <NativeTodayWorkout
         completed={completed}
         completedSets={completedSets}
         dateLabel={dateLabels[selectedDay]}
@@ -105,9 +108,15 @@ export default function TodayScreen() {
         progress={progress}
         selectedDay={selectedDay}
         selectedExercise={selectedExercise}
+        spotifyBar={spotifyDisplay === 'Bar' ? <SpotifyLauncher onPress={() => setSpotifyPlayerOpen(true)} variant="bar" /> : undefined}
+        spotifyPill={spotifyDisplay === 'Pill' ? <SpotifyLauncher onPress={() => setSpotifyPlayerOpen(true)} variant="pill" /> : undefined}
+        spotifySheet={<SpotifyPlayerContent />}
+        spotifySheetPresented={spotifyPlayerOpen}
+        onSpotifySheetDismissed={() => setSpotifyPlayerOpen(false)}
         theme={theme}
         totalSets={totalSets}
         week={previewWeek}
-    />
+      />
+    </>
   );
 }
