@@ -2,6 +2,7 @@ import { BottomSheet, Group, Host, RNHostView } from '@expo/ui/swift-ui';
 import {
   environment,
   presentationBackground,
+  presentationBackgroundMaterial,
   presentationDetents,
   presentationDragIndicator,
   type PresentationDetent,
@@ -18,10 +19,11 @@ type NativeMaterialSheetProps = {
   colorScheme: 'light' | 'dark';
   detents: PresentationDetent[];
   isPresented: boolean;
+  materialOverlayColor?: string;
   onDismiss: () => void;
 };
 
-export function NativeMaterialSheet({ children, colorScheme, detents, isPresented, onDismiss }: NativeMaterialSheetProps) {
+export function NativeMaterialSheet({ children, colorScheme, detents, isPresented, materialOverlayColor, onDismiss }: NativeMaterialSheetProps) {
   const { fontScale, width } = useWindowDimensions();
   const reduceTransparency = useReduceTransparency();
   const { setModalPresented } = useModalPresentation();
@@ -29,6 +31,9 @@ export function NativeMaterialSheet({ children, colorScheme, detents, isPresente
     ? reduceTransparency ? '#18181A' : '#18181ADD'
     : reduceTransparency ? '#F7F6F2' : '#F7F6F2E8';
   const effectiveDetents = fontScale >= 1.35 ? [{ fraction: 0.94 } satisfies PresentationDetent] : detents;
+  const effectiveOverlayColor = materialOverlayColor
+    ? reduceTransparency ? colorScheme === 'dark' ? '#171717' : '#F7F6F2' : materialOverlayColor
+    : undefined;
 
   useEffect(() => {
     if (!isPresented) return;
@@ -49,12 +54,12 @@ export function NativeMaterialSheet({ children, colorScheme, detents, isPresente
           modifiers={[
             presentationDetents(effectiveDetents),
             presentationDragIndicator('visible'),
-            presentationBackground(backgroundColor),
+            materialOverlayColor ? presentationBackgroundMaterial('regular') : presentationBackground(backgroundColor),
             environment('colorScheme', colorScheme),
           ]}
         >
           <RNHostView>
-            <View accessibilityViewIsModal style={styles.content}>{children}</View>
+            <View accessibilityViewIsModal style={[styles.content, effectiveOverlayColor && { backgroundColor: effectiveOverlayColor }]}>{children}</View>
           </RNHostView>
         </Group>
       </BottomSheet>

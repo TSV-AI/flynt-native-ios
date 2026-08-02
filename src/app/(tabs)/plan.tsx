@@ -2,18 +2,20 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-surface';
+import { appSurfaces } from '@/constants/theme';
 import { previewWeek } from '@/features/app-preview-data';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 
 export default function PlanScreen() {
-  const { theme } = useFlyntTheme();
+  const { mode, theme } = useFlyntTheme();
+  const itemBackground = appSurfaces[mode].itemBackground;
   function openDay(day: number) {
     router.navigate({ pathname: '/today', params: { day: String(day) } });
   }
 
   return (
     <AppScreen testID="screen-plan" title="Weekly plan">
-      <View style={[styles.planList, { borderTopColor: theme.line }]}>
+      <View style={[styles.planList, { backgroundColor: itemBackground }]}>
         {previewWeek.map((day, index) => (
           <Pressable
             accessibilityRole="button"
@@ -37,7 +39,7 @@ export default function PlanScreen() {
 }
 
 const styles = StyleSheet.create({
-  planList: { borderTopWidth: StyleSheet.hairlineWidth },
+  planList: { borderCurve: 'continuous', borderRadius: 22, overflow: 'hidden', paddingHorizontal: 16 },
   row: { width: '100%', minHeight: 76, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   planDay: { width: 42, fontSize: 12, lineHeight: 16, fontVariant: ['tabular-nums'] },
   copy: { flex: 1 },

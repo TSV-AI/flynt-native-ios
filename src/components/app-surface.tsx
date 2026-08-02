@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View, type ColorValue } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { palette, radius, spacing, type } from '@/constants/theme';
+import { appSurfaces, palette, radius, spacing, type } from '@/constants/theme';
 import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 
@@ -26,7 +26,7 @@ export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle,
     router.push('/settings');
   }
   return (
-    <View style={[styles.screen, { backgroundColor: backgroundColor ?? theme.canvas }]} testID={testID}>
+    <View style={[styles.screen, { backgroundColor: backgroundColor ?? appSurfaces[mode].primaryBackground }]} testID={testID}>
       <SafeAreaView
         accessibilityElementsHidden={modalActive}
         importantForAccessibility={modalActive ? 'no-hide-descendants' : 'auto'}
@@ -83,8 +83,8 @@ export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle,
 export function PreviewBadge() { return null; }
 
 export function Card({ children }: PropsWithChildren) {
-  const { theme } = useFlyntTheme();
-  return <View style={[styles.card, { backgroundColor: theme.card }]}>{children}</View>;
+  const { mode } = useFlyntTheme();
+  return <View style={[styles.card, { backgroundColor: appSurfaces[mode].itemBackground }]}>{children}</View>;
 }
 
 type ActionButtonProps = PropsWithChildren<{ onPress: () => void; secondary?: boolean; disabled?: boolean }>;

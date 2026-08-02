@@ -29,6 +29,81 @@ Current physical iPhone verification: Not started
 - Android remains a later P2 decision. Android demo configuration and artwork
   are intentionally absent from the iOS foundation.
 
+## Shared app surfaces | 2026-08-02
+
+- Implemented in source as a FLYNT visual-system decision: Today, Plan,
+  Progress, Trainer, Profile, and App now resolve their page canvas through one
+  shared primary-background token. Dark appearance uses `#111111`; light
+  appearance preserves the existing Today canvas `#F7F6F2`.
+- Implemented in source: content placed directly on those page canvases now
+  resolves through one shared item-background token. Dark appearance uses
+  `#222222`; light appearance preserves the existing Today exercise-thumbnail
+  surface `#F2F2F1`. Plan rows, Progress metrics and history, Trainer coach and
+  prompt surfaces, Profile information surfaces, and App settings groups use
+  the shared item token. Sheets, nested surfaces, semantic selection states,
+  user messages, and primary or destructive actions retain their own tokens.
+- Implemented in source on 2026-08-02: the Appearance segmented control and the
+  Account & Data action stack no longer add an item-background container. Both
+  areas sit directly on the shared primary page background while the segmented
+  control and the Sign Out, Export Data, and Delete Account buttons retain their
+  existing size, spacing, treatment, and behavior.
+- Verified locally on 2026-08-02: focused ESLint and whole-project TypeScript
+  passed after the shared token migration.
+- Verified in the running iPhone 17 / iOS 26.5 Simulator development preview on
+  2026-08-02: Plan, Progress, Trainer, Profile, and App rendered the shared
+  primary and item surface hierarchy in both dark and light appearances. The
+  ready-state preview was used, so no account credentials or production data
+  were involved. Dynamic Type, VoiceOver, Reduce Motion, and Reduce
+  Transparency remain to be reverified for the broader current UI.
+- Verified in the running dark-appearance Simulator preview on 2026-08-02: the
+  Appearance selector and all three Account & Data buttons render directly on
+  the primary background without an enclosing item card.
+
+## Trainer composer and Personal Details sheet | 2026-08-02
+
+- Implemented in source: Trainer conversation draft and sent-message state now
+  live above the tab route so the composer can survive route-host rendering.
+  The composer provides a leading attachment action, a multiline native text
+  field, a microphone action, and a trailing Send action. It grows upward from
+  one line to a four-line maximum, then scrolls its text. A running rest timer
+  replaces the attachment action on Trainer and opens the existing timer sheet.
+- Implemented in source as a FLYNT presentation decision: Trainer uses a
+  keyboard-aware Liquid Glass footer immediately above the native tab bar. The
+  iOS 26 tab bottom accessory was evaluated first, but the system hides that
+  accessory with the tab bar during keyboard entry. The footer therefore uses
+  the native glass API where available, an opaque fallback for Reduce
+  Transparency and earlier systems, and preserves 44-point action targets.
+  Apple HIG Tab bars, Text fields, Layout, and Liquid Glass guidance and Expo
+  SDK 57 native-tabs bottom-accessory documentation were consulted.
+- Implemented in source: the composer is absolutely anchored to the keyboard's
+  reported frame instead of resizing the Trainer page. Opening the software
+  keyboard therefore leaves page content in place, preserves the keyboard's
+  rounded top-corner reveal, and prevents underlying page controls from being
+  pushed behind the composer.
+- Implemented in source: moving composer glyphs now use Expo SDK 57's dedicated
+  native `SymbolView` rather than a nested SwiftUI host. This keeps Plus, Mic,
+  Timer, and Send aligned while the composer follows the keyboard. The exact
+  Expo SDK 57 Symbols documentation was consulted and `expo-symbols` is pinned
+  to the recommended SDK-compatible version.
+- Verified locally on 2026-08-02: whole-project TypeScript and ESLint passed.
+- Verified in the running dark-appearance iPhone 17 / iOS 26.5 Simulator on
+  2026-08-02: the empty composer cleared the native tab bar, Plus, Mic, and Send
+  aligned within the glass surface, the software keyboard left the composer
+  visible without moving the page, a long draft expanded upward to four lines,
+  the keyboard-open and closed states retained one symbol centerline, Send
+  appended the local preview message, and the field cleared and collapsed.
+  Attachment and voice
+  actions currently present explicit preview alerts because live services are
+  not connected. Light appearance, Dynamic Type, VoiceOver order, Reduce
+  Motion, Reduce Transparency, and active-rest-timer coexistence remain to be
+  verified for this revision.
+- Implemented in source: Personal Details now uses the current 98-percent
+  material sheet presentation, same-appearance material treatment, shared
+  44-point glass Close control, left-aligned title, and one grouped sheet-item
+  surface for editable fields. Training Profile remains unchanged because it
+  was outside this focused revision. Personal Details visual and accessibility
+  verification remains outstanding.
+
 ## Native app icon | 2026-08-01
 
 - Implemented in source: the approved 1024-point FLYNT Default and Dark exports
@@ -67,7 +142,15 @@ Current physical iPhone verification: Not started
   the background-color shift when an exercise opens.
 - Implemented in source as a reversible FLYNT surface test: Today uses
   `#111111` in dark appearance while light appearance retains the shared page
-  canvas. The exercise sheet and other primary tabs are unchanged.
+  canvas. This experiment is now the shared app-surface system documented
+  above; the exercise sheet remains independently tokenized.
+- Implemented in source on 2026-08-02: Today exercise-thumbnail backgrounds use
+  the `#222222` sheet item background color in dark appearance. Light appearance
+  retains `#F2F2F1`, and exercise-sheet entry surfaces remain unchanged.
+- Verified in the running Simulator development build on 2026-08-02: all five
+  visible Today exercise thumbnails rendered with the `#222222` dark item
+  background while the page canvas, artwork, labels, and completion controls
+  remained unchanged.
 - Verified in the running Simulator development build on 2026-08-02: the Today
   dark-appearance canvas rendered as `#111111` while its cards, Spotify player,
   native tab bar, and exercise sheet treatment remained unchanged.
@@ -87,6 +170,16 @@ Current physical iPhone verification: Not started
   `text.page.fill` for Plan, `chart.bar` and `chart.bar.fill` for Progress, and
   `message` and `message.fill` for Trainer, preserving the unfilled default and
   filled selected-state convention.
+- Implemented in source on 2026-08-02: Today now selects the native SF Symbol
+  named `<local day>.calendar`, using the device date for the numeric prefix.
+  The value refreshes at local midnight and whenever the app becomes active.
+  Earlier iOS versions fall back to `calendar`; no custom icon asset is used.
+- Verified locally and in the running iOS 26 Simulator development build on
+  2026-08-02: the installed SF Symbols 7 catalog contains `1.calendar` through
+  `31.calendar`, the current `2.calendar` symbol rendered above the Today label,
+  and focused ESLint, whole-project TypeScript, and diff checks passed. Apple
+  HIG Tab Bars, Icons, and SF Symbols guidance and the Expo Router 57 native-tab
+  icon API were consulted. Showing the live day is a FLYNT product decision.
 - Verified locally on 2026-08-02: the installed SF Symbols 7 type catalog
   contains `text.page` and `text.page.fill`, and focused ESLint passed for the
   native tab layout. Whole-project TypeScript remains blocked by three existing
@@ -561,13 +654,11 @@ Current physical iPhone verification: Not started
   Light, and Dark appearance choices are inline and update shared app theme
   state immediately. Spotify position, progression style, and rest duration
   now use native menu-style Pickers, and reminder time uses the native
-  time-only DatePicker. Their values use the semantic foreground tint while
-  Settings switches use the same semantic monochrome treatment: black in light
-  appearance and neutral graphite in dark appearance. The graphite preserves
-  clear separation from the native white thumb. Native Toggle continues to own
-  the thumb, track, animation, state, and accessibility behavior. Both segmented
-  controls use the larger native control size. Sign Out is separated near the
-  bottom. Export Data and Delete Account
+  time-only DatePicker. Their values use the semantic foreground tint. Settings
+  switches use the unmodified native SwiftUI switch style, including the
+  system-prescribed adaptive on and off colors, thumb, track, animation, state,
+  and accessibility behavior. Both segmented controls use the larger native
+  control size. Sign Out is separated near the bottom. Export Data and Delete Account
   use the same 50-point, 16-point-radius button geometry as the Profile actions.
   In light mode Sign Out is black with warm-white text. Export is white with a
   subtle boundary, and Delete uses a translucent red fill with matching red
@@ -607,9 +698,11 @@ Current physical iPhone verification: Not started
   persistent selected-day surface was recorded moving through intermediate
   positions from Monday to Friday. The Spotify, progression, and rest system
   menus displayed checkmarked options, and the reminder control displayed the
-  native hour, minute, and AM or PM wheels. The three enabled Settings toggles
-  were then verified with black native tracks in light appearance and graphite
-  native tracks with clearly separated white thumbs in dark appearance.
+  native hour, minute, and AM or PM wheels. On 2026-08-02 the three enabled
+  Settings toggles were verified with the native system-green on state in dark
+  appearance. Workout Reminders was toggled off and back on to verify the native
+  gray off state, thumb position, conditional row behavior, and restored value.
+  The system-managed switch colors remain to be reverified in light appearance.
 - Still not verified: authoritative account data, server reads or writes,
   offline and error states, Dynamic Type extremes, VoiceOver journeys,
   TestFlight, or a physical iPhone.
@@ -908,7 +1001,7 @@ rewriting the workout application.
   Evidence: A PWA-referenced Progress preview with four-week metrics, a strength trend, and recent training rows rendered in Simulator on 2026-07-31. Authoritative history, details, decisions, block context, and the complete fixture matrix remain outstanding.
   Exit check: Historical program versions remain immutable and understandable.
 - [~] Port post-consultation Trainer chat and explicit program-change approval.
-  Evidence: A conversation-first Trainer preview with request chips, multiline native composer, local send behavior, and explicit preview labeling rendered in Simulator on 2026-07-31. Server streaming, persistence, proposal approval, retry, and duplication evidence remain outstanding.
+  Evidence: A conversation-first Trainer preview with request chips, a keyboard-aware Liquid Glass composer, Plus and Mic actions, four-line upward draft growth, local send behavior, and explicit preview labeling rendered in iPhone 17 Simulator on 2026-08-02. Empty, keyboard-open, multiline, sent, cleared, and collapsed states passed dark-appearance Simulator review. Server streaming, persistence, attachments, dictation, proposal approval, retry, duplication, accessibility, light-appearance, and active-timer coexistence evidence remain outstanding.
   Exit check: No proposed program change applies before approval.
 - [~] Port profile, preferences, avatar, reminders, appearance, progression, rest, export, and deletion.
   Evidence: Top-right Profile & Settings now contains PWA-aligned Profile and App sections, personal fields, Trainer report context, appearance, Spotify placement, reminders, notification test, progression, rest, sign out, export, and deletion. Native switches, segmented choices, action sheets, and confirmation rendered in Simulator on 2026-07-31. Authoritative account round trips, avatar editing, export, deletion, and isolation evidence remain outstanding.

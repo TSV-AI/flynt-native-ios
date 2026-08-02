@@ -50,6 +50,17 @@ export const colors = {
   },
 } as const;
 
+export const appSurfaces = {
+  light: {
+    primaryBackground: palette.warmWhite,
+    itemBackground: palette.todayCanvas,
+  },
+  dark: {
+    primaryBackground: '#111111',
+    itemBackground: '#222222',
+  },
+} as const;
+
 export type ColorMode = keyof typeof colors;
 export type Theme = (typeof colors)[ColorMode];
 

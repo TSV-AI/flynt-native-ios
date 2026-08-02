@@ -44,9 +44,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { radius, spacing, themeFor } from '@/constants/theme';
+import { appSurfaces, radius, spacing, themeFor } from '@/constants/theme';
 import { NativeMaterialSheet } from '@/components/native-material-sheet';
-import { NativeSymbol } from '@/components/native-symbol';
+import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { selection } from '@/lib/haptics';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
@@ -124,11 +124,11 @@ function NativeCenteredButton({ label, treatment, onPress }: { label: string; tr
   );
 }
 
-function EditField({ label, value, onChangeText, keyboardType = 'default' }: { label: string; value: string; onChangeText: (value: string) => void; keyboardType?: 'default' | 'number-pad' }) {
+function EditField({ label, value, onChangeText, keyboardType = 'default', showDivider = true }: { label: string; value: string; onChangeText: (value: string) => void; keyboardType?: 'default' | 'number-pad'; showDivider?: boolean }) {
   const { mode } = useFlyntTheme();
-  const theme = themeFor(mode === 'dark' ? 'light' : 'dark');
+  const theme = themeFor(mode);
   return (
-    <View style={[styles.editField, { borderBottomColor: theme.line }]}>
+    <View style={[styles.editField, { borderBottomColor: theme.line, borderBottomWidth: showDivider ? StyleSheet.hairlineWidth : 0 }]}>
       <Text style={[styles.editLabel, { color: theme.muted }]}>{label}</Text>
       <TextInput
         accessibilityLabel={label}
@@ -184,8 +184,10 @@ function ProfileEditSheet({
   setEquipment: (value: string) => void;
 }) {
   const { mode } = useFlyntTheme();
-  const isDarkSheet = mode === 'light';
-  const theme = themeFor(isDarkSheet ? 'dark' : 'light');
+  const usesCurrentSheetStyle = kind === 'personal';
+  const sheetMode = usesCurrentSheetStyle ? mode : mode === 'light' ? 'dark' : 'light';
+  const theme = themeFor(sheetMode);
+  const sheetItemBackground = sheetMode === 'dark' ? '#222222' : '#F2F2F1';
   const title = kind === 'personal' ? 'Personal Details' : 'Training Profile';
   const trainingRows = [
     { label: 'Primary goal', value: goal, choices: ['Build strength', 'Build muscle', 'General fitness', 'Athletic performance'], setValue: setGoal },
@@ -198,29 +200,43 @@ function ProfileEditSheet({
 
   return (
     <NativeMaterialSheet
-      colorScheme={isDarkSheet ? 'dark' : 'light'}
-      detents={[{ fraction: kind === 'personal' ? 0.7 : 0.66 }]}
+      colorScheme={sheetMode}
+      detents={[{ fraction: kind === 'personal' ? 0.98 : 0.66 }]}
       isPresented={visible}
+      materialOverlayColor={usesCurrentSheetStyle ? sheetMode === 'dark' ? 'rgba(23,23,23,0.90)' : 'rgba(247,246,242,0.90)' : undefined}
       onDismiss={onClose}
     >
       <View style={styles.sheet}>
-          <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
-          <View style={[styles.sheetHeader, { borderBottomColor: theme.line }]}>
-            <View style={styles.sheetHeaderSide}>
-              {activeRow ? (
-                <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={() => setActiveTrainingChoice(null)} style={styles.sheetBackButton}>
-                  <NativeSymbol color={theme.ink} name="chevron.left" size={17} />
+        <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
+          {usesCurrentSheetStyle ? (
+            <View style={styles.currentSheetHeader}>
+              <Text accessibilityRole="header" style={[styles.currentSheetTitle, { color: theme.ink }]}>Personal Details</Text>
+              <GlassSymbolButton
+                accessibilityLabel="Close Personal Details"
+                color={theme.ink}
+                colorScheme={sheetMode}
+                name="xmark"
+                onPress={onClose}
+              />
+            </View>
+          ) : (
+            <View style={[styles.sheetHeader, { borderBottomColor: theme.line }]}>
+              <View style={styles.sheetHeaderSide}>
+                {activeRow ? (
+                  <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={() => setActiveTrainingChoice(null)} style={styles.sheetBackButton}>
+                    <NativeSymbol color={theme.ink} name="chevron.left" size={17} />
+                  </Pressable>
+                ) : null}
+              </View>
+              <Text accessibilityRole="header" style={[styles.sheetTitle, { color: theme.ink }]}>{activeRow?.label ?? title}</Text>
+              <View style={styles.sheetHeaderSide}>
+                <Pressable accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={[styles.sheetCloseButton, { backgroundColor: theme.card }]}>
+                  <NativeSymbol color={theme.ink} name="xmark" size={16} />
                 </Pressable>
-              ) : null}
+              </View>
             </View>
-            <Text accessibilityRole="header" style={[styles.sheetTitle, { color: theme.ink }]}>{activeRow?.label ?? title}</Text>
-            <View style={styles.sheetHeaderSide}>
-              <Pressable accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={[styles.sheetCloseButton, { backgroundColor: theme.card }]}>
-                <NativeSymbol color={theme.ink} name="xmark" size={16} />
-              </Pressable>
-            </View>
-          </View>
-          <ScrollView contentContainerStyle={styles.sheetContent} keyboardDismissMode="interactive">
+          )}
+          <ScrollView contentContainerStyle={usesCurrentSheetStyle ? styles.currentSheetContent : styles.sheetContent} keyboardDismissMode="interactive">
             {activeRow ? (
               <View style={styles.sheetChoices}>
                 {activeRow.choices.map((choice, index) => (
@@ -243,11 +259,11 @@ function ProfileEditSheet({
                 ))}
               </View>
             ) : kind === 'personal' ? (
-              <View style={styles.editFields}>
+              <View style={[styles.editFields, styles.personalEditFields, { backgroundColor: sheetItemBackground }]}>
                 <EditField label="Name" onChangeText={setName} value={name} />
                 <EditField keyboardType="number-pad" label="Age" onChangeText={setAge} value={age} />
                 <EditField label="Height" onChangeText={setHeight} value={height} />
-                <EditField label="Weight" onChangeText={setWeight} value={weight} />
+                <EditField label="Weight" onChangeText={setWeight} showDivider={false} value={weight} />
               </View>
             ) : (
               <View style={styles.sheetChoices}>
@@ -267,7 +283,7 @@ function ProfileEditSheet({
             )}
             {!activeRow ? <Text style={[styles.sheetNote, { color: theme.muted }]}>These details help Trainer understand your context. Program decisions remain server-owned.</Text> : null}
           </ScrollView>
-          </SafeAreaView>
+        </SafeAreaView>
       </View>
     </NativeMaterialSheet>
   );
@@ -275,6 +291,8 @@ function ProfileEditSheet({
 
 export default function SettingsScreen() {
   const { mode, preference, setPreference, theme } = useFlyntTheme();
+  const primaryBackground = appSurfaces[mode].primaryBackground;
+  const itemBackground = appSurfaces[mode].itemBackground;
   const { signOut } = useLifecycleNavigation();
   const {
     reminders,
@@ -359,7 +377,7 @@ export default function SettingsScreen() {
   const modalActive = profileSheet !== null;
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.canvas }]} testID="screen-settings">
+    <View style={[styles.screen, { backgroundColor: primaryBackground }]} testID="screen-settings">
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View
           accessibilityElementsHidden={modalActive}
@@ -393,12 +411,12 @@ export default function SettingsScreen() {
               </View>
               <Text accessibilityRole="header" style={[styles.profileName, { color: theme.ink }]}>{name || 'Your profile'}</Text>
               <Text style={[styles.profileIdentity, { color: theme.muted }]}>{goal} · {experience}</Text>
-              <Pressable accessibilityRole="button" onPress={() => setProfileSheet('personal')} style={({ pressed }) => [styles.editProfileButton, { borderColor: theme.line, opacity: pressed ? 0.55 : 1 }]}>
+              <Pressable accessibilityRole="button" onPress={() => setProfileSheet('personal')} style={({ pressed }) => [styles.editProfileButton, { backgroundColor: itemBackground, borderColor: theme.line, opacity: pressed ? 0.55 : 1 }]}>
                 <Text style={[styles.editProfileText, { color: theme.ink }]}>Edit Personal Details</Text>
               </Pressable>
             </View>
 
-            <View style={[styles.metricsRail, { borderColor: theme.line }]}>
+            <View style={[styles.metricsRail, { backgroundColor: itemBackground, borderColor: theme.line }]}>
               {[
                 ['HEIGHT', height],
                 ['WEIGHT', weight],
@@ -411,7 +429,7 @@ export default function SettingsScreen() {
               ))}
             </View>
 
-            <View style={styles.trainerContext}>
+            <View style={[styles.trainerContext, { backgroundColor: itemBackground }]}>
               <Text style={[styles.contextEyebrow, { color: theme.muted }]}>TRAINER CONTEXT</Text>
               <Text style={[styles.contextTitle, { color: theme.ink }]}>Built around {schedule.toLowerCase()} of focused training.</Text>
               <Text style={[styles.contextBody, { color: theme.muted }]}>Your current plan prioritizes {goal.toLowerCase()} with {equipment.toLowerCase()} access and recovery-aware progression.</Text>
@@ -427,8 +445,8 @@ export default function SettingsScreen() {
           </ScrollView>
         ) : (
           <Host colorScheme={mode} seedColor="#34C759" style={styles.formHost} useViewportSizeMeasurement>
-            <Form modifiers={[listStyle('plain'), scrollContentBackground('hidden'), background(theme.canvas)]}>
-              <Section modifiers={[listRowBackground('transparent')]} title="Appearance">
+            <Form modifiers={[listStyle('plain'), scrollContentBackground('hidden'), background(primaryBackground)]}>
+              <Section modifiers={[listRowBackground(primaryBackground)]} title="Appearance">
                 <Picker
                   modifiers={[
                     pickerStyle('segmented'),
@@ -445,12 +463,12 @@ export default function SettingsScreen() {
                 </Picker>
               </Section>
 
-              <Section modifiers={[listRowBackground('transparent')]} title="Music">
+              <Section modifiers={[listRowBackground(itemBackground)]} title="Music">
                 <NativeMenuPicker label="Spotify Player" onChange={setSpotifyDisplay} options={['Bar', 'Pill', 'Hidden']} value={spotifyDisplay} />
               </Section>
 
-              <Section modifiers={[listRowBackground('transparent')]} title="Workout">
-                <SwiftToggle isOn={reminders} label="Workout Reminders" modifiers={[tint(theme.controlActive)]} onIsOnChange={setReminders} />
+              <Section modifiers={[listRowBackground(itemBackground)]} title="Workout">
+                <SwiftToggle isOn={reminders} label="Workout Reminders" onIsOnChange={setReminders} />
                 {reminders ? (
                   <DatePicker
                     displayedComponents={['hourAndMinute']}
@@ -460,16 +478,16 @@ export default function SettingsScreen() {
                     title="Reminder Time"
                   />
                 ) : null}
-                <SwiftToggle isOn={progression} label="Automatic Progression" modifiers={[tint(theme.controlActive)]} onIsOnChange={setProgression} />
+                <SwiftToggle isOn={progression} label="Automatic Progression" onIsOnChange={setProgression} />
                 {progression ? <NativeMenuPicker label="Progression Style" onChange={setProgressionStyle} options={['Conservative', 'Balanced', 'Assertive', 'Custom']} value={progressionStyle} /> : null}
-                <SwiftToggle isOn={restTimers} label="Rest Timers" modifiers={[tint(theme.controlActive)]} onIsOnChange={setRestTimers} />
+                <SwiftToggle isOn={restTimers} label="Rest Timers" onIsOnChange={setRestTimers} />
                 {restTimers ? <NativeMenuPicker label="Rest Duration" onChange={setRestLength} options={['Quick', 'Adaptive', 'Full recovery']} value={restLength} /> : null}
               </Section>
 
-              <Section footer={<SwiftText>Preview settings are local. Account actions connect after authentication.</SwiftText>} modifiers={[listRowBackground('transparent')]} title="Account & Data">
+              <Section footer={<SwiftText>Preview settings are local. Account actions connect after authentication.</SwiftText>} modifiers={[listRowBackground(primaryBackground)]} title="Account & Data">
                 <VStack
                   modifiers={[
-                    listRowBackground('transparent'),
+                    listRowBackground(primaryBackground),
                     listRowInsets({ top: 6, leading: 0, bottom: 6, trailing: 0 }),
                     listRowSeparator('hidden'),
                   ]}
@@ -531,11 +549,11 @@ const styles = StyleSheet.create({
   profileIdentity: { marginTop: 5, fontSize: 14, lineHeight: 19, textTransform: 'capitalize' },
   editProfileButton: { minHeight: 44, justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.pill, marginTop: 18, paddingHorizontal: 20 },
   editProfileText: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
-  metricsRail: { minHeight: 88, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, marginTop: 32 },
+  metricsRail: { minHeight: 88, flexDirection: 'row', borderWidth: StyleSheet.hairlineWidth, borderCurve: 'continuous', borderRadius: 20, marginTop: 32, overflow: 'hidden' },
   profileMetric: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
   metricLabel: { fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.1 },
   metricValue: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.25 },
-  trainerContext: { paddingTop: 32 },
+  trainerContext: { borderCurve: 'continuous', borderRadius: 22, marginTop: 18, padding: 22 },
   contextEyebrow: { fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.25 },
   contextTitle: { maxWidth: 315, marginTop: 10, fontSize: 28, lineHeight: 32, fontWeight: '600', letterSpacing: -1 },
   contextBody: { maxWidth: 325, marginTop: 11, fontSize: 15, lineHeight: 22 },
@@ -550,6 +568,9 @@ const styles = StyleSheet.create({
   rowValue: { flexShrink: 1, fontSize: 14, lineHeight: 19, textAlign: 'right' },
   sheet: { flex: 1 },
   sheetSafeArea: { flex: 1 },
+  currentSheetHeader: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 8 },
+  currentSheetTitle: { flex: 1, paddingRight: spacing.md, fontSize: 28, lineHeight: 33, fontWeight: '600', letterSpacing: -0.9 },
+  currentSheetContent: { paddingHorizontal: 18, paddingTop: spacing.md, paddingBottom: spacing.xxl },
   sheetHeader: { minHeight: 72, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.sm, paddingTop: 14 },
   sheetHeaderSide: { width: 64, alignItems: 'flex-end', justifyContent: 'center' },
   sheetBackButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
@@ -557,7 +578,8 @@ const styles = StyleSheet.create({
   sheetCloseButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 },
   sheetContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
   editFields: { gap: spacing.xs },
-  editField: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth },
+  personalEditFields: { gap: 0, borderCurve: 'continuous', borderRadius: radius.lg, overflow: 'hidden', paddingHorizontal: spacing.md },
+  editField: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   editLabel: { width: 92, fontSize: 14, lineHeight: 19, fontWeight: '500' },
   editInput: { flex: 1, minHeight: 44, fontSize: 17, lineHeight: 22, textAlign: 'right' },
   sheetChoices: { marginTop: spacing.xs },
