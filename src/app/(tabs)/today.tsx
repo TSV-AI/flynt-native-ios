@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { NativeTodayWorkout } from '@/components/native-today-workout';
 import { previewExercisesByDay, previewWeek } from '@/features/app-preview-data';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
-import { selection } from '@/lib/haptics';
+import { deliberateAction, selection } from '@/lib/haptics';
 import { useRestTimer } from '@/providers/rest-timer-provider';
 import { useSettingsPreferences } from '@/providers/settings-preferences-provider';
 
@@ -20,6 +20,7 @@ export default function TodayScreen() {
   const [completedByDay, setCompletedByDay] = useState(() =>
     previewExercisesByDay.map((exercises) => exercises.map((exercise) => exercise.completed)),
   );
+  const [finishedByDay, setFinishedByDay] = useState(() => previewWeek.map(() => false));
   const { mode, theme } = useFlyntTheme();
   const { start: startRestTimer, stop: stopRestTimer } = useRestTimer();
   const { restLength, restTimers } = useSettingsPreferences();
@@ -48,6 +49,9 @@ export default function TodayScreen() {
 
   function toggleSet(exerciseIndex: number, setIndex: number) {
     void selection();
+    setFinishedByDay((current) => current.map((finished, dayIndex) => (
+      dayIndex === selectedDay ? false : finished
+    )));
     const exercise = exercises[exerciseIndex];
     const currentCount = completed[exerciseIndex];
     const unchecking = setIndex < currentCount;
@@ -73,6 +77,16 @@ export default function TodayScreen() {
     }
   }
 
+  function finishWorkout() {
+    if (!totalSets || completedSets !== totalSets || finishedByDay[selectedDay]) return;
+    void deliberateAction();
+    stopRestTimer();
+    setSelectedExercise(-1);
+    setFinishedByDay((current) => current.map((finished, dayIndex) => (
+      dayIndex === selectedDay ? true : finished
+    )));
+  }
+
   return (
     <NativeTodayWorkout
         completed={completed}
@@ -80,9 +94,11 @@ export default function TodayScreen() {
         dateLabel={dateLabels[selectedDay]}
         day={day}
         exercises={exercises}
+        finished={finishedByDay[selectedDay]}
         mode={mode}
         onChooseDay={chooseDay}
         onExerciseSheetDismissed={() => undefined}
+        onFinishWorkout={finishWorkout}
         onOpenSettings={() => router.push('/settings')}
         onSelectExercise={setSelectedExercise}
         onToggleSet={toggleSet}

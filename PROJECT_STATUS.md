@@ -72,6 +72,34 @@ Current physical iPhone verification: Not started
   exercise name and close action. The repeated reps, RPE, and rest subtitle was
   removed. Exercise artwork now renders transparently on the sheet rather than
   inside a separate background card.
+- Implemented in source as a FLYNT surface decision: the exercise artwork now
+  sits on the same semantic input fill and restrained outline used by Load and
+  Reps, with an 18-point continuous corner radius. The artwork remains
+  noninteractive content and does not introduce another glass material layer.
+- Implemented in source as a FLYNT density decision: Today exercise thumbnails
+  now use that same input fill and outline treatment. Their size increases from
+  72 by 54 points to 80 by 60 points, and the row minimum increases from 82 to
+  88 points so the movement positions are easier to recognize without turning
+  the workout list into a stack of large cards.
+- Implemented in source: the thumbnail receives a 12-point leading inset inside
+  the full-row pressed surface while the status circle retains its 16-point
+  trailing inset. The artwork card no longer touches the pressed row edge.
+- Implemented in source as a FLYNT information-hierarchy decision: Today now
+  places the week selector before the selected workout's date, title, and focus.
+  The redundant brand mark was removed from this operational screen, leaving a
+  44-point Settings action above the selector. The week dates sit directly on
+  the page canvas without a container fill, border, bevel, or shadow; only the
+  selected-day pill defines the active date. Its solid selected fill remains
+  unchanged, it reuses the thumbnail card's 0.5-point outline treatment, and its
+  62-point highlight width is independent of seven fixed-width day columns so
+  date labels do not shift between selections. Workout progress is one compact
+  row with a shortened progress bar and trailing percentage; the redundant
+  completed-set count was removed.
+- Implemented in source: a full-width 56-point `Finish workout` action now
+  follows the exercise list. It remains visible but disabled until every set is
+  complete, then marks the local preview workout complete, stops the rest timer,
+  closes exercise state, supplies one deliberate haptic, and changes to
+  `Workout complete`.
 - Implemented in source: decorative target tags were removed from the exercise
   sheet. `Exercise stats` is now a labeled 44-point navigation row beneath set
   logging instead of competing with the title or remaining below the viewport.
@@ -97,11 +125,12 @@ Current physical iPhone verification: Not started
 - Implemented in source: Exercise stats now uses the exercise name as its sole
   navigation title, removes redundant eyebrow labels, condenses its training
   signal, presents recent top sets as a connected timeline, and gives the next
-  workout recommendation one restrained raised surface.
+  workout recommendation one restrained raised surface centered within the
+  sheet.
 - Verified locally: all five PNG files retain alpha transparency, TypeScript and
   focused ESLint passed, and the repository copy-style check passed.
 - Verified in Simulator: scheme `FLYNT` built, installed, and launched on iPhone
-  17 / iOS 26.5. The latest build completed in 13.3 seconds. Dark-appearance
+  17 / iOS 26.5. The latest build completed in 11.1 seconds. Dark-appearance
   review confirmed all five thumbnails, set-and-rest-only list summaries,
   removal of incomplete row fractions, the shared Today and sheet background,
   the transparent Goblet Squat sheet visual, simplified sheet header, unframed
@@ -112,10 +141,18 @@ Current physical iPhone verification: Not started
   fields, decrease and increase actions, and completion actions for every set.
   The Today tab showed unfilled Progress and Trainer symbols, selecting Progress
   produced `chart.bar.fill`, and visual review confirmed the 16-point exercise
-  status inset and clean wrapping for the longest exercise name.
+  status inset, the raised 80-by-60-point thumbnails, and clean wrapping for the
+  longest exercise name. A held row showed the 12-point thumbnail inset within
+  its raised pressed surface. The ready-state preview verified the selector-first
+  hierarchy without the brand mark, the unframed week-selector treatment, the
+  outlined 62-point selected-day highlight with fixed day columns, the compact
+  progress bar and percentage, and the full-width disabled Finish workout state
+  above the tab bar.
   The 368-by-800 exercise sheet displayed the title, visual, three coaching
   steps, divider, all four Goblet Squat set rows, and Exercise stats without
-  scrolling. The shared timer accessory was verified in the exercise sheet and
+  scrolling. The raised Goblet Squat artwork card was verified with the same
+  fill and outline hierarchy as the Load and Reps controls. The shared timer
+  accessory was verified in the exercise sheet and
   then above the Today tab bar after the sheet closed, with one continuous
   countdown and no stacked presentation.
 - Evidence boundary: light appearance, Dynamic Type extremes, VoiceOver reading

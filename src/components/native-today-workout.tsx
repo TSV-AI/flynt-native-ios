@@ -27,6 +27,7 @@ import {
   background,
   buttonBorderShape,
   buttonStyle,
+  disabled,
   environment,
   fixedSize,
   font,
@@ -78,9 +79,11 @@ type NativeTodayWorkoutProps = {
   dateLabel: string;
   day: PreviewDay;
   exercises: PreviewExercise[];
+  finished: boolean;
   mode: ColorMode;
   onChooseDay: (index: number) => void;
   onExerciseSheetDismissed: () => void;
+  onFinishWorkout: () => void;
   onOpenSettings: () => void;
   onSelectExercise: (index: number) => void;
   onToggleSet: (exerciseIndex: number, setIndex: number) => void;
@@ -112,13 +115,17 @@ function exerciseSummary(detail: string): string {
 
 function ExerciseArtwork({
   accessible = false,
+  backgroundColor,
   height,
   name,
+  outlineColor,
   width,
 }: {
   accessible?: boolean;
+  backgroundColor: string;
   height: number;
   name: string;
+  outlineColor: string;
   width: number;
 }) {
   const source = getExerciseArtwork(name);
@@ -137,7 +144,12 @@ function ExerciseArtwork({
           height,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'transparent',
+          backgroundColor,
+          borderColor: outlineColor,
+          borderCurve: 'continuous',
+          borderRadius: 18,
+          borderWidth: 0.5,
+          overflow: 'hidden',
         }}
       >
         <Image
@@ -254,13 +266,17 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onToggle, outl
 function ExerciseListRow({
   completed,
   exercise,
+  inputColor,
   onPress,
+  outlineColor,
   rowWidth,
   theme,
 }: {
   completed: number;
   exercise: PreviewExercise;
+  inputColor: string;
   onPress: () => void;
+  outlineColor: string;
   rowWidth: number;
   theme: Theme;
 }) {
@@ -280,15 +296,30 @@ function ExerciseListRow({
         ]}
       >
         {artwork ? (
-          <Image
+          <View
             accessibilityElementsHidden
-            accessibilityIgnoresInvertColors
-            resizeMode="contain"
-            source={artwork}
-            style={[styles.exerciseRowArtwork, done && styles.exerciseRowArtworkDone]}
-          />
+            style={[
+              styles.exerciseRowArtwork,
+              { backgroundColor: inputColor, borderColor: outlineColor },
+              done && styles.exerciseRowArtworkDone,
+            ]}
+          >
+            <Image
+              accessibilityIgnoresInvertColors
+              resizeMode="contain"
+              source={artwork}
+              style={styles.exerciseRowArtworkImage}
+            />
+          </View>
         ) : (
-          <View accessibilityElementsHidden style={[styles.exerciseRowArtwork, styles.exerciseRowArtworkFallback, { backgroundColor: theme.raised }]}>
+          <View
+            accessibilityElementsHidden
+            style={[
+              styles.exerciseRowArtwork,
+              { backgroundColor: inputColor, borderColor: outlineColor },
+              done && styles.exerciseRowArtworkDone,
+            ]}
+          >
             <NativeSymbol color={theme.muted} name="figure.strengthtraining.traditional" size={24} />
           </View>
         )}
@@ -385,7 +416,14 @@ function ExerciseSheetContent({
             modifiers={[padding({ top: spacing.lg, bottom: spacing.lg })]}
           >
             {artwork ? (
-              <ExerciseArtwork accessible height={190} name={exercise.name} width={mediaWidth} />
+              <ExerciseArtwork
+                accessible
+                backgroundColor={input}
+                height={190}
+                name={exercise.name}
+                outlineColor={outline}
+                width={mediaWidth}
+              />
             ) : (
               <VStack
                 alignment="leading"
@@ -574,23 +612,27 @@ function ExerciseStatsPage({ exercise, onBack, onClose, theme }: { exercise: Pre
           </HStack>
         ))}
 
-        <VStack
-          alignment="leading"
-          spacing={7}
-          modifiers={[
-            padding({ all: spacing.md }),
-            background(theme.raised, shapes.roundedRectangle({ cornerRadius: 16, roundedCornerStyle: 'continuous' })),
-            strokeBorder({ color: theme.line, style: { lineWidth: 0.5 }, shape: 'roundedRectangle', cornerRadius: 16 }),
-          ]}
-        >
-          <NativeText modifiers={[font({ textStyle: 'headline' }), foregroundStyle(theme.ink)]}>
-            Next workout
-          </NativeText>
-          <NativeText modifiers={[font({ textStyle: 'title', weight: 'semibold' }), foregroundStyle(theme.ink), monospacedDigit()]}>230 LBS × 5</NativeText>
-          <NativeText modifiers={[font({ textStyle: 'footnote' }), foregroundStyle(theme.muted), fixedSize({ vertical: true })]}>
-            Add 5 LBS if warm-ups stay fast and discomfort remains unchanged.
-          </NativeText>
-        </VStack>
+        <HStack spacing={0} modifiers={[frame({ maxWidth: 1000 })]}>
+          <Spacer minLength={0} />
+          <VStack
+            alignment="leading"
+            spacing={7}
+            modifiers={[
+              padding({ all: spacing.md }),
+              background(theme.raised, shapes.roundedRectangle({ cornerRadius: 16, roundedCornerStyle: 'continuous' })),
+              strokeBorder({ color: theme.line, style: { lineWidth: 0.5 }, shape: 'roundedRectangle', cornerRadius: 16 }),
+            ]}
+          >
+            <NativeText modifiers={[font({ textStyle: 'headline' }), foregroundStyle(theme.ink)]}>
+              Next workout
+            </NativeText>
+            <NativeText modifiers={[font({ textStyle: 'title', weight: 'semibold' }), foregroundStyle(theme.ink), monospacedDigit()]}>230 LBS × 5</NativeText>
+            <NativeText modifiers={[font({ textStyle: 'footnote' }), foregroundStyle(theme.muted), fixedSize({ vertical: true })]}>
+              Add 5 LBS if warm-ups stay fast and discomfort remains unchanged.
+            </NativeText>
+          </VStack>
+          <Spacer minLength={0} />
+        </HStack>
       </VStack>
     </ScrollView>
   );
@@ -602,9 +644,11 @@ export function NativeTodayWorkout({
   dateLabel,
   day,
   exercises,
+  finished,
   mode,
   onChooseDay,
   onExerciseSheetDismissed,
+  onFinishWorkout,
   onOpenSettings,
   onSelectExercise,
   onToggleSet,
@@ -622,9 +666,8 @@ export function NativeTodayWorkout({
   const [sheetPage, setSheetPage] = useState<'exercise' | 'stats'>('exercise');
   const contentWidth = width - 32;
   const daySelectorWidth = contentWidth - 8;
-  const unselectedDayWidth = (contentWidth - 64) / 6;
+  const dayColumnWidth = daySelectorWidth / 7;
   const canvas = theme.sheet;
-  const card = mode === 'light' ? '#FAFAFA' : theme.card;
   const input = mode === 'light' ? '#F2F2F1' : theme.raised;
   const outline = mode === 'light' ? 'rgba(216,214,207,0.72)' : 'rgba(255,255,255,0.10)';
   const sheetPresented = selectedExercise >= 0 && selectedExercise < exercises.length;
@@ -659,16 +702,7 @@ export function NativeTodayWorkout({
       <Host colorScheme={mode} seedColor={theme.ink} style={{ flex: 1 }}>
         <ZStack>
           <List modifiers={[listStyle('plain'), scrollContentBackground('hidden'), background(canvas)]}>
-            <HStack modifiers={[...commonRow, frame({ width: contentWidth, height: 58 })]}>
-              <RNHostView matchContents>
-                <Image
-                  accessibilityLabel="FLYNT"
-                  source={mode === 'dark'
-                    ? require('@/assets/images/flynt-mark-light.png')
-                    : require('@/assets/images/flynt-mark-ink.png')}
-                  style={{ width: 28, height: 42.5, resizeMode: 'contain' }}
-                />
-              </RNHostView>
+            <HStack modifiers={[...commonRow, frame({ width: contentWidth, height: 44 })]}>
               <Spacer />
               <RNHostView matchContents>
                 <GlassSymbolButton
@@ -681,31 +715,18 @@ export function NativeTodayWorkout({
               </RNHostView>
             </HStack>
 
-            <VStack alignment="leading" spacing={9} modifiers={[...commonRow, padding({ top: 12, horizontal: 4, bottom: 25 })]}>
-              <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), kerning(1.45), foregroundStyle(theme.muted)]}>
-                {dateLabel}
-              </NativeText>
-              <NativeText modifiers={[font({ textStyle: 'largeTitle', weight: 'semibold' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>
-                {day.title}
-              </NativeText>
-              <NativeText modifiers={[font({ textStyle: 'subheadline' }), foregroundStyle(theme.muted)]}>
-                {day.focus}
-              </NativeText>
-            </VStack>
-
             <ZStack
               modifiers={[
                 ...commonRow,
                 frame({ width: daySelectorWidth, height: 64 }),
-                background(card, shapes.roundedRectangle({ cornerRadius: 21, roundedCornerStyle: 'continuous' })),
-                strokeBorder({ color: outline, style: { lineWidth: 0.5 }, shape: 'roundedRectangle', cornerRadius: 21 }),
               ]}
             >
               <VStack
                 modifiers={[
-                  frame({ width: 56, height: 64 }),
+                  frame({ width: 62, height: 64 }),
                   background(theme.primaryFill, dayShape),
-                  offset({ x: (selectedDay - 3) * unselectedDayWidth }),
+                  strokeBorder({ color: outline, style: { lineWidth: 0.5 }, shape: 'roundedRectangle', cornerRadius: 18 }),
+                  offset({ x: (selectedDay - 3) * dayColumnWidth }),
                   ...(!reduceMotion ? [animation(Animation.interpolatingSpring(motion.spring.responsive), selectedDay)] : []),
                 ]}
               >
@@ -714,20 +735,19 @@ export function NativeTodayWorkout({
               <HStack spacing={0} modifiers={[frame({ width: daySelectorWidth, height: 64 })]}>
                 {week.map((item, index) => {
                   const selected = index === selectedDay;
-                  const dayWidth = selected ? 56 : unselectedDayWidth;
                   return (
                     <Button
                       key={`${item.shortDay}-${item.date}`}
                       onPress={() => onChooseDay(index)}
                       modifiers={[
                         buttonStyle('plain'),
-                        frame({ width: dayWidth, height: 64 }),
+                        frame({ width: dayColumnWidth, height: 64 }),
                         accessibilityLabel(`${item.shortDay} ${item.date}, ${item.title}`),
                         accessibilityHint("Shows this day's workout"),
                         ...(selected ? [accessibilityAddTraits(['isSelected'])] : []),
                       ]}
                     >
-                      <VStack spacing={7} modifiers={[frame({ width: dayWidth, height: 64 })]}>
+                      <VStack spacing={7} modifiers={[frame({ width: dayColumnWidth, height: 64 })]}>
                         <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), foregroundStyle(selected ? theme.primaryText : theme.muted)]}>
                           {item.shortDay.slice(0, 1)}
                         </NativeText>
@@ -741,26 +761,40 @@ export function NativeTodayWorkout({
               </HStack>
             </ZStack>
 
+            <VStack alignment="leading" spacing={9} modifiers={[...commonRow, padding({ top: spacing.lg, horizontal: 4, bottom: spacing.md })]}>
+              <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), kerning(1.45), foregroundStyle(theme.muted)]}>
+                {dateLabel}
+              </NativeText>
+              <NativeText modifiers={[font({ textStyle: 'largeTitle', weight: 'semibold' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>
+                {day.title}
+              </NativeText>
+              <NativeText modifiers={[font({ textStyle: 'subheadline' }), foregroundStyle(theme.muted)]}>
+                {day.focus}
+              </NativeText>
+            </VStack>
+
             {totalSets ? (
-              <VStack spacing={9} modifiers={[...commonRow, frame({ width: contentWidth - 8 }), padding({ top: 24, horizontal: 4, bottom: 16 })]}>
-                <HStack>
-                  <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'semibold' }), foregroundStyle(theme.muted)]}>
-                    {completedSets} of {totalSets} sets
-                  </NativeText>
-                  <Spacer />
-                  <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'semibold' }), foregroundStyle(theme.muted), monospacedDigit()]}>
-                    {Math.round(progress * 100)}%
-                  </NativeText>
-                </HStack>
+              <HStack spacing={spacing.sm} modifiers={[...commonRow, frame({ width: contentWidth - 8 }), padding({ top: 24, horizontal: 4, bottom: 16 })]}>
                 <ProgressView
                   value={progress}
                   modifiers={[
+                    frame({ maxWidth: 1000 }),
                     progressViewStyle('linear'),
                     tint(theme.ink),
                     animation(Animation.easeInOut({ duration: motion.duration.standard / 1000 }), progress),
                   ]}
                 />
-              </VStack>
+                <NativeText
+                  modifiers={[
+                    frame({ width: 36, alignment: 'trailing' }),
+                    font({ textStyle: 'caption2', weight: 'semibold' }),
+                    foregroundStyle(theme.muted),
+                    monospacedDigit(),
+                  ]}
+                >
+                  {Math.round(progress * 100)}%
+                </NativeText>
+              </HStack>
             ) : (
               <HStack spacing={8} modifiers={[...commonRow, frame({ minHeight: 64 }), padding({ horizontal: 4 })]}>
                 <SwiftUIImage color={theme.muted} size={16} systemName="figure.walk" />
@@ -784,13 +818,46 @@ export function NativeTodayWorkout({
                 key={item.name}
                 completed={completed[index]}
                 exercise={item}
+                inputColor={input}
                 onPress={() => selectExercise(index)}
+                outlineColor={outline}
                 rowWidth={contentWidth}
                 theme={theme}
               />
             )).map((row) => (
               <Group key={row.key} modifiers={commonRow}>{row}</Group>
             ))}
+
+            {day.kind !== 'recovery' && exercises.length > 0 ? (
+              <VStack
+                modifiers={[
+                  ...commonRow,
+                  frame({ width: contentWidth }),
+                  padding({ horizontal: spacing.xs, top: spacing.md, bottom: spacing.hero }),
+                ]}
+              >
+                <Button
+                  onPress={onFinishWorkout}
+                  modifiers={[
+                    buttonStyle('borderedProminent'),
+                    buttonBorderShape('capsule'),
+                    tint(theme.ink),
+                    disabled(finished || completedSets !== totalSets),
+                    accessibilityLabel(finished ? 'Workout complete' : 'Finish workout'),
+                    accessibilityHint(completedSets === totalSets
+                      ? 'Marks this workout complete'
+                      : 'Complete every set to enable this action'),
+                  ]}
+                >
+                  <HStack spacing={8} modifiers={[frame({ minHeight: 56, maxWidth: 1000 })]}>
+                    {finished ? <SwiftUIImage color={theme.primaryText} size={15} systemName="checkmark" /> : null}
+                    <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.primaryText)]}>
+                      {finished ? 'Workout complete' : 'Finish workout'}
+                    </NativeText>
+                  </HStack>
+                </Button>
+              </VStack>
+            ) : null}
           </List>
 
           <BottomSheet
@@ -860,8 +927,9 @@ export function NativeTodayWorkout({
 
 const styles = StyleSheet.create({
   exerciseRow: {
-    minHeight: 82,
+    minHeight: 88,
     paddingVertical: 14,
+    paddingLeft: spacing.sm,
     paddingRight: spacing.md,
     borderRadius: 14,
     flexDirection: 'row',
@@ -869,16 +937,21 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   exerciseRowArtwork: {
-    width: 72,
-    height: 54,
+    width: 80,
+    height: 60,
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    borderWidth: 0.5,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exerciseRowArtworkImage: {
+    width: '100%',
+    height: '100%',
   },
   exerciseRowArtworkDone: {
     opacity: 0.5,
-  },
-  exerciseRowArtworkFallback: {
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   exerciseRowCopy: {
     flex: 1,
