@@ -13,7 +13,11 @@ type RestTimerValue = {
   expand: () => void;
   isExpanded: boolean;
   minimize: () => void;
-  start: (exercise: string, total: number) => void;
+  start: (
+    exercise: string,
+    total: number,
+    options?: { expandOnComplete?: boolean; expanded?: boolean },
+  ) => void;
   stop: () => void;
   timer: RestTimer | null;
 };
@@ -23,6 +27,7 @@ const RestTimerContext = createContext<RestTimerValue | null>(null);
 export function RestTimerProvider({ children }: PropsWithChildren) {
   const [timer, setTimer] = useState<RestTimer | null>(null);
   const [isExpanded, setExpanded] = useState(false);
+  const [expandOnComplete, setExpandOnComplete] = useState(true);
 
   useEffect(() => {
     const endsAt = timer?.endsAt;
@@ -49,16 +54,16 @@ export function RestTimerProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (timer?.seconds !== 0) return;
-    const presentation = setTimeout(() => setExpanded(true), 0);
+    const presentation = expandOnComplete ? setTimeout(() => setExpanded(true), 0) : null;
     const timeout = setTimeout(() => {
       setTimer(null);
       setExpanded(false);
     }, 1250);
     return () => {
-      clearTimeout(presentation);
+      if (presentation) clearTimeout(presentation);
       clearTimeout(timeout);
     };
-  }, [timer?.seconds]);
+  }, [expandOnComplete, timer?.seconds]);
 
   const value = useMemo<RestTimerValue>(() => ({
     adjust(delta) {
@@ -80,18 +85,20 @@ export function RestTimerProvider({ children }: PropsWithChildren) {
     minimize() {
       if (timer) setExpanded(false);
     },
-    start(exercise, total) {
+    start(exercise, total, options) {
       setTimer({
         endsAt: Date.now() + total * 1000,
         exercise,
         seconds: total,
         total,
       });
-      setExpanded(true);
+      setExpandOnComplete(options?.expandOnComplete ?? true);
+      setExpanded(options?.expanded ?? true);
     },
     stop() {
       setTimer(null);
       setExpanded(false);
+      setExpandOnComplete(true);
     },
     timer,
   }), [isExpanded, timer]);

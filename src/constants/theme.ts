@@ -22,6 +22,7 @@ export const palette = {
 export const colors = {
   light: {
     canvas: palette.warmWhite,
+    sheet: palette.warmWhite,
     card: palette.warmCard,
     raised: palette.white,
     ink: palette.black,
@@ -35,6 +36,7 @@ export const colors = {
   },
   dark: {
     canvas: palette.darkCanvas,
+    sheet: palette.darkCanvas,
     card: palette.darkCard,
     raised: palette.darkRaised,
     ink: palette.warmWhite,

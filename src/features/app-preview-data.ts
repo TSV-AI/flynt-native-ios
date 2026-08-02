@@ -44,11 +44,11 @@ export const previewExercisesByDay = [
     { name: 'Hammer Curl', detail: '3 sets · 10 reps', completed: 0, total: 3 },
   ],
   [
-    { name: 'Trap Bar Deadlift', detail: '4 sets · 5 reps · RPE 8', completed: 3, total: 4 },
-    { name: 'Bulgarian Split Squat', detail: '4 sets · 8 reps · RPE 8', completed: 1, total: 4 },
-    { name: 'Barbell Hip Thrust', detail: '3 sets · 10 reps', completed: 0, total: 3 },
-    { name: 'Hamstring Curl', detail: '3 sets · 12 reps', completed: 0, total: 3 },
-    { name: 'Standing Calf Raise', detail: '3 sets · 12 reps', completed: 0, total: 3 },
+    { name: 'Goblet Squat', detail: '4 sets · 8 reps · RPE 8', completed: 3, total: 4 },
+    { name: 'Overhead Squat', detail: '4 sets · 5 reps · RPE 8', completed: 1, total: 4 },
+    { name: 'Single-Leg Romanian Deadlift', detail: '3 sets · 8 reps each', completed: 0, total: 3 },
+    { name: 'Glute Bridge', detail: '3 sets · 12 reps', completed: 0, total: 3 },
+    { name: 'Dumbbell Step-Up', detail: '3 sets · 10 reps each', completed: 0, total: 3 },
   ],
   [
     { name: 'Bike Sprint', detail: '6 rounds · 20 seconds', completed: 0, total: 6 },

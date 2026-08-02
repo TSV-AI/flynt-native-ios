@@ -1,7 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 
-import { ExerciseDetailSheet } from '@/components/exercise-detail-sheet';
 import { NativeTodayWorkout } from '@/components/native-today-workout';
 import { previewExercisesByDay, previewWeek } from '@/features/app-preview-data';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
@@ -17,8 +16,7 @@ export default function TodayScreen() {
     : 4;
   const [daySelection, setDaySelection] = useState(() => ({ routedDay, selectedDay: routedDay }));
   const selectedDay = daySelection.routedDay === routedDay ? daySelection.selectedDay : routedDay;
-  const [activeExercise, setActiveExercise] = useState(1);
-  const [detailSheet, setDetailSheet] = useState<{ mode: 'stats' | 'guide'; name: string } | null>(null);
+  const [selectedExercise, setSelectedExercise] = useState(-1);
   const [completedByDay, setCompletedByDay] = useState(() =>
     previewExercisesByDay.map((exercises) => exercises.map((exercise) => exercise.completed)),
   );
@@ -45,7 +43,7 @@ export default function TodayScreen() {
     if (index === selectedDay) return;
     void selection();
     setDaySelection({ routedDay, selectedDay: index });
-    setActiveExercise(index === 4 ? 1 : 0);
+    setSelectedExercise(-1);
   }
 
   function toggleSet(exerciseIndex: number, setIndex: number) {
@@ -65,28 +63,18 @@ export default function TodayScreen() {
 
     if (unchecking || nextCount >= exercise.total) {
       stopRestTimer();
-      if (nextCount >= exercise.total) {
-        const remainingOrder = [
-          ...exercises.slice(exerciseIndex + 1).map((_, offset) => exerciseIndex + 1 + offset),
-          ...exercises.slice(0, exerciseIndex).map((_, index) => index),
-        ];
-        const nextExercise = remainingOrder.find((index) => completed[index] < exercises[index].total);
-        setActiveExercise(nextExercise ?? -1);
-      }
       return;
     }
 
     if (restTimers) {
       const multiplier = restLength === 'Quick' ? 0.8 : restLength === 'Full recovery' ? 1.25 : 1;
       const total = Math.max(0, Math.round((90 * multiplier) / 15) * 15);
-      startRestTimer(exercise.name, total);
+      startRestTimer(exercise.name, total, { expanded: false, expandOnComplete: false });
     }
   }
 
   return (
-    <>
-      <NativeTodayWorkout
-        activeExercise={activeExercise}
+    <NativeTodayWorkout
         completed={completed}
         completedSets={completedSets}
         dateLabel={dateLabels[selectedDay]}
@@ -94,22 +82,16 @@ export default function TodayScreen() {
         exercises={exercises}
         mode={mode}
         onChooseDay={chooseDay}
-        onOpenExerciseDetail={(sheetMode, name) => setDetailSheet({ mode: sheetMode, name })}
+        onExerciseSheetDismissed={() => undefined}
         onOpenSettings={() => router.push('/settings')}
-        onSetExerciseExpanded={(index, expanded) => setActiveExercise(expanded ? index : -1)}
+        onSelectExercise={setSelectedExercise}
         onToggleSet={toggleSet}
         progress={progress}
         selectedDay={selectedDay}
+        selectedExercise={selectedExercise}
         theme={theme}
         totalSets={totalSets}
         week={previewWeek}
-      />
-      <ExerciseDetailSheet
-        isPresented={detailSheet !== null}
-        mode={detailSheet?.mode ?? 'stats'}
-        name={detailSheet?.name ?? 'Exercise'}
-        onDismiss={() => setDetailSheet(null)}
-      />
-    </>
+    />
   );
 }

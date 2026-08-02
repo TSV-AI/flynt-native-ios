@@ -8,9 +8,9 @@ Backend: Existing FLYNT Vercel API and workflows
 System of record: Existing FLYNT Supabase project `nnfxswxzjqocnlkoqsbl`
 Distribution: Apple App Store through App Store Connect
 
-Current source state: Native foundation, lifecycle navigation, and the PWA-referenced ready-state native preview are committed locally on `codex/native-foundation`; the SwiftUI Today workout composition, native rest-timer sheet, authoritative boot boundary, Apple HIG design authority, first HIG remediation pass, and native authentication client are implemented in the working tree
+Current source state: Native foundation, lifecycle navigation, the PWA-referenced ready-state preview, native icon, authentication client, rest-timer behavior, and the prior Today accordion are preserved in local checkpoint `ad23dd0` on `codex/native-foundation`. A reversible native-list Today experiment is implemented in the working tree.
 Current local verification: On 2026-08-01, seven authentication callback and validation tests, 11 authoritative boot tests, two lifecycle navigation tests, TypeScript, ESLint, copy style, and Expo Doctor 20 of 20 passed with pinned Node 24.14.0.
-Current Simulator verification: On 2026-08-01 the current source, including the Apple Authentication entitlement and native modules, built, installed, and launched on iPhone 17 / iOS 26.5. The latest native build completed in 20.5 seconds and installed the approved FLYNT app icon while preserving the SwiftUI Today workout cards, animated week selector, compact Stats and Guide controls, set completion, shared native rest-timer sheet, and iOS 26 native tab-bar timer accessory. The countdown previously persisted while switching from Today to Plan and reopened from the accessory. The earlier HIG pass exercised native tab semantics, Plan-to-Today day routing, modal focus containment, pinned Trainer composition, and light and dark appearance switching. Live authentication still awaits external provider configuration.
+Current Simulator verification: On 2026-08-01 the current source built, installed, and launched on iPhone 17 / iOS 26.5 in 15.0 seconds. The compact SwiftUI exercise list, large-first system exercise sheet, medium detent, Guide-style large layout, set entry, same-sheet paged Training History, native back action, set completion, and existing rest-timer presentation were exercised. The approved FLYNT icon remains installed. Live authentication still awaits external provider configuration.
 Current TestFlight verification: Not started
 Current physical iPhone verification: Not started
 
@@ -43,6 +43,87 @@ Current physical iPhone verification: Not started
   17 / iOS 26.5 in 20.5 seconds. The approved white Default icon rendered on the
   Home Screen. Dark and Tinted are bundled in the native asset catalog but their
   Home Screen customization modes have not yet received separate visual review.
+
+## Exercise artwork and logging density | 2026-08-01
+
+- Implemented in source: five owner-supplied two-position exercise illustrations
+  now map to Goblet Squat, Overhead Squat, Single-Leg Romanian Deadlift, Glute
+  Bridge, and Dumbbell Step-Up. Each movement uses the same artwork registry for
+  its Today list thumbnail and full exercise-sheet visual. Exercises without
+  published artwork retain the existing system-symbol fallback.
+- Implemented in source: exercise rows no longer repeat the prescribed set count
+  or display incomplete fractions and chevrons in the trailing column.
+  Workout-level progress remains visible, each row uses a quiet derived status
+  circle, completed exercises receive a check and softened content, and the full
+  prescription and set completion remain in the VoiceOver label.
+  Each row now uses the established full-width native `Pressable` treatment,
+  including the space between text and status. A held press applies the raised
+  surface and 72-percent opacity feedback before the exercise sheet opens. The
+  status circle retains a 16-point trailing inset within that pressed surface.
+  The visible row summary is reduced to set count and rest only. Long exercise
+  names can grow vertically without replacing the text with artwork.
+- Implemented in source as a FLYNT surface decision: Today and its exercise
+  sheet now share one semantic sheet-surface token in both appearances, removing
+  the background-color shift when an exercise opens.
+- Implemented in source: the native tab bar now uses `chart.bar` and
+  `chart.bar.fill` for Progress and `message` and `message.fill` for Trainer,
+  preserving the unfilled default and filled selected-state convention.
+- Implemented in source: the exercise sheet header now presents only the
+  exercise name and close action. The repeated reps, RPE, and rest subtitle was
+  removed. Exercise artwork now renders transparently on the sheet rather than
+  inside a separate background card.
+- Implemented in source: decorative target tags were removed from the exercise
+  sheet. `Exercise stats` is now a labeled 44-point navigation row beneath set
+  logging instead of competing with the title or remaining below the viewport.
+  The restrained divider remains between coaching and logging to preserve the
+  two task groups.
+- Implemented in source: set logging no longer repeats visible set numbers or
+  load and rep units on every row. One aligned `LOAD (LBS)` and `REPS` header sits
+  over unframed logging rows. Only the editable load and rep controls retain a
+  restrained capsule surface. Load remains directly editable, while reps use
+  44-point decrease and increase actions around a directly editable numeric
+  value. Set order remains available in every field and action accessibility label.
+  Prescribed reps are now parsed from the `reps` value instead of incorrectly
+  using the leading set count.
+- Implemented in source: the rest countdown now uses one shared accessory
+  surface inside the exercise sheet and above the Today tab bar. Completing a
+  set starts the timer without moving exercise content or presenting a second
+  sheet. Closing the exercise preserves the same timer state on Today, while
+  selecting the accessory closes the exercise before expanding timer controls.
+- Implemented in source: completing an exercise's final set keeps the current
+  exercise visible and reveals an explicit `Next exercise` action, or `Back to
+  workout` when no incomplete exercise remains. The app no longer replaces the
+  exercise content instantaneously.
+- Implemented in source: Exercise stats now uses the exercise name as its sole
+  navigation title, removes redundant eyebrow labels, condenses its training
+  signal, presents recent top sets as a connected timeline, and gives the next
+  workout recommendation one restrained raised surface.
+- Verified locally: all five PNG files retain alpha transparency, TypeScript and
+  focused ESLint passed, and the repository copy-style check passed.
+- Verified in Simulator: scheme `FLYNT` built, installed, and launched on iPhone
+  17 / iOS 26.5. The latest build completed in 13.3 seconds. Dark-appearance
+  review confirmed all five thumbnails, set-and-rest-only list summaries,
+  removal of incomplete row fractions, the shared Today and sheet background,
+  the transparent Goblet Squat sheet visual, simplified sheet header, unframed
+  logging rows, correct 8-rep defaults, and sheet scrolling. Runtime
+  checks changed reps from 8 to 9 with the increase action and replaced the
+  editable value with 12 through the numeric keyboard. The runtime snapshot
+  exposed labeled load fields, rep
+  fields, decrease and increase actions, and completion actions for every set.
+  The Today tab showed unfilled Progress and Trainer symbols, selecting Progress
+  produced `chart.bar.fill`, and visual review confirmed the 16-point exercise
+  status inset and clean wrapping for the longest exercise name.
+  The 368-by-800 exercise sheet displayed the title, visual, three coaching
+  steps, divider, all four Goblet Squat set rows, and Exercise stats without
+  scrolling. The shared timer accessory was verified in the exercise sheet and
+  then above the Today tab bar after the sheet closed, with one continuous
+  countdown and no stacked presentation.
+- Evidence boundary: light appearance, Dynamic Type extremes, VoiceOver reading
+  order, Switch Control, Reduce Transparency, increased contrast, smallest
+  supported iPhone, physical iPhone, TestFlight, server-published exercise media,
+  caching, failure, and retry states remain unverified. The explicit final-set
+  transition and the cleaned Exercise stats presentation are implemented in
+  source and compile, but their final runtime visual states remain unverified.
 
 ## Active blockers
 
@@ -166,28 +247,37 @@ Current physical iPhone verification: Not started
 
 ## SwiftUI Today workout composition | 2026-08-01
 
-- Implemented in source: Today now renders as one Expo UI 57 SwiftUI hierarchy
-  inside the native tab destination. The page uses SwiftUI ScrollView, VStack,
-  HStack, ProgressView, DisclosureGroup, Button, TextField, Divider, and SF
-  Symbols. The FLYNT mark remains the real product asset through one fixed-size
-  React Native host inside the native top bar.
-- Implemented in source: each exercise is a native disclosure surface with the
-  system chevron and expansion behavior. Expanded cards retain Stats and Guide,
-  prescribed set count, load and rep fields, completion controls, rest context,
-  and one-open-card accordion state. Stats and Guide remain connected to the
-  existing native material sheets. Card elevation uses a restrained semantic
-  shadow in both appearances so secondary controls do not inherit a heavy halo.
-- Implemented in source: the week selector, progress display, workout cards,
+- Implemented in source as a reversible experiment: Today uses one native
+  SwiftUI `List` with compact, scannable exercise rows instead of expanding set
+  entry inside every workout card. Each row exposes exercise name,
+  prescription, completion state, and a 44-point navigation target. Its leading
+  SF Symbol is an explicit development placeholder until authoritative exercise
+  media is published. The real FLYNT mark and shared 44-point glass menu control
+  remain in the native top bar.
+- Implemented in source: selecting an exercise opens one system SwiftUI sheet
+  at the large detent, with medium available as a compact execution state. The
+  medium state prioritizes name, prescription, and set entry. The large state
+  follows the existing Guide hierarchy directly on the sheet: FLYNT Visual,
+  supporting copy, Execution, Targets, then load, rep, and completion controls.
+  The visual is not enclosed in a secondary card.
+- Implemented in source: Training History is a row within the exercise sheet.
+  It moves to a native paged view inside that same sheet, preserving the Stats
+  hierarchy, recent top sets, and next target. A 44-point top-left back chevron
+  returns to execution. The superseded standalone Stats and Guide sheet was
+  removed, so this flow does not stack one sheet over another.
+- Reversibility boundary: local checkpoint `ad23dd0` preserves the prior Today
+  accordion, separate Stats and Guide sheets, timer behavior, icon work, and
+  status ledger before this experiment.
+- Implemented in source: the week selector, progress display, exercise rows,
   fields, and completion actions use native semantic controls while preserving
-  FLYNT colors, continuous rounded geometry, restrained elevation, the existing
-  Plan-to-Today day route, and 44-point interaction targets.
+  FLYNT colors, the existing Plan-to-Today route, and 44-point interaction
+  targets.
 - Implemented in source: the selected week day uses one persistent native
   surface whose offset and neighboring widths use the shared responsive motion
   token, with Reduce Motion disabling the spring. Tapped-day state remains
   local to the mounted Today screen so route mutation cannot destroy the
   animation context, while a day routed from Plan still takes precedence.
-  Stats and Guide are compact secondary controls with SF Symbols and 44-point
-  interaction targets rather than prominent primary buttons.
+  The selected-day animation remains independent from exercise-sheet state.
 - Implemented in source: completing a non-final set starts a settings-aware rest
   timer from an absolute end timestamp. Quick, Adaptive, and Full recovery
   settings use the PWA multipliers and 15-second rounding. Unchecking, skipping,
@@ -230,11 +320,14 @@ Current physical iPhone verification: Not started
   two lifecycle navigation tests, TypeScript, ESLint, copy style, and Expo
   Doctor 20 of 20 passed with the repository's pinned Node 24.14.0 runtime.
 - Verified in Simulator: scheme `FLYNT` built, installed, and launched on iPhone
-  17 / iOS 26.5 in 11.9 seconds. Runtime inspection exposed every day and
-  exercise disclosure as a labeled button, every set value as a labeled native
-  text field, completion controls as labeled buttons, and Stats and Guide as
-  native actions. Both expanded and collapsed card layouts passed visual review.
-  A non-final set completion presented the shared native rest-timer sheet;
+  17 / iOS 26.5 in 15.0 seconds. Runtime inspection exposed every day and
+  compact exercise row as a labeled button, every set value as a labeled native
+  text field, completion controls as labeled buttons, Training History as a
+  labeled action, and back and close as native actions. The sheet opened large,
+  pulled down to medium, returned to large, and paged to Training History
+  without presenting a second sheet. The list, Guide-style large layout, medium
+  set-entry layout, and Stats-style history page passed visual review in dark
+  appearance. A non-final set completion presented the shared native rest-timer sheet;
   countdown, progress, adjustment controls, expanded Skip action, swipe and close
   dismissal, and the established inverse sheet material passed visual review.
   Minimizing revealed a labeled native bottom accessory, switching from Today
