@@ -49,11 +49,15 @@ export function RestTimerProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (timer?.seconds !== 0) return;
+    const presentation = setTimeout(() => setExpanded(true), 0);
     const timeout = setTimeout(() => {
       setTimer(null);
       setExpanded(false);
     }, 1250);
-    return () => clearTimeout(timeout);
+    return () => {
+      clearTimeout(presentation);
+      clearTimeout(timeout);
+    };
   }, [timer?.seconds]);
 
   const value = useMemo<RestTimerValue>(() => ({

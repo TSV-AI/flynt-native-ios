@@ -47,15 +47,16 @@ function RestTimerAccessory() {
   const { expand, timer } = useRestTimer();
   const { theme } = useFlyntTheme();
   const [accessoryWidth, setAccessoryWidth] = useState(0);
-  const progressStyle = useSmoothProgressWidth(timer ? timer.seconds / Math.max(1, timer.total) : 0, accessoryWidth);
-  if (!timer) return null;
   const inline = placement === 'inline';
+  const progressStyle = useSmoothProgressWidth(timer ? timer.seconds / Math.max(1, timer.total) : 0, accessoryWidth);
+
+  if (!timer) return null;
   const time = formatTimer(timer.seconds);
 
   return (
     <Pressable
       accessibilityHint="Opens the rest timer sheet"
-      accessibilityLabel={`${formatTimer(timer.seconds)} remaining for ${timer.exercise}`}
+      accessibilityLabel={`${time} remaining for ${timer.exercise}`}
       accessibilityRole="button"
       onLayout={(event) => setAccessoryWidth(event.nativeEvent.layout.width)}
       onPress={expand}
@@ -100,7 +101,7 @@ export default function AppTabsLayout() {
       }}
       tintColor={selectedColor}
     >
-      {timer && !isExpanded ? (
+      {timer && timer.seconds > 0 && !isExpanded ? (
         <NativeTabs.BottomAccessory>
           <RestTimerAccessory />
         </NativeTabs.BottomAccessory>

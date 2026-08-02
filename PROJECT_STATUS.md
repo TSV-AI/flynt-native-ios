@@ -10,7 +10,7 @@ Distribution: Apple App Store through App Store Connect
 
 Current source state: Native foundation, lifecycle navigation, and the PWA-referenced ready-state native preview are committed locally on `codex/native-foundation`; the SwiftUI Today workout composition, native rest-timer sheet, authoritative boot boundary, Apple HIG design authority, first HIG remediation pass, and native authentication client are implemented in the working tree
 Current local verification: On 2026-08-01, seven authentication callback and validation tests, 11 authoritative boot tests, two lifecycle navigation tests, TypeScript, ESLint, copy style, and Expo Doctor 20 of 20 passed with pinned Node 24.14.0.
-Current Simulator verification: On 2026-08-01 the current source, including the Apple Authentication entitlement and native modules, built, installed, and launched on iPhone 17 / iOS 26.5. The latest incremental build completed in 12.1 seconds and exercised the SwiftUI Today workout cards, animated week selector, compact Stats and Guide controls, set completion, shared native rest-timer sheet, and iOS 26 native tab-bar timer accessory. The countdown persisted while switching from Today to Plan and reopened from the accessory. The earlier HIG pass exercised native tab semantics, Plan-to-Today day routing, modal focus containment, pinned Trainer composition, and light and dark appearance switching. Live authentication still awaits external provider configuration.
+Current Simulator verification: On 2026-08-01 the current source, including the Apple Authentication entitlement and native modules, built, installed, and launched on iPhone 17 / iOS 26.5. The latest native build completed in 20.5 seconds and installed the approved FLYNT app icon while preserving the SwiftUI Today workout cards, animated week selector, compact Stats and Guide controls, set completion, shared native rest-timer sheet, and iOS 26 native tab-bar timer accessory. The countdown previously persisted while switching from Today to Plan and reopened from the accessory. The earlier HIG pass exercised native tab semantics, Plan-to-Today day routing, modal focus containment, pinned Trainer composition, and light and dark appearance switching. Live authentication still awaits external provider configuration.
 Current TestFlight verification: Not started
 Current physical iPhone verification: Not started
 
@@ -28,6 +28,21 @@ Current physical iPhone verification: Not started
   Expo starter MIT license was removed before the first FLYNT foundation commit.
 - Android remains a later P2 decision. Android demo configuration and artwork
   are intentionally absent from the iOS foundation.
+
+## Native app icon | 2026-08-01
+
+- Implemented in source: the approved 1024-point FLYNT Default and Dark exports
+  replace the starter icon. Expo SDK 57 now receives semantic Light, Dark, and
+  Tinted sources through `ios.icon`; the Tinted source is grayscale so iOS can
+  apply the athlete's selected system tint. The native asset catalog contains
+  the corresponding universal light, dark, and tinted appearances.
+- Verified locally: Expo resolved all three semantic icon paths, the generated
+  Light and Tinted catalog assets are opaque, and all generated catalog assets
+  are 1024 by 1024 points.
+- Verified in Simulator: scheme `FLYNT` built, installed, and launched on iPhone
+  17 / iOS 26.5 in 20.5 seconds. The approved white Default icon rendered on the
+  Home Screen. Dark and Tinted are bundled in the native asset catalog but their
+  Home Screen customization modes have not yet received separate visual review.
 
 ## Active blockers
 
@@ -189,7 +204,10 @@ Current physical iPhone verification: Not started
   `NativeTabs.BottomAccessory` above the tab bar. The accessory uses a `NEXT UP`
   eyebrow above the exercise title, keeps remaining time on the trailing edge,
   omits a redundant leading timer icon, preserves normal tab interaction, and
-  reopens the sheet.
+  reopens the sheet. At zero, the accessory is removed and the provider opens
+  the existing timer sheet if it was minimized. A timer sheet that is already
+  open is not re-presented or otherwise changed; its established completion
+  content, timing, animation, and dismissal behavior remain authoritative.
   Skip remains the explicit timer-cancellation action. A semantic translucent
   progress tint fills the native accessory and contracts with remaining time:
   strongly contrasted matte warm white over system glass in dark appearance
@@ -224,7 +242,10 @@ Current physical iPhone verification: Not started
   the timer sheet. The revised `NEXT UP` hierarchy, exercise title, trailing
   countdown, and removed leading timer icon passed visual review in dark
   appearance. The contracting matte progress tint and split-contrast text mask
-  were visually verified in dark appearance; light appearance remains source-implemented but not yet
+  were visually verified in dark appearance. The superseded zero-state tab-bar
+  completion treatment was removed on 2026-08-01. Automatic sheet presentation
+  from a minimized zero-state is source-implemented and awaits a reproducible
+  Simulator timing capture. Light appearance remains source-implemented but not yet
   visually verified in Simulator. The UI-thread interpolation and SwiftUI
   progress animation compile and launch in Simulator; frame-level motion review
   on a recorded Simulator or physical device remains outstanding.

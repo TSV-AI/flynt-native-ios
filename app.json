@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#F7F6F2",
     "ios": {
-      "icon": "./assets/images/icon.png",
+      "icon": {
+        "light": "./assets/images/icon.png",
+        "dark": "./assets/images/icon-dark.png",
+        "tinted": "./assets/images/icon-tinted.png"
+      },
       "supportsTablet": false,
       "bundleIdentifier": "com.threesixtyvue.flynt",
       "usesAppleSignIn": true
