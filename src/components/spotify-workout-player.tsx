@@ -23,6 +23,7 @@ const spotifyGreen = '#1ED760';
 const spotifyBlack = '#191414';
 const sheetItemBackground = '#222222';
 const previewArtwork = 'https://i.scdn.co/image/ab67706f00000002f367481f06b565250cc7b139';
+const spotifyPreviewEnabled = __DEV__ && process.env.EXPO_PUBLIC_SPOTIFY_PREVIEW === '1';
 
 type VisualTrack = {
   album: string;
@@ -142,7 +143,7 @@ function actualVisualTrack(player: ReturnType<typeof useSpotify>['state']['playe
 
 function useVisualPlayer() {
   const spotify = useSpotify();
-  const preview = __DEV__ && !spotify.state.installed;
+  const preview = spotifyPreviewEnabled;
   const [previewIndex, setPreviewIndex] = useState(0);
   const [previewPaused, setPreviewPaused] = useState(false);
   const track = preview ? previewTracks[previewIndex] : actualVisualTrack(spotify.state.player);
@@ -505,10 +506,27 @@ function SpotifyConnectState({ darkSheet }: { darkSheet: boolean }) {
   const ink = darkSheet ? '#FFFFFF' : '#0B0B0B';
   const muted = darkSheet ? 'rgba(255,255,255,0.58)' : 'rgba(17,17,16,0.58)';
   const unavailable = spotify.state.status === 'unavailable';
-  const title = unavailable ? 'Spotify isn’t installed.' : 'Connect your Spotify.';
+  const unconfigured = spotify.state.status === 'unconfigured';
+  const failed = spotify.state.status === 'error';
+  const title = unavailable
+    ? 'Spotify isn’t installed.'
+    : failed
+      ? 'Spotify couldn’t connect.'
+      : 'Connect your Spotify.';
   const detail = unavailable
     ? 'Install Spotify to control workout music from FLYNT.'
+    : unconfigured
+      ? 'Sign in with Spotify to mirror and control the music already playing on your phone, headphones, or speaker.'
+      : failed
+        ? 'Check Spotify, then try connecting again.'
     : 'Sign in with Spotify to mirror and control the music already playing on your phone, headphones, or speaker.';
+  const buttonLabel = unavailable
+    ? 'Open Spotify'
+    : unconfigured
+      ? 'Spotify Setup Required'
+      : failed
+        ? 'Try Again'
+        : 'Connect Spotify';
   return (
     <View style={styles.centeredState}>
       <SpotifyMark color={ink} size={58} />
@@ -516,12 +534,15 @@ function SpotifyConnectState({ darkSheet }: { darkSheet: boolean }) {
       <Text style={[styles.stateDetail, { color: muted }]}>{detail}</Text>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ disabled: unconfigured }}
+        disabled={unconfigured}
         onPress={() => void (unavailable ? spotify.openSpotify() : spotify.authorize())}
-        style={({ pressed }) => [styles.greenButton, styles.connectButton, pressed && styles.controlPressed]}
+        style={({ pressed }) => [styles.greenButton, styles.connectButton, unconfigured && styles.disabled, pressed && styles.controlPressed]}
       >
         <SpotifyMark color="#0B0B0B" size={20} />
-        <Text style={styles.greenButtonText}>{unavailable ? 'Open Spotify' : 'Connect Spotify'}</Text>
+        <Text style={styles.greenButtonText}>{buttonLabel}</Text>
       </Pressable>
+      <Text style={[styles.spotifyNote, { color: muted }]}>Spotify Premium is required for playback controls. Audio stays on your active Spotify device. FLYNT stores access securely and never sees your Spotify password.</Text>
     </View>
   );
 }
@@ -597,6 +618,7 @@ const styles = StyleSheet.create({
   loadingDot: { borderRadius: 4, height: 7, opacity: 0.55, width: 7 },
   stateTitle: { fontSize: 23, fontWeight: '700', letterSpacing: -0.8, lineHeight: 28, marginTop: 20, textAlign: 'center' },
   stateDetail: { fontSize: 12, lineHeight: 19, marginTop: 10, maxWidth: 300, textAlign: 'center' },
+  spotifyNote: { fontSize: 10, lineHeight: 15, marginTop: 24, maxWidth: 310, textAlign: 'center' },
   greenButton: { alignItems: 'center', backgroundColor: spotifyGreen, borderRadius: 999, justifyContent: 'center', marginTop: 22, minHeight: 51, minWidth: 170, paddingHorizontal: 24 },
   connectButton: { flexDirection: 'row', gap: 9, marginTop: 28, minWidth: 210, paddingHorizontal: 27 },
   greenButtonText: { color: '#0C0C0C', fontSize: 14, fontWeight: '700' },

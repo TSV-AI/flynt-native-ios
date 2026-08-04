@@ -51,6 +51,15 @@ export const exerciseSchema = z.object({
     'recovery',
   ]).optional(),
   progressionRule: z.string().trim().min(1).max(240).optional(),
+  tempo: z.string().trim().max(40).optional(),
+});
+
+export const workoutOverrideExerciseSchema = exerciseSchema.extend({
+  id: z.string().trim().min(1).max(120),
+  name: z.string().trim().min(1).max(120),
+  sets: z.number().int().min(1).max(20),
+  reps: z.string().trim().min(1).max(40),
+  rest: z.number().int().min(0).max(900),
 });
 
 export const trainingDaySchema = z.object({
@@ -64,6 +73,136 @@ export const trainingDaySchema = z.object({
 
 export const weeklyProgramSchema = z.array(trainingDaySchema).length(7);
 
+export const workoutSessionSummarySchema = z.object({
+  id: z.string().trim().min(1).max(180).optional(),
+  date: z.string().trim().min(1),
+  title: z.string().trim().min(1).max(120),
+  volume: z.coerce.number().min(0).default(0),
+  completedSets: z.number().int().min(0).max(200).optional(),
+  totalSets: z.number().int().min(0).max(200).optional(),
+});
+
+export const normalizedWorkoutSetSchema = z.object({
+  exercise_id: z.string().trim().min(1).max(80),
+  exercise_name: z.string().trim().min(1).max(120),
+  set_index: z.number().int().min(0).max(20),
+  prescribed_reps: z.string().trim().max(40).nullable().optional(),
+  prescribed_load: z.coerce.number().min(0).max(3000).nullable().optional(),
+  actual_reps: z.number().int().min(0).max(1000),
+  actual_load: z.coerce.number().min(0).max(3000),
+  rpe: z.coerce.number().min(1).max(10).nullable(),
+  pain: z.coerce.number().int().min(0).max(10).nullable(),
+  complete: z.boolean(),
+});
+
+export const normalizedWorkoutSessionSchema = z.object({
+  id: z.string().uuid().optional(),
+  client_session_key: z.string().trim().min(1).max(180),
+  workout_date: z.string().date(),
+  day_short: z.enum(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']).optional(),
+  title: z.string().trim().min(1).max(120),
+  completed_sets: z.number().int().min(0).max(200),
+  total_sets: z.number().int().min(0).max(200),
+  volume: z.coerce.number().min(0),
+  duration_seconds: z.number().int().min(0).max(24 * 60 * 60).nullable().optional(),
+  readiness: z.number().int().min(1).max(5).nullable().optional(),
+  notes: z.string().trim().max(1000).nullable().optional(),
+  completed_at: z.string().datetime({ offset: true }),
+  workout_sets: z.array(normalizedWorkoutSetSchema).nullable().default([]).transform((sets) => sets ?? []),
+});
+
+export const workoutHistoryResponseSchema = z.object({
+  sessions: z.array(normalizedWorkoutSessionSchema),
+});
+
+export const exerciseLibraryEntrySchema = z.object({
+  slug: z.string().trim().min(1).max(80).regex(/^[a-z0-9-]+$/),
+  name: z.string().trim().min(1).max(120),
+  aliases: z.array(z.string()).default([]),
+  category: z.string().trim().min(1).max(120).default('strength'),
+  equipment: z.array(z.string().trim().min(1).max(120)).default([]),
+  movement_pattern: z.string().trim().max(120).nullable().optional(),
+  guide_steps: z.array(z.string().trim().min(1).max(500)).max(12),
+  targets: z.array(z.string().trim().min(1).max(120)).max(20).default([]),
+  cues: z.array(z.string().trim().min(1).max(240)).max(20).default([]),
+  feel: z.string().trim().max(500).default(''),
+  visual_url: z.string().trim().min(1).nullable().optional(),
+  visual_width: z.number().int().positive().nullable().optional(),
+  visual_height: z.number().int().positive().nullable().optional(),
+  visual_alt: z.string().trim().min(1).max(500).nullable().optional(),
+});
+
+export const exerciseLibraryResponseSchema = z.object({
+  exercises: z.array(exerciseLibraryEntrySchema),
+});
+
+const conciseText = (maximum: number) => z.string().trim().min(1).max(maximum);
+
+export const consultationBasicsSchema = z.object({
+  name: conciseText(80),
+  age: z.number().int().min(13).max(120),
+  height: z.number().int().min(48).max(95),
+  weight: z.number().min(75).max(700),
+  experience: z.enum(['new', 'some', 'experienced']),
+  trainingIntent: z.enum(['coached', 'self_directed', 'hybrid']),
+});
+
+export const completedConsultationSchema = z.object({
+  summary: conciseText(700),
+  coachingPriorities: z.array(conciseText(160)).min(2).max(6),
+  profile: z.object({
+    name: conciseText(80),
+    age: conciseText(12),
+    heightFeet: conciseText(12),
+    heightInches: conciseText(12),
+    weight: conciseText(20),
+    experience: conciseText(80),
+    daysPerWeek: conciseText(20),
+    equipment: conciseText(700),
+    goal: conciseText(1600),
+    limitations: conciseText(1600),
+  }),
+  answers: z.object({
+    primaryGoals: z.array(conciseText(120)).min(1).max(8),
+    focusAreas: z.array(conciseText(120)).max(10),
+    sessionLength: conciseText(60),
+    equipment: z.array(conciseText(120)).min(1).max(12),
+    preferredMovements: conciseText(1200),
+    avoidedMovements: conciseText(1200),
+    recovery: conciseText(1600),
+    trainingHistory: conciseText(1600),
+    scheduleConstraints: conciseText(1200),
+    sportsActivity: conciseText(1000),
+    mobilityPriorities: conciseText(1000),
+    successMeasures: conciseText(1000),
+  }),
+});
+
+const programChangeOperationSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('replace_exercise'), dayIndex: z.number().int().min(0).max(6), exerciseId: z.string(), replacement: exerciseSchema }),
+  z.object({
+    type: z.literal('update_exercise'),
+    dayIndex: z.number().int().min(0).max(6),
+    exerciseId: z.string(),
+    sets: z.number().int().min(1).max(10).optional(),
+    reps: z.string().trim().min(1).max(120).optional(),
+    rest: z.number().int().min(0).max(600).optional(),
+    note: z.string().trim().max(180).optional(),
+    targetLoad: z.number().min(0).max(3000).optional(),
+    targetRpe: z.number().min(1).max(10).optional(),
+    progressionRule: z.string().trim().min(1).max(240).optional(),
+  }),
+  z.object({ type: z.literal('add_exercise'), dayIndex: z.number().int().min(0).max(6), position: z.number().int().min(0).max(20).optional(), exercise: exerciseSchema }),
+  z.object({ type: z.literal('remove_exercise'), dayIndex: z.number().int().min(0).max(6), exerciseId: z.string() }),
+  z.object({ type: z.literal('update_day'), dayIndex: z.number().int().min(0).max(6), title: z.string().trim().min(1).max(80).optional(), focus: z.string().trim().min(1).max(240).optional() }),
+]);
+
+export const programChangeSchema = z.object({
+  summary: z.string().trim().min(1).max(140),
+  rationale: z.string().trim().min(1).max(500),
+  operations: z.array(programChangeOperationSchema).min(1).max(8),
+});
+
 export const appStateSchema = z.object({
   lifecycle: lifecycleStatusSchema,
   profile: personalBasicsSchema.extend({
@@ -74,6 +213,11 @@ export const appStateSchema = z.object({
   }),
   preferences: preferencesSchema,
   program: weeklyProgramSchema.nullable(),
+  programMeta: z.object({
+    weekId: z.string().uuid(),
+    weekStart: z.string().date(),
+    versionId: z.string().uuid().nullable(),
+  }).nullable().default(null),
   build: z.object({
     id: z.string().uuid(),
     status: z.string(),
@@ -95,12 +239,21 @@ export const appStateSchema = z.object({
   workoutState: z.object({
     logs: z.record(z.string(), z.unknown()),
     loads: z.record(z.string(), z.number()),
-    sessions: z.array(z.unknown()),
+    sessions: z.array(workoutSessionSummarySchema),
     liftHistory: z.record(z.string(), z.unknown()),
+    workoutOverrides: z.record(z.string(), z.array(workoutOverrideExerciseSchema).max(32)).default({}),
   }),
 });
 
 export type AppState = z.infer<typeof appStateSchema>;
 export type LifecycleStatus = z.infer<typeof lifecycleStatusSchema>;
 export type AppPreferences = z.infer<typeof preferencesSchema>;
+export type PersonalBasics = z.infer<typeof personalBasicsSchema>;
 export type TrainingDay = z.infer<typeof trainingDaySchema>;
+export type WorkoutSessionSummary = z.infer<typeof workoutSessionSummarySchema>;
+export type NormalizedWorkoutSession = z.infer<typeof normalizedWorkoutSessionSchema>;
+export type ExerciseLibraryEntry = z.infer<typeof exerciseLibraryEntrySchema>;
+export type WorkoutOverrideExercise = z.infer<typeof workoutOverrideExerciseSchema>;
+export type ConsultationBasics = z.infer<typeof consultationBasicsSchema>;
+export type CompletedConsultation = z.infer<typeof completedConsultationSchema>;
+export type ProgramChange = z.infer<typeof programChangeSchema>;

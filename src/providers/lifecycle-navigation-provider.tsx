@@ -11,12 +11,14 @@ import {
 import { AppState as NativeAppState } from 'react-native';
 
 import {
+  appStateSchema,
   lifecycleStatusSchema,
   type AppState,
   type LifecycleStatus,
 } from '@/contracts/app-state';
 import { fetchAppState } from '@/lib/api-client';
 import {
+  accessTokenFromStoredSession,
   AuthoritativeBootError,
   resolveAuthoritativeBoot,
 } from '@/lib/authoritative-boot';
@@ -36,6 +38,7 @@ type LifecycleNavigationValue = {
   destination: LifecycleDestination;
   hasSession: boolean;
   phase: LifecycleBootPhase;
+  refresh: () => Promise<void>;
   retry: () => void;
   signOut: () => Promise<void>;
 };
@@ -52,15 +55,37 @@ function developmentPreviewLifecycle(): LifecycleStatus | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
+function developmentPreviewAppState(lifecycle: LifecycleStatus): AppState | null {
+  if (!__DEV__ || (lifecycle !== 'consultation_required' && lifecycle !== 'consultation_in_progress')) return null;
+  return appStateSchema.parse({
+    lifecycle,
+    profile: {
+      fullName: '', age: null, heightInches: null, currentWeightLb: null,
+      email: 'preview@flynt.local', avatarUrl: null, trainerReport: {}, consultationSnapshot: {},
+    },
+    preferences: { timeZone: 'America/Los_Angeles' },
+    program: null,
+    programMeta: null,
+    build: null,
+    conversation: {
+      id: '00000000-0000-4000-8000-000000000001',
+      kind: 'consultation',
+      messages: [],
+    },
+    workoutState: { logs: {}, loads: {}, sessions: [], liftHistory: {}, workoutOverrides: {} },
+  });
+}
+
 export function LifecycleNavigationProvider({
   children,
   lifecycle,
 }: LifecycleNavigationProviderProps) {
   const overrideLifecycle = lifecycle ?? developmentPreviewLifecycle();
+  const previewAppState = overrideLifecycle ? developmentPreviewAppState(overrideLifecycle) : null;
   const requestIdRef = useRef(0);
   const [phase, setPhase] = useState<LifecycleBootPhase>(overrideLifecycle ? 'ready' : 'loading');
   const [activeLifecycle, setActiveLifecycle] = useState<LifecycleStatus | undefined>(overrideLifecycle);
-  const [appState, setAppState] = useState<AppState | null>(null);
+  const [appState, setAppState] = useState<AppState | null>(previewAppState);
   const [bootError, setBootError] = useState<AuthoritativeBootError | null>(null);
   const [hasSession, setHasSession] = useState(Boolean(overrideLifecycle));
 
@@ -137,6 +162,17 @@ export function LifecycleNavigationProvider({
     }
   }, []);
 
+  const refresh = useCallback(async () => {
+    if (overrideLifecycle) return;
+    const session = await readSecureSession();
+    if (!session) return;
+    const nextState = await fetchAppState(accessTokenFromStoredSession(session));
+    setAppState(nextState);
+    setActiveLifecycle(nextState.lifecycle);
+    setHasSession(true);
+    setBootError(null);
+  }, [overrideLifecycle]);
+
   const value = useMemo<LifecycleNavigationValue>(
     () => ({
       appState,
@@ -144,12 +180,13 @@ export function LifecycleNavigationProvider({
       destination: activeLifecycle ? destinationForLifecycle(activeLifecycle) : 'signed-out',
       hasSession,
       phase,
+      refresh,
       retry: () => {
         if (!overrideLifecycle) void runBoot();
       },
       signOut,
     }),
-    [activeLifecycle, appState, bootError, hasSession, overrideLifecycle, phase, runBoot, signOut],
+    [activeLifecycle, appState, bootError, hasSession, overrideLifecycle, phase, refresh, runBoot, signOut],
   );
 
   return (

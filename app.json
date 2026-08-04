@@ -17,10 +17,16 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.threesixtyvue.flynt",
       "usesAppleSignIn": true,
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.threesixtyvue.flynt"
+        ]
+      },
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "spotify"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "web": {
@@ -44,11 +50,38 @@
         }
       ],
       "expo-apple-authentication",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.threesixtyvue.flynt.widget",
+          "groupIdentifier": "group.com.threesixtyvue.flynt",
+          "widgets": [
+            {
+              "name": "FlyntTodayWidget",
+              "displayName": "Today",
+              "description": "See today's FLYNT workout and set progress.",
+              "contentMarginsDisabled": true,
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium",
+                "systemLarge"
+              ]
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e4d50525-4168-4df7-8c28-4fdd19a794ea"
+      }
+    },
+    "owner": "tsv-ai"
   }
 }

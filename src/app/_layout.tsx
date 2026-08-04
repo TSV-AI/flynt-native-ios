@@ -1,12 +1,15 @@
 import 'react-native-url-polyfill/auto';
 import '@/global.css';
 
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as Linking from 'expo-linking';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 
+import { appSurfaces } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { RestTimerSheet } from '@/components/rest-timer-sheet';
+import { WidgetLifecycleSync } from '@/components/widget-lifecycle-sync';
 import { FlyntThemeProvider } from '@/providers/flynt-theme-provider';
 import { LifecycleNavigationProvider, useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 import { ModalPresentationProvider } from '@/providers/modal-presentation-provider';
@@ -18,6 +21,8 @@ function RootNavigator() {
   const { mode, theme } = useFlyntTheme();
   const { destination, hasSession, phase } = useLifecycleNavigation();
   const restTimer = useRestTimer();
+  const router = useRouter();
+  const linkingUrl = Linking.useLinkingURL();
   const bootReady = phase === 'ready';
 
   const navigationTheme = mode === 'dark'
@@ -27,6 +32,18 @@ function RootNavigator() {
   useEffect(() => {
     if (!hasSession) restTimer.stop();
   }, [hasSession, restTimer]);
+
+  useEffect(() => {
+    if (!bootReady || destination !== 'ready' || !linkingUrl) return;
+    const parsed = Linking.parse(linkingUrl);
+    const route = [parsed.hostname, parsed.path]
+      .filter(Boolean)
+      .join('/')
+      .replace(/^\/+|\/+$/g, '');
+
+    if (route.endsWith('plan')) router.replace('/(tabs)/plan');
+    if (route.endsWith('today')) router.replace('/(tabs)/today');
+  }, [bootReady, destination, linkingUrl, router]);
 
   return (
     <ThemeProvider value={navigationTheme}>
@@ -45,9 +62,9 @@ function RootNavigator() {
           <Stack.Screen name="boot" options={{ headerShown: false }} />
         </Stack.Protected>
         <Stack.Protected guard={bootReady && destination === 'signed-out'}>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="create-account" />
-          <Stack.Screen name="sign-in" />
+          <Stack.Screen name="index" options={{ contentStyle: { backgroundColor: appSurfaces.dark.primaryBackground }, headerShown: false }} />
+          <Stack.Screen name="create-account" options={{ contentStyle: { backgroundColor: appSurfaces.dark.primaryBackground }, headerShown: false }} />
+          <Stack.Screen name="sign-in" options={{ contentStyle: { backgroundColor: appSurfaces.dark.primaryBackground }, headerShown: false }} />
         </Stack.Protected>
         <Stack.Protected guard={bootReady && destination === 'consultation'}>
           <Stack.Screen name="consultation" options={{ headerShown: false }} />
@@ -65,7 +82,7 @@ function RootNavigator() {
           <Stack.Screen name="lifecycle-settings" />
           <Stack.Screen name="settings" options={{ headerShown: false, presentation: 'card' }} />
         </Stack.Protected>
-        <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+        <Stack.Screen name="auth-callback" options={{ contentStyle: { backgroundColor: appSurfaces.dark.primaryBackground }, headerShown: false }} />
       </Stack>
       <RestTimerSheet
         isPresented={restTimer.isExpanded && restTimer.timer !== null}
@@ -74,24 +91,25 @@ function RootNavigator() {
         onSkip={restTimer.stop}
         timer={restTimer.timer}
       />
+      <WidgetLifecycleSync />
     </ThemeProvider>
   );
 }
 
 export default function RootLayout() {
   return (
-    <FlyntThemeProvider>
-      <SettingsPreferencesProvider>
-        <SpotifyProvider>
-          <ModalPresentationProvider>
-            <RestTimerProvider>
-              <LifecycleNavigationProvider>
+    <LifecycleNavigationProvider>
+      <FlyntThemeProvider>
+        <SettingsPreferencesProvider>
+          <SpotifyProvider>
+            <ModalPresentationProvider>
+              <RestTimerProvider>
                 <RootNavigator />
-              </LifecycleNavigationProvider>
-            </RestTimerProvider>
-          </ModalPresentationProvider>
-        </SpotifyProvider>
-      </SettingsPreferencesProvider>
-    </FlyntThemeProvider>
+              </RestTimerProvider>
+            </ModalPresentationProvider>
+          </SpotifyProvider>
+        </SettingsPreferencesProvider>
+      </FlyntThemeProvider>
+    </LifecycleNavigationProvider>
   );
 }

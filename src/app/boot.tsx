@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { radius, spacing, type } from '@/constants/theme';
+import { appSurfaces, radius, spacing, type } from '@/constants/theme';
 import type { AuthoritativeBootFailure } from '@/lib/authoritative-boot';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
@@ -32,7 +32,7 @@ export default function BootScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.canvas }]} testID="screen-authoritative-boot">
+    <View style={[styles.screen, { backgroundColor: appSurfaces.dark.primaryBackground }]} testID="screen-authoritative-boot">
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.copy}>
           <Text style={[styles.eyebrow, { color: theme.muted }]}>FLYNT</Text>

@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,18 +15,28 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { radius, spacing, type } from '@/constants/theme';
+import { FlyntSheet } from '@/components/flynt-sheet';
 import { NativeSymbol } from '@/components/native-symbol';
+import { appSurfaces, radius, spacing, type } from '@/constants/theme';
+import { accountCopy, flyntLegalVersion } from '@/features/first-run-content';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
-import { failed, saved } from '@/lib/haptics';
+import { acceptTerms } from '@/lib/api-client';
 import {
-  requestEmailLink,
+  requestEmailOtp,
   signInWithApple,
   signInWithGoogle,
+  signOutFromSupabase,
   UserCancelledAuthError,
+  verifyEmailOtp,
   type EmailAuthMode,
 } from '@/lib/auth';
-import { isValidEmail, normalizeEmail } from '@/lib/auth-flow';
+import {
+  isValidEmail,
+  isValidEmailOtp,
+  normalizeEmail,
+  normalizeEmailOtp,
+} from '@/lib/auth-flow';
+import { failed, saved } from '@/lib/haptics';
 import { AuthConfigurationError } from '@/lib/supabase-client';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 
@@ -33,9 +44,19 @@ type AccountEntryScreenProps = {
   mode: EmailAuthMode;
 };
 
+type LegalView = 'privacy' | 'terms' | null;
+
 function authErrorCopy(error: unknown) {
   if (error instanceof AuthConfigurationError) {
     return 'Authentication is not configured in this development build yet.';
+  }
+  if (error instanceof Error) {
+    if (/signups not allowed for otp|otp_disabled/i.test(error.message)) {
+      return 'We couldn’t send a code for that email. Try Google or create a new account.';
+    }
+    if (/over_email_send_rate_limit/i.test(error.message)) {
+      return 'Email delivery is temporarily unavailable. Try again later or continue with Google.';
+    }
   }
   return 'FLYNT could not complete that request. Check your connection and try again.';
 }
@@ -43,12 +64,17 @@ function authErrorCopy(error: unknown) {
 export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
   const { mode: colorMode, theme } = useFlyntTheme();
   const { retry } = useLifecycleNavigation();
+  const [authMode, setAuthMode] = useState<EmailAuthMode>(mode);
   const [email, setEmail] = useState('');
   const [emailOpen, setEmailOpen] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isAppleAvailable, setIsAppleAvailable] = useState(false);
+  const [legalView, setLegalView] = useState<LegalView>(null);
   const [pending, setPending] = useState<'apple' | 'email' | 'google' | null>(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -60,14 +86,53 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
     };
   }, []);
 
+  const isBusy = pending !== null;
+  const requiresConsent = authMode === 'create' && !recoveryMode;
+  const providerDisabled = isBusy || (requiresConsent && !termsAccepted);
+  const description = recoveryMode
+    ? accountCopy.recovery
+    : authMode === 'create'
+      ? accountCopy.create
+      : accountCopy.signIn;
+
+  function resetEmailEntry() {
+    setEmail('');
+    setEmailOtp('');
+    setError(null);
+    setSentTo(null);
+  }
+
+  function toggleMode() {
+    const nextMode = authMode === 'create' ? 'sign-in' : 'create';
+    resetEmailEntry();
+    setAuthMode(nextMode);
+    setEmailOpen(false);
+    setRecoveryMode(false);
+    setTermsAccepted(false);
+  }
+
+  async function completeAuthentication() {
+    if (authMode === 'create' && !recoveryMode) {
+      try {
+        await acceptTerms(flyntLegalVersion);
+      } catch (acceptanceError) {
+        await signOutFromSupabase().catch(() => undefined);
+        throw acceptanceError;
+      }
+    }
+    await saved();
+    retry();
+    router.replace('/boot');
+  }
+
   async function runProvider(provider: 'apple' | 'google') {
+    if (providerDisabled) return;
     setError(null);
     setPending(provider);
     try {
       if (provider === 'apple') await signInWithApple();
       else await signInWithGoogle();
-      await saved();
-      retry();
+      await completeAuthentication();
     } catch (providerError) {
       if (!(providerError instanceof UserCancelledAuthError)) {
         setError(authErrorCopy(providerError));
@@ -83,12 +148,14 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
       setError('Enter a valid email address.');
       return;
     }
+    if (requiresConsent && !termsAccepted) return;
     const normalized = normalizeEmail(email);
     setError(null);
     setPending('email');
     try {
-      await requestEmailLink(normalized, mode);
+      await requestEmailOtp(normalized, recoveryMode ? 'sign-in' : authMode);
       setSentTo(normalized);
+      setEmailOtp('');
       await saved();
     } catch (emailError) {
       setError(authErrorCopy(emailError));
@@ -98,221 +165,409 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
     }
   }
 
-  const isBusy = pending !== null;
-  const body = mode === 'create'
-    ? 'Create a new account to build your training around you and keep every session synced.'
-    : 'Sign in to your existing account to access your program, progress, and Trainer history.';
-
-  if (sentTo) {
-    return (
-      <View style={[styles.screen, { backgroundColor: theme.canvas }]}>
-        <SafeAreaView edges={['bottom']} style={styles.centeredContent}>
-          <Text style={[styles.eyebrow, { color: theme.muted }]}>CHECK YOUR EMAIL</Text>
-          <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>Open your secure link.</Text>
-          <Text style={[styles.body, { color: theme.muted }]}>We sent it to {sentTo}.</Text>
-          <Text style={[styles.supporting, { color: theme.muted }]}>You can return to FLYNT after opening the link.</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              setError(null);
-              setSentTo(null);
-            }}
-            style={styles.textButton}
-          >
-            <Text style={[styles.textButtonCopy, { color: theme.ink }]}>Use another email</Text>
-          </Pressable>
-        </SafeAreaView>
-      </View>
-    );
+  async function submitEmailOtp() {
+    if (!sentTo || !isValidEmailOtp(emailOtp)) return;
+    setError(null);
+    setPending('email');
+    try {
+      await verifyEmailOtp(sentTo, emailOtp);
+      await completeAuthentication();
+    } catch (otpError) {
+      setError(
+        otpError instanceof Error && /terms|acceptance/i.test(otpError.message)
+          ? 'Unable to save your Terms acceptance. Try creating the account again.'
+          : 'That code is incorrect or has expired. Request a new code and try again.',
+      );
+      await failed();
+    } finally {
+      setPending(null);
+    }
   }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={[styles.screen, { backgroundColor: theme.canvas }]}
+      style={[styles.screen, { backgroundColor: appSurfaces.dark.primaryBackground }]}
     >
-      <SafeAreaView edges={['bottom']} style={styles.content}>
-        <View accessibilityLabel="FLYNT" style={styles.brandLockup}>
-          <Image
-            accessibilityIgnoresInvertColors
-            source={colorMode === 'dark'
-              ? require('@/assets/images/flynt-mark-light.png')
-              : require('@/assets/images/flynt-mark-ink.png')}
-            style={styles.brandMark}
-          />
-          <Text accessibilityRole="header" style={[styles.wordmark, { color: theme.ink }]}>FLYNT</Text>
-        </View>
-        <Text style={[styles.accountCopy, { color: theme.muted }]}>{body}</Text>
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <ScrollView
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={styles.scrollContent}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View accessibilityLabel="FLYNT" style={styles.brandLockup}>
+            <Image
+              accessibilityIgnoresInvertColors
+              source={colorMode === 'dark'
+                ? require('@/assets/images/flynt-mark-light.png')
+                : require('@/assets/images/flynt-mark-ink.png')}
+              style={styles.brandMark}
+            />
+            <Text accessibilityRole="header" style={[styles.wordmark, { color: theme.ink }]}>FLYNT</Text>
+          </View>
+          <Text style={[styles.accountCopy, { color: theme.muted }]}>{description}</Text>
 
-        <View style={styles.actions}>
-          {!emailOpen && isAppleAvailable ? (
-            <View pointerEvents={isBusy ? 'none' : 'auto'} style={{ opacity: isBusy && pending !== 'apple' ? 0.5 : 1 }}>
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonStyle={colorMode === 'dark'
-                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                buttonType={mode === 'create'
-                  ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP
-                  : AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                cornerRadius={28}
-                onPress={() => void runProvider('apple')}
-                style={styles.appleButton}
-              />
-            </View>
-          ) : null}
-          {!emailOpen ? <Pressable
-            accessibilityRole="button"
-            disabled={isBusy}
-            onPress={() => void runProvider('google')}
-            style={({ pressed }) => [
-              styles.providerButton,
+          <View style={styles.actions}>
+            {!recoveryMode && !emailOpen && !sentTo ? (
+              isAppleAvailable ? (
+                <View pointerEvents={providerDisabled ? 'none' : 'auto'} style={{ opacity: providerDisabled ? 0.48 : 1 }}>
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonStyle={colorMode === 'dark'
+                      ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                      : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                    cornerRadius={18}
+                    onPress={() => void runProvider('apple')}
+                    style={styles.appleButton}
+                  />
+                </View>
+              ) : null
+            ) : null}
+
+            {!recoveryMode && !emailOpen && !sentTo ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={providerDisabled}
+                onPress={() => void runProvider('google')}
+                style={({ pressed }) => [
+                  styles.providerButton,
+                  {
+                    backgroundColor: theme.primaryFill,
+                    borderColor: theme.primaryFill,
+                    opacity: providerDisabled ? 0.48 : pressed ? 0.72 : 1,
+                  },
+                ]}
+              >
+                {pending === 'google' ? <ActivityIndicator color={theme.primaryText} /> : (
+                  <View style={styles.googleButtonContent}>
+                    <Image
+                      accessibilityIgnoresInvertColors
+                      source={require('../../assets/icons/google-g.png')}
+                      style={styles.googleMark}
+                    />
+                    <Text style={[styles.googleButtonCopy, { color: theme.primaryText }]}>Continue with Google</Text>
+                  </View>
+                )}
+              </Pressable>
+            ) : null}
+
+            {!recoveryMode && !emailOpen && !sentTo ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={providerDisabled}
+                onPress={() => {
+                  setError(null);
+                  setEmailOpen(true);
+                }}
+                style={({ pressed }) => [
+                  styles.emailTextAction,
+                  { opacity: providerDisabled ? 0.48 : pressed ? 0.62 : 1 },
+                ]}
+              >
+                <NativeSymbol color={theme.muted} name="envelope" size={17} />
+                <Text style={[styles.emailTextActionCopy, { color: theme.ink }]}>Continue with email</Text>
+              </Pressable>
+            ) : null}
+
+            {(emailOpen || recoveryMode || sentTo) ? (
+              <View style={styles.emailGroup}>
+                {!sentTo ? (
+                  <View style={[styles.inlineEmail, { backgroundColor: theme.raised, borderColor: error ? theme.danger : theme.line }]}>
+                    <TextInput
+                      accessibilityLabel="Email address"
+                      autoCapitalize="none"
+                      autoComplete="email"
+                      autoCorrect={false}
+                      autoFocus
+                      editable={!isBusy}
+                      keyboardType="email-address"
+                      onChangeText={(value) => {
+                        setEmail(value);
+                        if (error) setError(null);
+                      }}
+                      onSubmitEditing={() => void submitEmail()}
+                      placeholder="you@example.com"
+                      placeholderTextColor={theme.muted}
+                      returnKeyType="done"
+                      style={[styles.inlineEmailInput, { color: theme.ink }]}
+                      textContentType="emailAddress"
+                      value={email}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={isBusy || !isValidEmail(email) || (requiresConsent && !termsAccepted)}
+                      onPress={() => void submitEmail()}
+                      style={({ pressed }) => [
+                        styles.inlineContinue,
+                        {
+                          backgroundColor: theme.primaryFill,
+                          opacity: isBusy || !isValidEmail(email) || (requiresConsent && !termsAccepted)
+                            ? 0.34
+                            : pressed ? 0.8 : 1,
+                        },
+                      ]}
+                    >
+                      {pending === 'email' ? <ActivityIndicator color={theme.primaryText} size="small" /> : (
+                        <Text style={[styles.inlineContinueCopy, { color: theme.primaryText }]}>Continue</Text>
+                      )}
+                    </Pressable>
+                  </View>
+                ) : (
+                  <>
+                    <OtpCodeField
+                      disabled={isBusy}
+                      onChange={(value) => {
+                        setEmailOtp(value);
+                        if (error) setError(null);
+                      }}
+                      theme={theme}
+                      value={emailOtp}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={isBusy || !isValidEmailOtp(emailOtp)}
+                      onPress={() => void submitEmailOtp()}
+                      style={({ pressed }) => [
+                        styles.verifyButton,
+                        {
+                          backgroundColor: theme.primaryFill,
+                          opacity: isBusy || !isValidEmailOtp(emailOtp) ? 0.34 : pressed ? 0.82 : 1,
+                        },
+                      ]}
+                    >
+                      {pending === 'email' ? <ActivityIndicator color={theme.primaryText} /> : (
+                        <Text style={[styles.providerButtonCopy, { color: theme.primaryText }]}>Verify</Text>
+                      )}
+                    </Pressable>
+                  </>
+                )}
+
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isBusy}
+                  onPress={() => {
+                    if (sentTo) {
+                      setSentTo(null);
+                      setEmailOtp('');
+                    } else if (recoveryMode) {
+                      resetEmailEntry();
+                      setEmailOpen(false);
+                      setRecoveryMode(false);
+                    } else {
+                      resetEmailEntry();
+                      setEmailOpen(false);
+                    }
+                  }}
+                  style={styles.backToOptions}
+                >
+                  <Text style={[styles.smallActionCopy, { color: theme.muted }]}>
+                    {sentTo ? 'Use a different email' : recoveryMode ? 'Back to sign in' : 'Back to sign-in options'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {requiresConsent ? (
+              <View style={styles.consentRow}>
+                <Pressable
+                  accessibilityLabel="Accept Terms and Privacy Notice"
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: termsAccepted }}
+                  onPress={() => setTermsAccepted((accepted) => !accepted)}
+                  style={styles.checkboxTarget}
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      {
+                        backgroundColor: termsAccepted ? theme.primaryFill : theme.raised,
+                        borderColor: termsAccepted ? theme.primaryFill : theme.line,
+                      },
+                    ]}
+                  >
+                    {termsAccepted ? <NativeSymbol color={theme.primaryText} name="checkmark" size={12} /> : null}
+                  </View>
+                </Pressable>
+                <View style={styles.consentCopy}>
+                  <Text style={[styles.consentText, { color: theme.muted }]}>I agree to FLYNT&apos;s</Text>
+                  <View style={styles.legalLinks}>
+                    <Pressable accessibilityRole="button" onPress={() => setLegalView('terms')}>
+                      <Text style={[styles.legalLink, { color: theme.ink }]}>Terms &amp; Safety Notice</Text>
+                    </Pressable>
+                    <Text style={[styles.consentText, { color: theme.muted }]}>and</Text>
+                    <Pressable accessibilityRole="button" onPress={() => setLegalView('privacy')}>
+                      <Text style={[styles.legalLink, { color: theme.ink }]}>Privacy Notice</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {error ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+
+            {!emailOpen && !sentTo && !recoveryMode ? (
+              <View style={styles.secondaryActions}>
+                <Pressable accessibilityRole="button" onPress={toggleMode} style={styles.secondaryAction}>
+                  <Text style={[styles.smallActionCopy, { color: theme.muted }]}>
+                    {authMode === 'create' ? 'Already have an account? ' : 'New to FLYNT? '}
+                    <Text style={{ color: theme.ink, fontWeight: '700' }}>{authMode === 'create' ? 'Sign in' : 'Create account'}</Text>
+                  </Text>
+                </Pressable>
+                {authMode === 'sign-in' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      resetEmailEntry();
+                      setRecoveryMode(true);
+                      setEmailOpen(true);
+                    }}
+                    style={styles.secondaryAction}
+                  >
+                    <Text style={[styles.smallActionCopy, { color: theme.muted }]}>Trouble signing in?</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+      <AuthLegalSheet kind={legalView} onDismiss={() => setLegalView(null)} />
+    </KeyboardAvoidingView>
+  );
+}
+
+function OtpCodeField({
+  disabled,
+  onChange,
+  theme,
+  value,
+}: {
+  disabled: boolean;
+  onChange: (value: string) => void;
+  theme: ReturnType<typeof useFlyntTheme>['theme'];
+  value: string;
+}) {
+  const activeIndex = Math.min(value.length, 5);
+  return (
+    <View style={styles.otpField}>
+      <TextInput
+        accessibilityLabel="Six-digit code"
+        autoComplete="one-time-code"
+        autoFocus
+        editable={!disabled}
+        keyboardType="number-pad"
+        maxLength={6}
+        onChangeText={(nextValue) => onChange(normalizeEmailOtp(nextValue))}
+        onSubmitEditing={() => undefined}
+        style={styles.otpInput}
+        textContentType="oneTimeCode"
+        value={value}
+      />
+      <View accessibilityElementsHidden importantForAccessibility="no" pointerEvents="none" style={styles.otpSlots}>
+        {Array.from({ length: 6 }, (_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.otpSlot,
               {
                 backgroundColor: theme.raised,
-                borderColor: theme.line,
-                opacity: isBusy && pending !== 'google' ? 0.5 : pressed ? 0.72 : 1,
+                borderColor: index === activeIndex && value.length < 6 ? theme.ink : theme.line,
               },
             ]}
           >
-            {pending === 'google' ? <ActivityIndicator color={theme.ink} /> : (
-              <>
-                <Text style={[styles.googleMark, { color: theme.ink }]}>G</Text>
-                <Text style={[styles.providerButtonCopy, { color: theme.ink }]}>Continue with Google</Text>
-              </>
-            )}
-          </Pressable> : null}
-          {!emailOpen ? <Pressable
-            accessibilityRole="button"
-            disabled={isBusy}
-            onPress={() => {
-              setError(null);
-              setEmailOpen(true);
-            }}
-            style={({ pressed }) => [
-              styles.providerButton,
-              { backgroundColor: theme.raised, borderColor: theme.line, opacity: pressed ? 0.72 : 1 },
-            ]}
-          >
-            <View style={styles.providerIcon}><NativeSymbol color={theme.ink} name="envelope" size={19} /></View>
-            <Text style={[styles.providerButtonCopy, { color: theme.ink }]}>Continue with email</Text>
-          </Pressable> : null}
+            <Text style={[styles.otpDigit, { color: theme.ink }]}>{value[index] ?? ''}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
-          {emailOpen ? <View style={styles.emailGroup}>
-            <Text style={[styles.fieldLabel, { color: theme.ink }]}>Email</Text>
-            <TextInput
-              accessibilityLabel="Email address"
-              autoCapitalize="none"
-              autoComplete="email"
-              autoCorrect={false}
-              autoFocus
-              editable={!isBusy}
-              keyboardType="email-address"
-              onChangeText={(value) => {
-                setEmail(value);
-                if (error) setError(null);
-              }}
-              onSubmitEditing={() => void submitEmail()}
-              placeholder="you@example.com"
-              placeholderTextColor={theme.muted}
-              returnKeyType="done"
-              style={[
-                styles.input,
-                { backgroundColor: theme.raised, borderColor: error ? theme.danger : theme.line, color: theme.ink },
-              ]}
-              textContentType="emailAddress"
-              value={email}
-            />
-            {error ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
-            <Pressable
-              accessibilityRole="button"
-              disabled={isBusy}
-              onPress={() => void submitEmail()}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                { backgroundColor: theme.primaryFill, opacity: isBusy ? 0.58 : pressed ? 0.82 : 1 },
-              ]}
-            >
-              {pending === 'email' ? <ActivityIndicator color={theme.primaryText} /> : (
-                <Text style={[styles.primaryButtonCopy, { color: theme.primaryText }]}>Email me a secure link</Text>
-              )}
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setEmail('');
-                setError(null);
-                setEmailOpen(false);
-              }}
-              style={styles.backToOptions}
-            >
-              <Text style={[styles.secondaryActionCopy, { color: theme.muted }]}>Back to sign-in options</Text>
-            </Pressable>
-          </View> : null}
-
-          {!emailOpen && error ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
-
-          {!emailOpen ? <Pressable
-            accessibilityRole="button"
-            onPress={() => router.replace(mode === 'create' ? '/sign-in' : '/create-account')}
-            style={styles.secondaryAction}
-          >
-            <Text style={[styles.secondaryActionCopy, { color: theme.muted }]}>
-              {mode === 'create' ? 'Already have an account? ' : 'New to FLYNT? '}
-              <Text style={{ color: theme.ink, fontWeight: '700' }}>{mode === 'create' ? 'Sign in' : 'Create account'}</Text>
-            </Text>
-          </Pressable> : null}
+function AuthLegalSheet({ kind, onDismiss }: { kind: LegalView; onDismiss: () => void }) {
+  return (
+    <FlyntSheet
+      eyebrow="EFFECTIVE JULY 27, 2026"
+      isPresented={kind !== null}
+      onDismiss={onDismiss}
+      title={kind === 'privacy' ? 'Privacy Notice' : 'Terms & Safety Notice'}
+    >
+      {kind === 'privacy' ? (
+        <View style={styles.legalContent}>
+          <LegalParagraph>FLYNT stores the account, consultation answers, training plan, completed sets, progress, and settings needed to operate and personalize the app.</LegalParagraph>
+          <LegalSection title="How your data is used">Relevant profile and training context may be sent to our AI service providers to generate plans and Trainer responses. FLYNT does not use health or training information for advertising or sell it to data brokers.</LegalSection>
+          <LegalSection title="Storage and control">Signed-in data is stored with our infrastructure providers, including Supabase and Vercel. Account data is isolated by user. You can sign out, export your data, or permanently delete your account from App settings.</LegalSection>
         </View>
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+      ) : (
+        <View style={styles.legalContent}>
+          <LegalParagraph>FLYNT uses artificial intelligence to provide personalized training recommendations. AI output can be incomplete or wrong, and it is not medical advice, diagnosis, rehabilitation, or emergency guidance.</LegalParagraph>
+          <LegalSection title="Train within your limits">Use accurate information, appropriate equipment, sound judgment, and a safe environment. Stop an exercise for sharp, severe, radiating, worsening, traumatic, or neurologic symptoms. Consult a physician or qualified clinician before beginning a program when health, injury, pregnancy, medication, or other risk factors may affect exercise.</LegalSection>
+          <LegalSection title="You stay in control">Trainer changes are recommendations. FLYNT will show proposed program changes for your approval before applying them. You may reject or edit any proposal.</LegalSection>
+          <LegalSection title="Training involves risk">Exercise carries inherent risks, including soreness and injury. FLYNT cannot guarantee safety, performance, physique, or health outcomes. By continuing, you accept responsibility for deciding whether a recommendation is appropriate for you.</LegalSection>
+        </View>
+      )}
+    </FlyntSheet>
+  );
+}
+
+function LegalParagraph({ children }: { children: string }) {
+  const { theme } = useFlyntTheme();
+  return <Text style={[styles.legalBody, { color: theme.muted }]}>{children}</Text>;
+}
+
+function LegalSection({ children, title }: { children: string; title: string }) {
+  const { theme } = useFlyntTheme();
+  return (
+    <View style={styles.legalSection}>
+      <Text style={[styles.legalTitle, { color: theme.ink }]}>{title}</Text>
+      <Text style={[styles.legalBody, { color: theme.muted }]}>{children}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { flex: 1, paddingHorizontal: 26 },
-  centeredContent: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.lg, gap: spacing.md },
-  eyebrow: { ...type.label },
-  title: { ...type.title, maxWidth: 350 },
-  body: { ...type.body, maxWidth: 350 },
-  supporting: { fontSize: 15, lineHeight: 21, maxWidth: 350 },
+  safeArea: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 26 },
   brandLockup: { alignItems: 'center', marginTop: 56 },
   brandMark: { width: 39, height: 59, resizeMode: 'contain' },
-  wordmark: { marginTop: 25, fontSize: 48, lineHeight: 52, fontWeight: '400', letterSpacing: 12, marginLeft: 12 },
+  wordmark: { marginTop: 25, marginLeft: 12, fontSize: 48, lineHeight: 52, fontWeight: '400', letterSpacing: 12 },
   accountCopy: { alignSelf: 'center', maxWidth: 310, marginTop: spacing.lg, textAlign: 'center', fontSize: 15, lineHeight: 22 },
   actions: { gap: 11, marginTop: 'auto', paddingTop: spacing.xl, paddingBottom: 42 },
-  appleButton: { width: '100%', height: 56 },
-  providerButton: {
-    position: 'relative',
-    minHeight: 56,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  providerButtonCopy: { ...type.button },
-  googleMark: { position: 'absolute', left: 20, fontSize: 18, fontWeight: '700' },
-  providerIcon: { position: 'absolute', left: 18, width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
-  emailGroup: { gap: spacing.sm },
-  fieldLabel: { ...type.label, letterSpacing: 0 },
-  input: {
-    minHeight: 56,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: spacing.md,
-    fontSize: 17,
-  },
-  error: { fontSize: 15, lineHeight: 20 },
-  primaryButton: {
-    minHeight: 56,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  primaryButtonCopy: { ...type.button },
-  textButton: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center' },
-  textButtonCopy: { ...type.button },
-  secondaryAction: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  secondaryActionCopy: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  backToOptions: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  appleButton: { width: '100%', height: 58 },
+  providerButton: { position: 'relative', minHeight: 58, borderCurve: 'continuous', borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
+  providerButtonCopy: { ...type.button, fontSize: 15 },
+  googleButtonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  googleMark: { width: 20, height: 20, resizeMode: 'contain' },
+  googleButtonCopy: { fontSize: 18, lineHeight: 22, fontWeight: '600' },
+  emailTextAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  emailTextActionCopy: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
+  emailGroup: { gap: 12 },
+  inlineEmail: { minHeight: 58, paddingLeft: 17, paddingRight: 7, borderCurve: 'continuous', borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  inlineEmailInput: { flex: 1, minWidth: 0, height: 56, fontSize: 15 },
+  inlineContinue: { minWidth: 88, height: 44, paddingHorizontal: 17, borderCurve: 'continuous', borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  inlineContinueCopy: { fontSize: 12, fontWeight: '700' },
+  verifyButton: { width: '100%', minHeight: 52, borderCurve: 'continuous', borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  otpField: { position: 'relative', height: 58 },
+  otpInput: { position: 'absolute', inset: 0, zIndex: 2, opacity: 0.01, color: 'transparent' },
+  otpSlots: { position: 'absolute', inset: 0, flexDirection: 'row', gap: 8 },
+  otpSlot: { flex: 1, alignItems: 'center', justifyContent: 'center', borderCurve: 'continuous', borderRadius: 14, borderWidth: StyleSheet.hairlineWidth },
+  otpDigit: { fontFamily: 'ui-monospace', fontSize: 20, fontWeight: '600' },
+  backToOptions: { minHeight: 32, alignItems: 'center', justifyContent: 'center' },
+  consentRow: { marginTop: 2, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  checkboxTarget: { width: 44, height: 44, marginLeft: -11, marginTop: -11, alignItems: 'center', justifyContent: 'center' },
+  checkbox: { width: 22, height: 22, borderCurve: 'continuous', borderRadius: 7, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  consentCopy: { flex: 1, gap: 3 },
+  consentText: { fontSize: 11, lineHeight: 17 },
+  legalLinks: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 5 },
+  legalLink: { fontSize: 11, lineHeight: 17, fontWeight: '700', textDecorationLine: 'underline' },
+  error: { marginTop: 3, fontSize: 12, lineHeight: 17, textAlign: 'center' },
+  secondaryActions: { marginTop: 7, alignItems: 'center', gap: 1 },
+  secondaryAction: { minHeight: 32, alignItems: 'center', justifyContent: 'center' },
+  smallActionCopy: { fontSize: 11, lineHeight: 16, textAlign: 'center' },
+  legalContent: { gap: spacing.md, paddingBottom: spacing.xl },
+  legalSection: { gap: spacing.xs },
+  legalTitle: { fontSize: 16, lineHeight: 21, fontWeight: '700' },
+  legalBody: { fontSize: 15, lineHeight: 23 },
 });

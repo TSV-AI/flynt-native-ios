@@ -1,7 +1,7 @@
 import { Host, Image as SwiftImage } from '@expo/ui/swift-ui';
 import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import type { ComponentProps } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
 
@@ -54,8 +54,46 @@ export function GlassSymbolButton({
   );
 }
 
+export function GlassTextButton({
+  accessibilityLabel,
+  color,
+  colorScheme,
+  label,
+  onPress,
+}: {
+  accessibilityLabel: string;
+  color: string;
+  colorScheme: 'light' | 'dark';
+  label: string;
+  onPress: () => void;
+}) {
+  const reduceTransparency = useReduceTransparency();
+  const content = <Text style={[styles.textLabel, { color }]}>{label}</Text>;
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.textButtonHost, pressed && styles.pressed]}
+    >
+      {isGlassEffectAPIAvailable() && !reduceTransparency ? (
+        <GlassView colorScheme={colorScheme} glassEffectStyle="regular" isInteractive style={styles.textGlass}>
+          {content}
+        </GlassView>
+      ) : (
+        <View style={[styles.textGlass, { backgroundColor: colorScheme === 'dark' ? '#2A2A29' : '#E9E8E3' }]}>
+          {content}
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   buttonHost: { width: 44, height: 44, borderRadius: 22 },
   glass: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.72 },
+  textButtonHost: { minWidth: 72, height: 44, borderRadius: 22 },
+  textGlass: { minWidth: 72, height: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
+  textLabel: { fontSize: 16, lineHeight: 20, fontWeight: '600' },
 });

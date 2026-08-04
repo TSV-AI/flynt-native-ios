@@ -4,9 +4,12 @@ import { useEffect, useState } from 'react';
 import { AppState, Platform, PlatformColor } from 'react-native';
 
 import { NativeTabRestTimerAccessory } from '@/components/rest-timer-accessory';
+import { TrainerComposerSurface } from '@/components/trainer-composer-accessory';
+import { WidgetSnapshotSync } from '@/components/widget-snapshot-sync';
 import { useModalPresentation } from '@/providers/modal-presentation-provider';
 import { useRestTimer } from '@/providers/rest-timer-provider';
 import { TrainerConversationProvider } from '@/providers/trainer-conversation-provider';
+import { WorkoutDataProvider } from '@/providers/workout-data-provider';
 
 function NativeAppTabs() {
   const { isModalPresented } = useModalPresentation();
@@ -14,6 +17,7 @@ function NativeAppTabs() {
   const pathname = usePathname();
   const [dayOfMonth, setDayOfMonth] = useState(() => new Date().getDate());
   const isTrainer = pathname.endsWith('/trainer');
+  const supportsNativeTabAccessory = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
   const selectedColor = PlatformColor('label');
   const unselectedColor = PlatformColor('secondaryLabel');
   const supportsNumberedCalendar = Number.parseInt(String(Platform.Version), 10) >= 26;
@@ -56,10 +60,14 @@ function NativeAppTabs() {
         default: { color: unselectedColor },
         selected: { color: selectedColor },
       }}
-      minimizeBehavior="automatic"
+      minimizeBehavior={isTrainer && supportsNativeTabAccessory ? 'never' : 'automatic'}
       tintColor={selectedColor}
     >
-      {!isTrainer && timer && timer.seconds > 0 && !isExpanded ? (
+      {isTrainer && supportsNativeTabAccessory ? (
+        <NativeTabs.BottomAccessory>
+          <TrainerComposerSurface />
+        </NativeTabs.BottomAccessory>
+      ) : timer && timer.seconds > 0 && !isExpanded ? (
         <NativeTabs.BottomAccessory>
           <NativeTabRestTimerAccessory />
         </NativeTabs.BottomAccessory>
@@ -87,7 +95,10 @@ function NativeAppTabs() {
 export default function AppTabsLayout() {
   return (
     <TrainerConversationProvider>
-      <NativeAppTabs />
+      <WorkoutDataProvider>
+        <WidgetSnapshotSync />
+        <NativeAppTabs />
+      </WorkoutDataProvider>
     </TrainerConversationProvider>
   );
 }

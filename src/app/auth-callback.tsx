@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { radius, spacing, type } from '@/constants/theme';
+import { appSurfaces, radius, spacing, type } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { finishAuthUrl } from '@/lib/auth';
 import { failed, saved } from '@/lib/haptics';
@@ -31,7 +31,7 @@ export default function AuthCallbackScreen() {
   }, [retry, url]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.canvas }]}>
+    <View style={[styles.screen, { backgroundColor: appSurfaces.dark.primaryBackground }]}>
       <SafeAreaView edges={['top', 'bottom']} style={styles.content}>
         <View style={styles.copy}>
           <Text style={[styles.eyebrow, { color: theme.muted }]}>FLYNT</Text>

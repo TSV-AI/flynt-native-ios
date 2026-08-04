@@ -5,7 +5,9 @@ import {
   AuthCallbackError,
   completeAuthCallback,
   isValidEmail,
+  isValidEmailOtp,
   normalizeEmail,
+  normalizeEmailOtp,
 } from './auth-flow.ts';
 
 function callbackClient(overrides = {}) {
@@ -24,6 +26,13 @@ test('email validation rejects incomplete addresses', () => {
   assert.equal(isValidEmail('person@example.com'), true);
   assert.equal(isValidEmail('person@example'), false);
   assert.equal(isValidEmail('person example.com'), false);
+});
+
+test('email OTP normalization keeps six digits and ignores formatting', () => {
+  assert.equal(normalizeEmailOtp(' 12 34-567 '), '123456');
+  assert.equal(isValidEmailOtp('123456'), true);
+  assert.equal(isValidEmailOtp('12345'), false);
+  assert.equal(isValidEmailOtp('12A456'), false);
 });
 
 test('PKCE callback exchanges the code and forwards its flow identifier', async () => {

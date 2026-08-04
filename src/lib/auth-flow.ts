@@ -69,3 +69,11 @@ export function normalizeEmail(value: string) {
 export function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(value));
 }
+
+export function normalizeEmailOtp(value: string) {
+  return value.replace(/\D/g, '').slice(0, 6);
+}
+
+export function isValidEmailOtp(value: string) {
+  return /^\d{6}$/.test(normalizeEmailOtp(value));
+}

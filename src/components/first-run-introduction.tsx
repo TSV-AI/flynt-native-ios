@@ -1,5 +1,7 @@
-import { useRef, useState } from 'react';
+import { BlurView } from 'expo-blur';
+import { useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   Image,
   Pressable,
   ScrollView,
@@ -12,44 +14,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { radius, spacing, type } from '@/constants/theme';
+import { appSurfaces, spacing } from '@/constants/theme';
+import { firstRunSlides, type FirstRunPreviewKind } from '@/features/first-run-content';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { selection } from '@/lib/haptics';
-
-type SlideKind = 'today' | 'timer' | 'guide' | 'progress' | 'trainer' | 'spotify';
-
-const slides: readonly { body: string; kind: SlideKind; title: string }[] = [
-  {
-    kind: 'today',
-    title: 'Your training, in focus.',
-    body: 'See the day, open the current movement, and move through every set without losing your place.',
-  },
-  {
-    kind: 'timer',
-    title: 'The right rest is already built in.',
-    body: 'Every exercise brings its programmed rest with it, keeping the session at the pace your plan calls for.',
-  },
-  {
-    kind: 'guide',
-    title: 'A custom guide for every exercise.',
-    body: 'Each movement gets visual and step-by-step guidance shaped around your program and equipment.',
-  },
-  {
-    kind: 'progress',
-    title: 'Progress you can actually use.',
-    body: 'Every completed set builds a clear history of load, effort, and how the movement felt.',
-  },
-  {
-    kind: 'trainer',
-    title: 'A trainer that knows your plan.',
-    body: 'Talk through pain, schedule changes, or a hard session and review every adjustment before it happens.',
-  },
-  {
-    kind: 'spotify',
-    title: 'Your music stays in the workout.',
-    body: 'See what is playing on Spotify and control it without leaving your session.',
-  },
-] as const;
 
 type FirstRunIntroductionProps = {
   onFinish: () => void;
@@ -57,13 +25,41 @@ type FirstRunIntroductionProps = {
 
 export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
   const { height, width } = useWindowDimensions();
-  const { mode, theme } = useFlyntTheme();
+  const { theme } = useFlyntTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
-  const stageHeight = Math.max(280, Math.min(360, height * 0.4));
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [touching, setTouching] = useState(false);
+  const stageHeight = Math.max(380, Math.min(480, height * 0.52));
+
+  useEffect(() => {
+    let mounted = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (mounted) setReduceMotion(enabled);
+    });
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion || touching || page >= firstRunSlides.length - 1) return;
+    const timer = setTimeout(() => {
+      const nextPage = page + 1;
+      scrollRef.current?.scrollTo({ animated: true, x: nextPage * width });
+      setPage(nextPage);
+    }, 6_500);
+    return () => clearTimeout(timer);
+  }, [page, reduceMotion, touching, width]);
 
   function settle(event: NativeSyntheticEvent<NativeScrollEvent>) {
-    const nextPage = Math.max(0, Math.min(slides.length - 1, Math.round(event.nativeEvent.contentOffset.x / width)));
+    const nextPage = Math.max(
+      0,
+      Math.min(firstRunSlides.length - 1, Math.round(event.nativeEvent.contentOffset.x / width)),
+    );
+    setTouching(false);
     if (nextPage !== page) {
       setPage(nextPage);
       void selection();
@@ -71,53 +67,48 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
   }
 
   function showPage(index: number) {
-    scrollRef.current?.scrollTo({ animated: true, x: index * width });
+    scrollRef.current?.scrollTo({ animated: !reduceMotion, x: index * width });
     setPage(index);
     void selection();
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.canvas }]}>
+    <View style={[styles.screen, { backgroundColor: appSurfaces.dark.primaryBackground }]}>
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-        <View style={styles.header}>
-          <Image
-            accessibilityIgnoresInvertColors
-            source={mode === 'dark'
-              ? require('@/assets/images/flynt-mark-light.png')
-              : require('@/assets/images/flynt-mark-ink.png')}
-            style={styles.mark}
-          />
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={10}
-            onPress={onFinish}
-            style={({ pressed }) => [styles.skip, pressed && styles.pressed]}
-          >
-            <Text style={[styles.skipCopy, { color: theme.muted }]}>Skip</Text>
-          </Pressable>
-        </View>
+        <View style={styles.header} />
 
         <ScrollView
           ref={scrollRef}
           accessibilityLabel="FLYNT introduction"
+          alwaysBounceHorizontal
           bounces
           decelerationRate="fast"
           horizontal
           onMomentumScrollEnd={settle}
+          onScrollBeginDrag={() => setTouching(true)}
+          onScrollEndDrag={(event) => {
+            if (!event.nativeEvent.velocity?.x) setTouching(false);
+          }}
           pagingEnabled
           scrollEventThrottle={16}
           showsHorizontalScrollIndicator={false}
         >
-          {slides.map((slide, index) => (
+          {firstRunSlides.map((slide, index) => (
             <View
               accessibilityElementsHidden={page !== index}
               importantForAccessibility={page === index ? 'yes' : 'no-hide-descendants'}
               key={slide.kind}
               style={[styles.slide, { width }]}
             >
-              <ProductPreview height={stageHeight} kind={slide.kind} />
+              <ProductPreview
+                height={stageHeight}
+                kind={slide.kind}
+                width={Math.min(420, width - 44)}
+              />
               <View style={styles.copy}>
-                <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{slide.title}</Text>
+                <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>
+                  {slide.title}
+                </Text>
                 <Text style={[styles.body, { color: theme.muted }]}>{slide.body}</Text>
               </View>
             </View>
@@ -125,13 +116,12 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
         </ScrollView>
 
         <View style={styles.footer}>
-          <View accessibilityLabel={`Introduction ${page + 1} of ${slides.length}`} style={styles.dots}>
-            {slides.map((slide, index) => (
+          <View accessibilityLabel={`Introduction ${page + 1} of ${firstRunSlides.length}`} style={styles.dots}>
+            {firstRunSlides.map((slide, index) => (
               <Pressable
                 accessibilityLabel={`Show introduction ${index + 1}`}
                 accessibilityRole="button"
                 accessibilityState={{ selected: page === index }}
-                hitSlop={8}
                 key={slide.kind}
                 onPress={() => showPage(index)}
                 style={styles.dotTarget}
@@ -146,14 +136,14 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
               </Pressable>
             ))}
           </View>
-          {page === slides.length - 1 ? (
+          {page === firstRunSlides.length - 1 ? (
             <Pressable
               accessibilityRole="button"
               onPress={onFinish}
-              style={({ pressed }) => [styles.continueButton, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.signInButton, pressed && styles.pressed]}
             >
-              <Text style={[styles.continueCopy, { color: theme.ink }]}>Continue</Text>
-              <Text accessibilityElementsHidden style={[styles.chevron, { color: theme.ink }]}>›</Text>
+              <Text style={[styles.signInCopy, { color: theme.muted }]}>Sign in</Text>
+              <Text accessibilityElementsHidden style={[styles.chevron, { color: theme.muted }]}>›</Text>
             </Pressable>
           ) : null}
         </View>
@@ -162,246 +152,398 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
   );
 }
 
-function ProductPreview({ height, kind }: { height: number; kind: SlideKind }) {
-  const { mode, theme } = useFlyntTheme();
-  const fields = {
-    today: ['#166B89', '#2B9276', '#92B59D'],
-    timer: ['#762923', '#C55B3F', '#E4A66C'],
-    guide: ['#47415F', '#817B9C', '#C3A9A1'],
-    progress: ['#214C40', '#4D876D', '#ABC093'],
-    trainer: ['#174B5A', '#477B85', '#8EB0A5'],
-    spotify: ['#10271B', '#1DB954', '#4E6654'],
-  }[kind];
-
+function ProductPreview({
+  height,
+  kind,
+  width,
+}: {
+  height: number;
+  kind: FirstRunPreviewKind;
+  width: number;
+}) {
   return (
-    <View style={[styles.stage, { height, backgroundColor: fields[0], borderColor: theme.line }]}>
-      <View style={[styles.colorOrb, styles.orbOne, { backgroundColor: fields[1] }]} />
-      <View style={[styles.colorOrb, styles.orbTwo, { backgroundColor: fields[2] }]} />
-      <View style={[styles.previewCard, { backgroundColor: mode === 'dark' ? '#20201F' : '#FBFBF9' }]}>
-        {kind === 'today' ? <TodayPreview /> : null}
+    <View style={[styles.productStage, { height }]}>
+      <Image
+        accessibilityIgnoresInvertColors
+        accessibilityElementsHidden
+        resizeMode="stretch"
+        source={stageBackgrounds[kind]}
+        style={styles.stageBackground}
+      />
+      <BlurView
+        intensity={36}
+        style={[
+          styles.interfaceCard,
+          cardSizes[kind],
+        ]}
+        tint="systemThinMaterialDark"
+      >
+        <View style={styles.cardTint} />
+        {kind === 'today' ? <WorkoutPreview /> : null}
         {kind === 'timer' ? <TimerPreview /> : null}
         {kind === 'guide' ? <GuidePreview /> : null}
-        {kind === 'progress' ? <ProgressPreview /> : null}
+        {kind === 'progress' ? <StatsPreview /> : null}
         {kind === 'trainer' ? <TrainerPreview /> : null}
-        {kind === 'spotify' ? <SpotifyPreview /> : null}
-      </View>
+        {kind === 'spotify' ? <SpotifyPreview width={width * 0.92} /> : null}
+      </BlurView>
     </View>
   );
 }
 
-function PreviewHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
-  const { theme } = useFlyntTheme();
+function WorkoutPreview() {
   return (
-    <View style={styles.previewHeading}>
-      <Text style={[styles.previewEyebrow, { color: theme.muted }]}>{eyebrow}</Text>
-      <Text numberOfLines={2} style={[styles.previewTitle, { color: theme.ink }]}>{title}</Text>
-    </View>
-  );
-}
-
-function TodayPreview() {
-  const { theme } = useFlyntTheme();
-  return (
-    <View style={styles.previewContent}>
-      <View style={styles.exerciseHeading}>
-        <Text style={[styles.exerciseNumber, { color: theme.muted }]}>02</Text>
-        <PreviewHeading eyebrow="4 SETS · 4–6 REPS · 3:00 REST" title="Overhead Press" />
-      </View>
-      <View style={styles.previewTools}>
-        <Text style={[styles.tool, { borderColor: theme.line, color: theme.ink }]}>Stats</Text>
-        <Text style={[styles.tool, { borderColor: theme.line, color: theme.ink }]}>Guide</Text>
-      </View>
-      <View style={styles.setLabels}>
-        <Text style={[styles.cellLabel, { color: theme.muted }]}>SET</Text>
-        <Text style={[styles.cellLabel, { color: theme.muted }]}>LB</Text>
-        <Text style={[styles.cellLabel, { color: theme.muted }]}>REPS</Text>
-      </View>
-      {[1, 2, 3, 4].map((set) => (
-        <View key={set} style={styles.setRow}>
-          <Text style={[styles.setNumber, { color: theme.muted }]}>{set}</Text>
-          <Text style={[styles.setValue, { backgroundColor: theme.canvas, color: theme.ink }]}>130</Text>
-          <Text style={[styles.setValue, { backgroundColor: theme.canvas, color: theme.ink }]}>6</Text>
-          <View style={[styles.check, { backgroundColor: set === 1 ? theme.ink : 'transparent', borderColor: theme.line }]}>
-            <Text style={{ color: set === 1 ? theme.primaryText : 'transparent', fontWeight: '700' }}>✓</Text>
-          </View>
+    <View style={styles.workoutPreview}>
+      <View style={styles.workoutHeading}>
+        <Text style={styles.monoMuted}>02</Text>
+        <View style={styles.flex}>
+          <Text style={styles.cardTitle}>Overhead Press</Text>
+          <Text style={styles.cardMuted}>4 sets · 4–6 reps · 3:00 rest</Text>
         </View>
-      ))}
+      </View>
+      <View style={styles.workoutTools}>
+        <Text style={styles.workoutTool}>↗  Stats</Text>
+        <Text style={styles.workoutTool}>▱  Guide</Text>
+      </View>
+      <View style={styles.setGrid}>
+        <View style={styles.setLabels}>
+          <Text style={[styles.gridLabel, styles.setNumberLabel]}>SET</Text>
+          <Text style={styles.gridValueLabel}>LB</Text>
+          <Text style={styles.gridValueLabel}>REPS</Text>
+          <View style={styles.setCheckLabel} />
+        </View>
+        {[1, 2, 3, 4].map((set) => (
+          <View key={set} style={styles.setRow}>
+            <Text style={styles.setNumber}>{set}</Text>
+            <Text style={styles.setValue}>130</Text>
+            <Text style={styles.setValue}>6</Text>
+            <View style={[styles.setCheck, set === 1 && styles.setCheckDone]}>
+              <Text style={set === 1 ? styles.checkDoneCopy : styles.checkCopy}>✓</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+      <Text style={styles.recommendation}>Recommended today · 130 lb</Text>
     </View>
   );
 }
 
 function TimerPreview() {
-  const { theme } = useFlyntTheme();
   return (
-    <View style={[styles.centerPreview, styles.previewContent]}>
-      <View style={[styles.handle, { backgroundColor: theme.line }]} />
-      <Text style={[styles.previewEyebrow, { color: theme.muted }]}>NEXT SET IN</Text>
-      <Text style={[styles.timer, { color: theme.ink }]}>0:56</Text>
-      <Text style={[styles.timerNext, { color: theme.muted }]}>BULGARIAN SPLIT SQUAT · SET 2 OF 3</Text>
-      <View style={[styles.timerTrack, { backgroundColor: theme.line }]}><View style={[styles.timerFill, { backgroundColor: theme.ink }]} /></View>
+    <View style={styles.timerPreview}>
+      <SheetHandle />
+      <Text style={styles.kicker}>NEXT SET IN</Text>
+      <Text style={styles.timerValue}>0:56</Text>
+      <Text style={styles.timerNext}>BULGARIAN SPLIT SQUAT · SET 2 OF 3</Text>
+      <View style={styles.timerTrack}><View style={styles.timerTrackFill} /></View>
       <View style={styles.timerActions}>
-        <Text style={[styles.timerAction, { borderColor: theme.line, color: theme.ink }]}>−15</Text>
-        <Text style={[styles.timerSkip, { backgroundColor: theme.ink, color: theme.primaryText }]}>Skip</Text>
-        <Text style={[styles.timerAction, { borderColor: theme.line, color: theme.ink }]}>+15</Text>
+        <Text style={styles.timerAdjustment}>−15</Text>
+        <Text style={styles.timerSkip}>Skip</Text>
+        <Text style={styles.timerAdjustment}>+15</Text>
       </View>
     </View>
   );
 }
 
 function GuidePreview() {
-  const { theme } = useFlyntTheme();
   return (
-    <View style={styles.previewContent}>
-      <View style={[styles.handle, { backgroundColor: theme.line }]} />
-      <PreviewHeading eyebrow="FLYNT GUIDE" title="Single-KB Bulgarian Split Squat" />
-      <View style={[styles.guideVisual, { backgroundColor: theme.canvas, borderColor: theme.line }]}>
-        <View style={[styles.figureHead, { borderColor: theme.muted }]} />
-        <View style={[styles.figureBody, { backgroundColor: theme.muted }]} />
-        <View style={[styles.figureLeg, styles.figureLegOne, { backgroundColor: theme.muted }]} />
-        <View style={[styles.figureLeg, styles.figureLegTwo, { backgroundColor: theme.muted }]} />
-        <View style={[styles.guideBench, { backgroundColor: theme.line }]} />
+    <View style={styles.sheetPreview}>
+      <SheetHandle />
+      <View style={styles.sheetHeading}>
+        <Text style={styles.kicker}>FLYNT GUIDE</Text>
+        <Text numberOfLines={1} style={styles.sheetTitle}>Single-KB Bulgarian Split Squat</Text>
       </View>
-      <Text style={[styles.previewEyebrow, { color: theme.muted }]}>EXECUTION</Text>
-      <View style={styles.guideStep}><Text style={{ color: theme.muted }}>01</Text><Text style={[styles.guideCopy, { color: theme.ink }]}>Set the rear foot on the bench and hold the kettlebell tight.</Text></View>
-      <View style={styles.guideStep}><Text style={{ color: theme.muted }}>02</Text><Text style={[styles.guideCopy, { color: theme.ink }]}>Lower under control with the front heel planted.</Text></View>
+      <View style={styles.guideFigure}>
+        <Image
+          accessibilityIgnoresInvertColors
+          accessible={false}
+          resizeMode="contain"
+          source={require('@/assets/images/marketing/kb-front-rack-bulgarian-split-squat-guide-v1.png')}
+          style={styles.guideImage}
+        />
+        <View style={styles.guideCaption}>
+          <Text style={styles.captionLabel}>FLYNT GUIDE</Text>
+          <Text style={styles.captionMuted}>Start · Finish</Text>
+        </View>
+      </View>
+      <View style={styles.execution}>
+        <Text style={styles.kicker}>EXECUTION</Text>
+        <GuideStep index="01" text="Set the rear foot on the bench and hold one kettlebell tight in the front rack." />
+        <GuideStep index="02" text="Lower under control, keeping the front heel planted and knee tracking over the toes." />
+      </View>
     </View>
   );
 }
 
-function ProgressPreview() {
-  const { theme } = useFlyntTheme();
-  const values = [35, 44, 48, 53];
+function GuideStep({ index, text }: { index: string; text: string }) {
   return (
-    <View style={styles.previewContent}>
-      <View style={[styles.handle, { backgroundColor: theme.line }]} />
-      <PreviewHeading eyebrow="EXERCISE STATS" title="Bulgarian Split Squat" />
-      <Text style={[styles.chartTitle, { color: theme.muted }]}>TOP-SET LOAD · 4 SESSIONS</Text>
+    <View style={styles.guideStep}>
+      <Text style={styles.guideIndex}>{index}</Text>
+      <Text style={styles.guideCopy}>{text}</Text>
+    </View>
+  );
+}
+
+const chartPoints = [
+  { label: '35', x: 18, y: 82 },
+  { label: '44', x: 105, y: 68 },
+  { label: '48', x: 192, y: 47 },
+  { label: '53', x: 282, y: 25 },
+] as const;
+
+function StatsPreview() {
+  return (
+    <View style={styles.sheetPreview}>
+      <SheetHandle />
+      <View style={styles.sheetHeading}>
+        <Text style={styles.kicker}>EXERCISE STATS</Text>
+        <Text numberOfLines={1} style={styles.sheetTitle}>Single-KB Bulgarian Split Squat</Text>
+      </View>
+      <View style={styles.chartHeading}>
+        <View style={styles.flex}>
+          <Text style={styles.kicker}>TOP-SET LOAD</Text>
+          <Text style={styles.chartDescription}>Your heaviest completed set in each workout</Text>
+        </View>
+        <Text style={styles.chartSessions}>4 sessions</Text>
+      </View>
       <View style={styles.chart}>
-        {values.map((value, index) => (
-          <View key={value} style={styles.barColumn}>
-            <Text style={[styles.barValue, { color: theme.ink }]}>{value}</Text>
-            <View style={[styles.bar, { backgroundColor: theme.ink, height: 26 + index * 14 }]} />
+        {[18, 55, 92].map((top) => <View key={top} style={[styles.chartGridLine, { top }]} />)}
+        <ChartLine x1={18} x2={105} y1={82} y2={68} />
+        <ChartLine x1={105} x2={192} y1={68} y2={47} />
+        <ChartLine x1={192} x2={282} y1={47} y2={25} />
+        {chartPoints.map((point, index) => (
+          <View key={point.label} style={[styles.chartPointGroup, { left: point.x - 11, top: point.y - 20 }]}>
+            <Text style={styles.chartPointLabel}>{point.label}</Text>
+            <View style={[styles.chartPoint, index === chartPoints.length - 1 && styles.chartPointCurrent]} />
           </View>
         ))}
       </View>
-      <View style={styles.metrics}>
-        <Metric label="TOP SET" value="53 LB" />
-        <Metric label="RPE" value="8" />
-        <Metric label="PAIN" value="0" />
+      <View style={styles.chartDates}>
+        {['JUL 08', 'JUL 15', 'JUL 22', 'TODAY'].map((date) => <Text key={date} style={styles.chartDate}>{date}</Text>)}
+      </View>
+      <View style={styles.statsMetrics}>
+        <StatMetric detail="8 / side" label="TOP SET" value="53 LB" />
+        <StatMetric detail="Strong effort" label="RPE" value="8" />
+        <StatMetric detail="No discomfort" label="PAIN" value="0" />
       </View>
     </View>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  const { theme } = useFlyntTheme();
-  return <View style={[styles.metric, { backgroundColor: theme.canvas }]}><Text style={[styles.previewEyebrow, { color: theme.muted }]}>{label}</Text><Text style={[styles.metricValue, { color: theme.ink }]}>{value}</Text></View>;
+function ChartLine({ x1, x2, y1, y2 }: { x1: number; x2: number; y1: number; y2: number }) {
+  const length = Math.hypot(x2 - x1, y2 - y1);
+  const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+  return (
+    <View
+      style={[
+        styles.chartLine,
+        {
+          left: x1,
+          top: y1,
+          width: length,
+          transform: [{ rotate: `${angle}deg` }],
+        },
+      ]}
+    />
+  );
+}
+
+function StatMetric({ detail, label, value }: { detail: string; label: string; value: string }) {
+  return (
+    <View style={styles.statMetric}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text numberOfLines={1} style={styles.metricDetail}>{detail}</Text>
+    </View>
+  );
 }
 
 function TrainerPreview() {
-  const { theme } = useFlyntTheme();
   return (
-    <View style={styles.previewContent}>
-      <PreviewHeading eyebrow="FLYNT TRAINER" title="Today’s session" />
-      <View style={[styles.chatBubble, styles.userBubble, { backgroundColor: theme.ink }]}><Text style={{ color: theme.primaryText, fontSize: 12, lineHeight: 17 }}>The shoulder press is bugging my right shoulder. Is there another option?</Text></View>
-      <View style={[styles.chatBubble, { backgroundColor: theme.canvas }]}><Text style={[styles.previewEyebrow, { color: theme.muted }]}>FLYNT</Text><Text style={{ color: theme.ink, fontSize: 12, lineHeight: 17 }}>Let’s not push through that. I can swap it for a landmine press.</Text></View>
-      <View style={[styles.proposal, { borderColor: theme.line }]}>
-        <Text style={[styles.previewEyebrow, { color: theme.muted }]}>WORKOUT CHANGE</Text>
-        <Text style={[styles.proposalTitle, { color: theme.ink }]}>Overhead Press → Landmine Press</Text>
-        <Text style={[styles.proposalButton, { backgroundColor: theme.ink, color: theme.primaryText }]}>Review change</Text>
+    <View style={styles.trainerPreview}>
+      <Text style={styles.kickerMuted}>FLYNT TRAINER</Text>
+      <Text style={styles.trainerTitle}>Today&apos;s session</Text>
+      <Text style={styles.userMessage}>
+        Hey, the shoulder press is kind of bugging my right shoulder. Is there something else I could do?
+      </Text>
+      <View style={styles.trainerMessage}>
+        <Text style={styles.trainerLabel}>FLYNT</Text>
+        <Text style={styles.trainerCopy}>Yeah, let&apos;s not push through that. I can swap it for a half-kneeling landmine press, which keeps the same strength focus without forcing you straight overhead. Are the rest of today&apos;s exercises feeling good so far?</Text>
+      </View>
+      <View style={styles.proposal}>
+        <Text style={styles.trainerLabel}>WORKOUT CHANGE</Text>
+        <Text style={styles.proposalTitle}>Overhead Press → Landmine Press</Text>
+        <Text style={styles.proposalDetail}>Same 4 sets · shoulder-friendly angle</Text>
+        <View style={styles.proposalActions}>
+          <Text style={styles.keepCurrent}>Keep current</Text>
+          <Text style={styles.approveChange}>Approve change</Text>
+        </View>
       </View>
     </View>
   );
 }
 
-function SpotifyPreview() {
-  const { theme } = useFlyntTheme();
+function SpotifyPreview({ width }: { width: number }) {
+  const topCrop = width * (110 / 1206);
+
   return (
-    <View style={[styles.centerPreview, styles.previewContent]}>
-      <Text style={[styles.previewEyebrow, { color: '#1DB954' }]}>SPOTIFY</Text>
-      <View style={[styles.album, { backgroundColor: theme.line }]}><Text style={[styles.albumMark, { color: theme.ink }]}>F</Text></View>
-      <Text style={[styles.spotifyTitle, { color: theme.ink }]}>Workout mix</Text>
-      <Text style={[styles.spotifyArtist, { color: theme.muted }]}>Playing in FLYNT</Text>
-      <View style={styles.spotifyControls}><Text style={[styles.spotifyControl, { color: theme.ink }]}>‹‹</Text><Text style={[styles.spotifyPlay, { backgroundColor: theme.ink, color: theme.primaryText }]}>▶</Text><Text style={[styles.spotifyControl, { color: theme.ink }]}>››</Text></View>
-    </View>
+    <Image
+      accessibilityIgnoresInvertColors
+      accessible={false}
+      resizeMode="stretch"
+      source={require('@/assets/images/marketing/flynt-spotify-connected-sheet.png')}
+      style={[
+        styles.spotifyImage,
+        {
+          height: width * (2376 / 1206),
+          transform: [{ translateY: -topCrop }],
+          width,
+        },
+      ]}
+    />
   );
 }
+
+function SheetHandle() {
+  return <View style={styles.sheetHandle} />;
+}
+
+const stageBackgrounds = {
+  today: require('../../assets/images/marketing/marketing-stage-today.png'),
+  timer: require('../../assets/images/marketing/marketing-stage-today.png'),
+  guide: require('../../assets/images/marketing/marketing-stage-guide.png'),
+  progress: require('../../assets/images/marketing/marketing-stage-progress.png'),
+  trainer: require('../../assets/images/marketing/marketing-stage-trainer.png'),
+  spotify: require('../../assets/images/marketing/marketing-stage-spotify.png'),
+} as const;
+
+const cardSizes = StyleSheet.create({
+  today: { width: '92%', height: '84%' },
+  timer: { width: '92%', height: 260 },
+  guide: { width: '92%', height: '84%' },
+  progress: { width: '92%', height: '84%' },
+  trainer: { width: '92%', height: 370 },
+  spotify: { width: '92%', height: '92%' },
+});
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   safeArea: { flex: 1 },
-  header: { minHeight: 52, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  mark: { width: 20, height: 31, resizeMode: 'contain' },
-  skip: { minWidth: 44, minHeight: 44, alignItems: 'flex-end', justifyContent: 'center' },
-  skipCopy: { fontSize: 15, fontWeight: '600' },
-  pressed: { opacity: 0.68 },
-  slide: { paddingHorizontal: spacing.lg, gap: spacing.lg },
-  stage: { overflow: 'hidden', borderRadius: 32, borderWidth: StyleSheet.hairlineWidth, padding: 16, justifyContent: 'flex-end' },
-  colorOrb: { position: 'absolute', width: 260, height: 260, borderRadius: 130, opacity: 0.72 },
-  orbOne: { right: -80, top: -95 },
-  orbTwo: { left: -100, bottom: -120 },
-  previewCard: { width: '100%', maxWidth: 370, minHeight: 260, alignSelf: 'center', borderRadius: radius.lg, padding: spacing.md, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 22, shadowOffset: { width: 0, height: 12 } },
-  copy: { gap: spacing.sm, paddingHorizontal: spacing.xs },
-  title: { ...type.display, fontSize: 39, lineHeight: 40, letterSpacing: -1.8 },
-  body: { ...type.body, maxWidth: 430 },
-  footer: { position: 'relative', minHeight: 54, marginHorizontal: spacing.lg, justifyContent: 'center' },
-  dots: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center' },
+  header: { minHeight: 44, paddingHorizontal: 22, justifyContent: 'center' },
+  slide: { paddingHorizontal: 22 },
+  productStage: {
+    position: 'relative',
+    overflow: 'hidden',
+    borderCurve: 'continuous',
+    borderRadius: 30,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#101110',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stageBackground: {
+    ...StyleSheet.absoluteFill,
+  },
+  interfaceCard: {
+    position: 'relative',
+    overflow: 'hidden',
+    borderCurve: 'continuous',
+    borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(30,30,29,0.58)',
+    shadowColor: '#000',
+    shadowOpacity: 0.42,
+    shadowRadius: 29,
+    shadowOffset: { width: 0, height: 18 },
+    transform: [{ scale: 0.82 }],
+  },
+  cardTint: { position: 'absolute', inset: 0, backgroundColor: 'rgba(17,18,17,0.1)' },
+  copy: { paddingHorizontal: 7, paddingTop: 20, paddingBottom: 14, gap: spacing.md },
+  title: { maxWidth: 430, fontSize: 44, lineHeight: 44, fontWeight: '600', letterSpacing: -2.5 },
+  body: { maxWidth: 420, fontSize: 16, lineHeight: 23.5, letterSpacing: -0.2 },
+  footer: { position: 'relative', minHeight: 44, marginHorizontal: 22, justifyContent: 'center' },
+  dots: { height: 44, flexDirection: 'row', alignItems: 'center', alignSelf: 'center' },
   dotTarget: { width: 22, height: 44, alignItems: 'center', justifyContent: 'center' },
   dot: { width: 6, height: 6, borderRadius: 6 },
-  activeDot: { width: 18 },
-  continueButton: { position: 'absolute', right: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 2 },
-  continueCopy: { fontSize: 15, fontWeight: '600' },
-  chevron: { fontSize: 23, lineHeight: 24 },
-  previewContent: { flex: 1, gap: 9 },
-  previewHeading: { flex: 1, gap: 2 },
-  previewEyebrow: { fontSize: 9, lineHeight: 12, fontWeight: '700', letterSpacing: 1.2 },
-  previewTitle: { fontSize: 18, lineHeight: 21, fontWeight: '700', letterSpacing: -0.4 },
-  exerciseHeading: { minHeight: 43, flexDirection: 'row', gap: 10 },
-  exerciseNumber: { fontSize: 12, fontWeight: '600', paddingTop: 3 },
-  previewTools: { flexDirection: 'row', gap: 8 },
-  tool: { flex: 1, minHeight: 31, borderRadius: radius.pill, borderWidth: StyleSheet.hairlineWidth, textAlign: 'center', textAlignVertical: 'center', fontSize: 11, fontWeight: '600', paddingTop: 8 },
-  setLabels: { flexDirection: 'row', paddingLeft: 4 },
-  cellLabel: { width: '26%', fontSize: 8, fontWeight: '700', letterSpacing: 1 },
-  setRow: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  setNumber: { width: 18, fontSize: 10 },
-  setValue: { flex: 1, overflow: 'hidden', borderRadius: 9, textAlign: 'center', paddingVertical: 7, fontSize: 12, fontWeight: '600' },
-  check: { width: 25, height: 25, borderRadius: 13, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
-  centerPreview: { alignItems: 'center' },
-  handle: { width: 38, height: 4, borderRadius: 3, alignSelf: 'center', marginBottom: 5 },
-  timer: { fontSize: 66, lineHeight: 72, fontWeight: '300', letterSpacing: -2.5 },
-  timerNext: { fontSize: 9, fontWeight: '700', letterSpacing: 0.7 },
-  timerTrack: { width: '100%', height: 4, borderRadius: 3, overflow: 'hidden', marginTop: 14 },
-  timerFill: { width: '61%', height: '100%' },
-  timerActions: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', gap: 18 },
-  timerAction: { width: 42, height: 42, borderRadius: 21, borderWidth: StyleSheet.hairlineWidth, textAlign: 'center', paddingTop: 12, fontWeight: '600' },
-  timerSkip: { minWidth: 70, height: 42, borderRadius: 21, textAlign: 'center', paddingTop: 12, fontWeight: '700' },
-  guideVisual: { height: 83, overflow: 'hidden', borderRadius: radius.sm, borderWidth: StyleSheet.hairlineWidth },
-  figureHead: { position: 'absolute', left: '47%', top: 12, width: 15, height: 15, borderRadius: 8, borderWidth: 2 },
-  figureBody: { position: 'absolute', left: '49%', top: 28, width: 4, height: 31, borderRadius: 2, transform: [{ rotate: '-8deg' }] },
-  figureLeg: { position: 'absolute', left: '49%', top: 54, width: 39, height: 4, borderRadius: 2, transformOrigin: 'left center' },
-  figureLegOne: { transform: [{ rotate: '31deg' }] },
-  figureLegTwo: { transform: [{ rotate: '151deg' }] },
-  guideBench: { position: 'absolute', right: 35, top: 55, width: 62, height: 5, borderRadius: 3 },
-  guideStep: { flexDirection: 'row', gap: 10 },
-  guideCopy: { flex: 1, fontSize: 10, lineHeight: 13 },
-  chartTitle: { fontSize: 9, fontWeight: '700', letterSpacing: 0.7 },
-  chart: { height: 84, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#8F8F89' },
-  barColumn: { height: '100%', flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 3 },
-  barValue: { fontSize: 9, fontWeight: '700' },
-  bar: { width: 19, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
-  metrics: { flexDirection: 'row', gap: 7 },
-  metric: { flex: 1, borderRadius: 10, padding: 8, gap: 4 },
-  metricValue: { fontSize: 16, fontWeight: '700' },
-  chatBubble: { maxWidth: '88%', borderRadius: 14, padding: 10, gap: 4 },
-  userBubble: { alignSelf: 'flex-end' },
-  proposal: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 10, gap: 6 },
-  proposalTitle: { fontSize: 12, lineHeight: 15, fontWeight: '700' },
-  proposalButton: { minHeight: 30, borderRadius: 15, textAlign: 'center', paddingTop: 7, fontSize: 10, fontWeight: '700' },
-  album: { width: 104, height: 104, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-  albumMark: { fontSize: 52, fontWeight: '700', letterSpacing: -4 },
-  spotifyTitle: { fontSize: 19, fontWeight: '700', marginTop: 4 },
-  spotifyArtist: { fontSize: 12 },
-  spotifyControls: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 24 },
-  spotifyControl: { fontSize: 24, fontWeight: '700' },
-  spotifyPlay: { width: 46, height: 46, borderRadius: 23, textAlign: 'center', paddingTop: 13, paddingLeft: 2 },
+  activeDot: { width: 20 },
+  signInButton: { position: 'absolute', right: 0, minWidth: 62, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+  signInCopy: { fontSize: 13, fontWeight: '600' },
+  chevron: { fontSize: 20, lineHeight: 22, marginLeft: 3 },
+  pressed: { opacity: 0.68 },
+  flex: { flex: 1, minWidth: 0 },
+  workoutPreview: { flex: 1 },
+  workoutHeading: { minHeight: 70, paddingHorizontal: 17, paddingVertical: 15, flexDirection: 'row', gap: 10 },
+  monoMuted: { width: 25, paddingTop: 3, color: '#8D8D88', fontFamily: 'ui-monospace', fontSize: 9 },
+  cardTitle: { color: '#F3F1EB', fontSize: 16, lineHeight: 19, fontWeight: '700', letterSpacing: -0.4 },
+  cardMuted: { marginTop: 5, color: '#8E8E89', fontSize: 9 },
+  workoutTools: { height: 42, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.09)' },
+  workoutTool: { flex: 1, textAlign: 'center', paddingTop: 14, color: '#B8B7B2', fontSize: 9, fontWeight: '600' },
+  setGrid: { paddingHorizontal: 17, paddingTop: 8, flex: 1 },
+  setLabels: { minHeight: 18, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  gridLabel: { color: '#8D8D88', fontSize: 7, fontWeight: '700', letterSpacing: 1.1 },
+  setNumberLabel: { width: 21, textAlign: 'center' },
+  gridValueLabel: { flex: 1, color: '#8D8D88', fontSize: 7, fontWeight: '700', letterSpacing: 1.1 },
+  setCheckLabel: { width: 27 },
+  setRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  setNumber: { width: 21, color: '#979792', fontSize: 9, textAlign: 'center' },
+  setValue: { flex: 1, height: 36, overflow: 'hidden', borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.07)', color: '#F3F1EB', fontFamily: 'ui-monospace', fontSize: 12, fontWeight: '600', textAlign: 'center', paddingTop: 10 },
+  setCheck: { width: 27, height: 27, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.28)', alignItems: 'center', justifyContent: 'center' },
+  setCheckDone: { borderColor: '#F2F0EA', backgroundColor: '#F2F0EA' },
+  checkCopy: { color: 'transparent' },
+  checkDoneCopy: { color: '#171716', fontSize: 11, fontWeight: '700' },
+  recommendation: { marginBottom: 14, color: '#858580', fontSize: 8, textAlign: 'center' },
+  sheetHandle: { width: 40, height: 4, marginTop: 11, marginBottom: 15, alignSelf: 'center', borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.26)' },
+  kicker: { color: '#C3C2BD', fontSize: 7, lineHeight: 10, fontWeight: '700', letterSpacing: 1.25 },
+  timerPreview: { flex: 1, paddingHorizontal: 20, paddingBottom: 16, alignItems: 'center' },
+  timerValue: { marginTop: 13, color: '#F3F1EB', fontSize: 66, lineHeight: 66, fontWeight: '600', letterSpacing: -4.6 },
+  timerNext: { marginTop: 12, color: '#7F7E79', fontSize: 7, fontWeight: '600', letterSpacing: 0.9 },
+  timerTrack: { width: '100%', height: 3, marginTop: 25, marginBottom: 23, overflow: 'hidden', borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.1)' },
+  timerTrackFill: { width: '72%', height: '100%', backgroundColor: '#F3F1EB' },
+  timerActions: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  timerAdjustment: { width: 70, color: '#F3F1EB', fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  timerSkip: { flex: 1, minHeight: 52, borderRadius: 15, backgroundColor: '#F3F1EB', color: '#171716', fontSize: 14, fontWeight: '600', textAlign: 'center', paddingTop: 17 },
+  sheetPreview: { flex: 1 },
+  sheetHeading: { paddingHorizontal: 17 },
+  sheetTitle: { marginTop: 7, color: '#F3F1EB', fontSize: 17, lineHeight: 20, fontWeight: '500', letterSpacing: -0.65 },
+  guideFigure: { marginHorizontal: 17, marginTop: 14 },
+  guideImage: { width: '100%', height: 164, transform: [{ scale: 1.08 }] },
+  guideCaption: { minHeight: 31, paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.075)' },
+  captionLabel: { color: '#AAA9A4', fontSize: 7, letterSpacing: 1.1 },
+  captionMuted: { color: '#777772', fontSize: 7 },
+  execution: { paddingHorizontal: 17, paddingTop: 14, paddingBottom: 20 },
+  guideStep: { paddingVertical: 7, flexDirection: 'row', gap: 7 },
+  guideIndex: { width: 25, color: '#777772', fontFamily: 'ui-monospace', fontSize: 7 },
+  guideCopy: { flex: 1, color: '#AAA9A4', fontSize: 8, lineHeight: 11.2 },
+  chartHeading: { marginHorizontal: 17, marginTop: 22, flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  chartDescription: { maxWidth: 172, marginTop: 6, color: '#858580', fontSize: 8, lineHeight: 11 },
+  chartSessions: { paddingTop: 2, color: '#858580', fontSize: 8 },
+  chart: { position: 'relative', width: 300, height: 108, marginTop: 11, alignSelf: 'center' },
+  chartGridLine: { position: 'absolute', left: 8, right: 8, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.075)' },
+  chartLine: { position: 'absolute', height: 1.5, backgroundColor: '#D8D7D1', transformOrigin: 'left center' },
+  chartPointGroup: { position: 'absolute', width: 22, alignItems: 'center', gap: 4 },
+  chartPointLabel: { color: '#9C9B96', fontFamily: 'ui-monospace', fontSize: 7 },
+  chartPoint: { width: 7, height: 7, borderRadius: 4, borderWidth: 1.5, borderColor: '#D8D7D1', backgroundColor: '#242423' },
+  chartPointCurrent: { backgroundColor: '#D8D7D1' },
+  chartDates: { marginHorizontal: 17, marginTop: -2, flexDirection: 'row' },
+  chartDate: { flex: 1, color: '#696965', fontSize: 6, letterSpacing: 0.5, textAlign: 'center' },
+  statsMetrics: { marginHorizontal: 17, marginTop: 15, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.075)' },
+  statMetric: { flex: 1, minWidth: 0, paddingHorizontal: 8, paddingVertical: 12 },
+  metricLabel: { color: '#858580', fontSize: 7, letterSpacing: 1 },
+  metricValue: { marginTop: 12, color: '#F3F1EB', fontFamily: 'ui-monospace', fontSize: 15, fontWeight: '500' },
+  metricDetail: { marginTop: 5, color: '#777772', fontSize: 6.5 },
+  trainerPreview: { flex: 1, padding: 16 },
+  kickerMuted: { color: '#858580', fontSize: 7, fontWeight: '700', letterSpacing: 1.25 },
+  trainerTitle: { marginTop: 6, color: '#F3F1EB', fontSize: 20, lineHeight: 23, fontWeight: '700', letterSpacing: -0.9 },
+  userMessage: { maxWidth: '88%', alignSelf: 'flex-end', marginTop: 15, paddingHorizontal: 12, paddingVertical: 11, borderRadius: 14, borderBottomRightRadius: 5, backgroundColor: '#F2F0EA', color: '#171716', fontSize: 10, lineHeight: 14.8 },
+  trainerMessage: { maxWidth: '88%', marginTop: 15 },
+  trainerLabel: { color: '#73736E', fontSize: 6, fontWeight: '700', letterSpacing: 0.9 },
+  trainerCopy: { marginTop: 5, color: '#BBB9B4', fontSize: 10, lineHeight: 14.8 },
+  proposal: { marginTop: 14, padding: 12, borderCurve: 'continuous', borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.045)' },
+  proposalTitle: { marginTop: 7, color: '#F3F1EB', fontSize: 10, fontWeight: '700' },
+  proposalDetail: { marginTop: 4, color: '#797974', fontSize: 7 },
+  proposalActions: { marginTop: 11, flexDirection: 'row', gap: 6 },
+  keepCurrent: { flex: 1, minHeight: 31, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', color: '#9B9A95', fontSize: 7, textAlign: 'center', paddingTop: 11 },
+  approveChange: { flex: 1.2, minHeight: 31, borderRadius: 10, backgroundColor: '#EFEDE7', color: '#171716', fontSize: 7, fontWeight: '700', textAlign: 'center', paddingTop: 11 },
+  spotifyImage: { alignSelf: 'flex-start' },
 });

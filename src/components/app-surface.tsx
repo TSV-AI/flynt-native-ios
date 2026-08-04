@@ -1,6 +1,6 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { router } from 'expo-router';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, type ColorValue } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, type ColorValue } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { appSurfaces, palette, radius, spacing, type } from '@/constants/theme';
@@ -18,9 +18,10 @@ type AppScreenProps = PropsWithChildren<{
   backgroundColor?: ColorValue;
   footer?: ReactNode;
   modalActive?: boolean;
+  scrollable?: boolean;
 }>;
 
-export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle, showsBackButton = false, children, testID, backgroundColor, footer, modalActive = false }: AppScreenProps) {
+export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle, showsBackButton = false, children, testID, backgroundColor, footer, modalActive = false, scrollable = true }: AppScreenProps) {
   const { mode, theme } = useFlyntTheme();
   function openSettings() {
     router.push('/settings');
@@ -44,13 +45,7 @@ export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle,
             </>
           ) : (
             <>
-              <Image
-                accessibilityLabel="FLYNT"
-                source={mode === 'dark'
-                  ? require('@/assets/images/flynt-mark-light.png')
-                  : require('@/assets/images/flynt-mark-ink.png')}
-                style={styles.mark}
-              />
+              <View style={styles.topbarPlaceholder} />
               {headerAccessory ?? (
                 <GlassSymbolButton
                   accessibilityLabel="Open menu and settings"
@@ -63,7 +58,7 @@ export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle,
             </>
           )}
         </View>
-        <ScrollView automaticallyAdjustContentInsets contentContainerStyle={styles.content} keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
+        {scrollable ? <ScrollView automaticallyAdjustContentInsets contentContainerStyle={styles.content} keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
           {title ? (
             <View style={styles.hero}>
               {eyebrow ? <Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text> : null}
@@ -73,7 +68,16 @@ export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle,
           ) : null}
           {children}
           <View style={styles.bottomSpace} />
-        </ScrollView>
+        </ScrollView> : <View style={styles.staticContent}>
+          {title ? (
+            <View style={styles.hero}>
+              {eyebrow ? <Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text> : null}
+              <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
+              {intro ? <Text style={[styles.intro, { color: theme.muted }]}>{intro}</Text> : null}
+            </View>
+          ) : null}
+          {children}
+        </View>}
         {footer}
       </SafeAreaView>
     </View>
@@ -112,10 +116,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   safeArea: { flex: 1 },
   topbar: { height: 58, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  mark: { width: 28, height: 42.5, resizeMode: 'contain' },
+  topbarPlaceholder: { width: 44, height: 44 },
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topbarTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600' },
   content: { paddingHorizontal: 18 },
+  staticContent: { flex: 1, paddingHorizontal: 18 },
   hero: { paddingHorizontal: 4, paddingTop: 14, paddingBottom: 26 },
   eyebrow: { fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.45 },
   title: { marginTop: 10, fontSize: 38, lineHeight: 38, fontWeight: '600', letterSpacing: -1.95 },

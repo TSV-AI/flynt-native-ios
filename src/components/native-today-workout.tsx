@@ -21,12 +21,14 @@ import {
 import {
   Animation,
   accessibilityAddTraits,
+  accessibilityHidden,
   accessibilityHint,
   accessibilityLabel,
   animation,
   background,
   buttonBorderShape,
   buttonStyle,
+  clipped,
   disabled,
   environment,
   fixedSize,
@@ -41,6 +43,7 @@ import {
   listStyle,
   monospacedDigit,
   multilineTextAlignment,
+  opacity,
   offset,
   padding,
   presentationBackground,
@@ -58,36 +61,40 @@ import {
 import { type ReactElement, useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
+import { GlassSymbolButton, GlassTextButton, NativeSymbol } from '@/components/native-symbol';
+import { NativeWorkoutEditorList } from '@/components/native-workout-editor-list';
 import { RestTimerAccessorySurface } from '@/components/rest-timer-accessory';
 import { motion } from '@/constants/motion';
 import { flyntSheetBackgroundColor, flyntSheetDetent } from '@/constants/sheet';
 import { appSurfaces, spacing, type ColorMode, type Theme } from '@/constants/theme';
-import type { PreviewDay } from '@/features/app-preview-data';
+import type { PreviewDay, PreviewExercise } from '@/features/app-preview-data';
 import { getExerciseArtwork } from '@/features/exercise-artwork';
 import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
 import { useModalPresentation } from '@/providers/modal-presentation-provider';
 import { useRestTimer } from '@/providers/rest-timer-provider';
 
-type PreviewExercise = {
-  completed: number;
-  detail: string;
-  name: string;
-  total: number;
-};
-
 type NativeTodayWorkoutProps = {
   completed: number[];
   dateLabel: string;
   day: PreviewDay;
+  editingWorkout: boolean;
   exercises: PreviewExercise[];
   finished: boolean;
   mode: ColorMode;
+  onAddExercise: () => void;
+  onCancelWorkout: () => void;
   onChooseDay: (index: number) => void;
+  onDeleteExercises: (indices: number[]) => void;
+  onEditExercise: (index: number) => void;
   onExerciseSheetDismissed: () => void;
+  onEditWorkout: () => void;
   onFinishWorkout: () => void;
+  onMoveExercises: (sourceIndices: number[], destination: number) => void;
   onOpenSettings: () => void;
+  onReplaceExercise: (index: number) => void;
+  onSaveWorkout: () => void;
   onSpotifySheetDismissed: () => void;
   onSelectExercise: (index: number) => void;
   onToggleSet: (exerciseIndex: number, setIndex: number) => void;
@@ -120,20 +127,35 @@ function exerciseSummary(detail: string): string {
   return detail.replace(/^\d+\s+sets\s+·\s*/i, '');
 }
 
+function exerciseArtworkSource(exercise: PreviewExercise) {
+  return exercise.visualUrl ? { uri: exercise.visualUrl } : getExerciseArtwork(exercise.name);
+}
+
+function exerciseArtworkUri(exercise: PreviewExercise) {
+  const source = exerciseArtworkSource(exercise);
+  return source ? Image.resolveAssetSource(source)?.uri : undefined;
+}
+
+function restLabel(seconds = 90) {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return minutes ? `${minutes}:${String(remainder).padStart(2, '0')}` : `${remainder} sec`;
+}
+
 function ExerciseArtwork({
   accessible = false,
   backgroundColor,
   height,
-  name,
+  exercise,
   width,
 }: {
   accessible?: boolean;
   backgroundColor: string;
   height: number;
-  name: string;
+  exercise: PreviewExercise;
   width: number;
 }) {
-  const source = getExerciseArtwork(name);
+  const source = exerciseArtworkSource(exercise);
   if (!source) return null;
 
   return (
@@ -145,7 +167,7 @@ function ExerciseArtwork({
       <RNHostView matchContents>
         <View
           accessibilityElementsHidden={!accessible}
-          accessibilityLabel={accessible ? `Two-position movement illustration for ${name}` : undefined}
+          accessibilityLabel={accessible ? exercise.visualAlt ?? `Movement illustration for ${exercise.name}` : undefined}
           accessibilityRole={accessible ? 'image' : undefined}
           accessible={accessible}
           importantForAccessibility={accessible ? 'yes' : 'no-hide-descendants'}
@@ -273,6 +295,7 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onToggle, outl
 
 function ExerciseListRow({
   completed,
+  editing = false,
   exercise,
   inputColor,
   onPress,
@@ -281,6 +304,7 @@ function ExerciseListRow({
   theme,
 }: {
   completed: number;
+  editing?: boolean;
   exercise: PreviewExercise;
   inputColor: string;
   onPress: () => void;
@@ -289,12 +313,13 @@ function ExerciseListRow({
   theme: Theme;
 }) {
   const done = completed === exercise.total;
-  const artwork = getExerciseArtwork(exercise.name);
+  const artwork = exerciseArtworkSource(exercise);
+  const rest = restLabel(exercise.restSeconds);
   return (
     <RNHostView matchContents>
       <Pressable
         accessibilityHint="Opens exercise details and set entry"
-        accessibilityLabel={`${exercise.name}, ${exerciseSummary(exercise.detail)}, 1 minute 30 seconds rest, ${completed} of ${exercise.total} sets complete`}
+        accessibilityLabel={`${exercise.name}, ${exerciseSummary(exercise.detail)}, ${rest} rest, ${completed} of ${exercise.total} sets complete`}
         accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [
@@ -336,10 +361,10 @@ function ExerciseListRow({
             {exercise.name}
           </Text>
           <Text style={[styles.exerciseRowDetail, { color: theme.muted }]}>
-            {exercise.total} sets · 1:30 rest
+            {exercise.total} sets · {rest} rest
           </Text>
         </View>
-        <NativeSymbol color={done ? theme.ink : theme.muted} name={done ? 'checkmark.circle.fill' : 'circle'} size={20} />
+        {!editing ? <NativeSymbol color={done ? theme.ink : theme.muted} name={done ? 'checkmark.circle.fill' : 'circle'} size={20} /> : null}
       </Pressable>
     </RNHostView>
   );
@@ -378,7 +403,14 @@ function ExerciseSheetContent({
 }) {
   const { expand: expandRest, timer } = useRestTimer();
   const prescribedReps = exercise.detail.match(/(\d+(?:[–-]\d+)?)\s+reps?/i)?.[1] ?? '';
-  const artwork = getExerciseArtwork(exercise.name);
+  const artwork = exerciseArtworkSource(exercise);
+  const guideSteps = exercise.guideSteps === undefined
+    ? [
+        'Brace with full-foot pressure before the first rep.',
+        'Use the programmed range without rushing the transition.',
+        'Finish under control, then reset your position.',
+      ]
+    : exercise.guideSteps;
   const activeRest = timer?.exercise === exercise.name ? timer : null;
   const isComplete = completed >= exercise.total;
   function openRestTimer() {
@@ -429,8 +461,8 @@ function ExerciseSheetContent({
               <ExerciseArtwork
                 accessible
                 backgroundColor={mediaBackground}
+                exercise={exercise}
                 height={190}
-                name={exercise.name}
                 width={mediaWidth}
               />
             ) : (
@@ -447,12 +479,8 @@ function ExerciseSheetContent({
                 </NativeText>
               </VStack>
             )}
-            <VStack alignment="leading" spacing={spacing.sm}>
-              {[
-                'Brace with full-foot pressure before the first rep.',
-                'Use the programmed range without rushing the transition.',
-                'Finish under control, then reset your position.',
-              ].map((step, index) => (
+            {guideSteps.length ? <VStack alignment="leading" spacing={spacing.sm}>
+              {guideSteps.map((step, index) => (
                 <HStack key={step} alignment="top" spacing={10}>
                   <NativeText modifiers={[frame({ width: 24 }), font({ textStyle: 'caption2' }), foregroundStyle(theme.muted), monospacedDigit()]}>
                     {String(index + 1).padStart(2, '0')}
@@ -462,7 +490,11 @@ function ExerciseSheetContent({
                   </NativeText>
                 </HStack>
               ))}
-            </VStack>
+            </VStack> : (
+              <NativeText modifiers={[font({ textStyle: 'footnote' }), foregroundStyle(theme.muted), fixedSize({ vertical: true })]}>
+                Written guidance is not yet published.
+              </NativeText>
+            )}
           </VStack>
         ) : <Spacer modifiers={[frame({ height: 20 })]} />}
 
@@ -652,13 +684,22 @@ export function NativeTodayWorkout({
   completedSets,
   dateLabel,
   day,
+  editingWorkout,
   exercises,
   finished,
   mode,
+  onAddExercise,
+  onCancelWorkout,
   onChooseDay,
+  onDeleteExercises,
+  onEditExercise,
   onExerciseSheetDismissed,
+  onEditWorkout,
   onFinishWorkout,
+  onMoveExercises,
   onOpenSettings,
+  onReplaceExercise,
+  onSaveWorkout,
   onSpotifySheetDismissed,
   onSelectExercise,
   onToggleSet,
@@ -673,19 +714,21 @@ export function NativeTodayWorkout({
   totalSets,
   week,
 }: NativeTodayWorkoutProps) {
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
+  const safeAreaInsets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const reduceTransparency = useReduceTransparency();
   const { setModalPresented } = useModalPresentation();
   const [sheetPage, setSheetPage] = useState<'exercise' | 'stats'>('exercise');
   const contentWidth = width - 32;
+  const editListHeight = Math.max(420, height - safeAreaInsets.top - 142);
   const daySelectorWidth = contentWidth - 8;
   const dayColumnWidth = daySelectorWidth / 7;
   const canvas = appSurfaces[mode].primaryBackground;
   const input = appSurfaces[mode].itemBackground;
   const sheetItemBackground = '#222222';
   const exerciseEntryBackground = 'rgba(34,34,34,0.90)';
-  const sheetInput = exerciseEntryBackground;
+  const sheetInput = mode === 'dark' ? '#282828' : exerciseEntryBackground;
   const mediaBackground = exerciseEntryBackground;
   const sheetBackgroundColor = flyntSheetBackgroundColor(mode, reduceTransparency);
   const sheetDetent = flyntSheetDetent();
@@ -720,90 +763,122 @@ export function NativeTodayWorkout({
     <View style={{ flex: 1, backgroundColor: canvas }}>
       <Host colorScheme={mode} seedColor={theme.ink} style={{ flex: 1 }}>
         <ZStack>
-          <List modifiers={[listStyle('plain'), scrollContentBackground('hidden'), background(canvas)]}>
-            <ZStack
-              alignment="center"
+          <List modifiers={[
+            listStyle('plain'),
+            scrollContentBackground('hidden'),
+            background(canvas),
+            ...(!reduceMotion ? [animation(Animation.easeInOut({ duration: motion.duration.standard / 1000 }), editingWorkout)] : []),
+          ]}>
+            <VStack
+              spacing={0}
               modifiers={[
                 ...commonRow,
-                frame({ width: contentWidth, height: 44 }),
-                padding({ vertical: 8 }),
+                frame({ height: editingWorkout ? 76 : 138 }),
+                clipped(),
+                opacity(editingWorkout ? 0 : 1),
+                accessibilityHidden(editingWorkout),
+                disabled(editingWorkout),
+                ...(!reduceMotion ? [animation(Animation.easeInOut({ duration: motion.duration.standard / 1000 }), editingWorkout)] : []),
               ]}
             >
-              {spotifyPill ? <RNHostView matchContents>{spotifyPill}</RNHostView> : null}
-              <HStack modifiers={[frame({ width: contentWidth, height: 44 })]}>
-                <Spacer />
-                <RNHostView matchContents>
-                  <GlassSymbolButton
-                    accessibilityLabel="Open menu and settings"
-                    color={theme.ink}
-                    colorScheme={mode}
-                    name="ellipsis"
-                    onPress={onOpenSettings}
-                  />
-                </RNHostView>
-              </HStack>
-            </ZStack>
-
-            <ZStack
-              modifiers={[
-                ...commonRow,
-                frame({ width: daySelectorWidth, height: 64 }),
-                padding({ top: 14 }),
-              ]}
-            >
-              <VStack
+              <ZStack
+                alignment="center"
                 modifiers={[
-                  frame({ width: 62, height: 64 }),
-                  background(theme.primaryFill, dayShape),
-                  strokeBorder({ color: outline, style: { lineWidth: 0.5 }, shape: 'roundedRectangle', cornerRadius: 18 }),
-                  offset({ x: (selectedDay - 3) * dayColumnWidth }),
-                  ...(!reduceMotion ? [animation(Animation.interpolatingSpring(motion.spring.responsive), selectedDay)] : []),
+                  frame({ width: contentWidth, height: 44 }),
+                  padding({ vertical: 8 }),
                 ]}
               >
-                <Spacer />
-              </VStack>
-              <HStack spacing={0} modifiers={[frame({ width: daySelectorWidth, height: 64 })]}>
-                {week.map((item, index) => {
-                  const selected = index === selectedDay;
-                  return (
-                    <Button
-                      key={`${item.shortDay}-${item.date}`}
-                      onPress={() => onChooseDay(index)}
-                      modifiers={[
-                        buttonStyle('plain'),
-                        frame({ width: dayColumnWidth, height: 64 }),
-                        accessibilityLabel(`${item.shortDay} ${item.date}, ${item.title}`),
-                        accessibilityHint("Shows this day's workout"),
-                        ...(selected ? [accessibilityAddTraits(['isSelected'])] : []),
-                      ]}
-                    >
-                      <VStack spacing={7} modifiers={[frame({ width: dayColumnWidth, height: 64 })]}>
-                        <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), foregroundStyle(selected ? theme.primaryText : theme.muted)]}>
-                          {item.shortDay.slice(0, 1)}
-                        </NativeText>
-                        <NativeText modifiers={[font({ textStyle: 'caption', weight: 'semibold' }), foregroundStyle(selected ? theme.primaryText : theme.muted), monospacedDigit()]}>
-                          {item.date}
-                        </NativeText>
-                      </VStack>
-                    </Button>
-                  );
-                })}
-              </HStack>
-            </ZStack>
-
-            <VStack alignment="leading" spacing={9} modifiers={[...commonRow, padding({ top: spacing.lg, horizontal: 4, bottom: spacing.md })]}>
-              <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), kerning(1.45), foregroundStyle(theme.muted)]}>
-                {dateLabel}
-              </NativeText>
-              <NativeText modifiers={[font({ textStyle: 'largeTitle', weight: 'semibold' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>
-                {day.title}
-              </NativeText>
-              <NativeText modifiers={[font({ textStyle: 'subheadline' }), foregroundStyle(theme.muted)]}>
-                {day.focus}
-              </NativeText>
+                {spotifyPill ? <RNHostView matchContents>{spotifyPill}</RNHostView> : null}
+                <HStack modifiers={[frame({ width: contentWidth, height: 44 })]}>
+                  <Spacer />
+                  <RNHostView matchContents>
+                    <GlassSymbolButton
+                      accessibilityLabel="Open menu and settings"
+                      color={theme.ink}
+                      colorScheme={mode}
+                      name="ellipsis"
+                      onPress={onOpenSettings}
+                    />
+                  </RNHostView>
+                </HStack>
+              </ZStack>
+              <ZStack
+                modifiers={[
+                  frame({ width: daySelectorWidth, height: 64 }),
+                  padding({ top: 14 }),
+                ]}
+              >
+                <VStack
+                  modifiers={[
+                    frame({ width: 62, height: 64 }),
+                    background(theme.primaryFill, dayShape),
+                    strokeBorder({ color: outline, style: { lineWidth: 0.5 }, shape: 'roundedRectangle', cornerRadius: 18 }),
+                    offset({ x: (selectedDay - 3) * dayColumnWidth }),
+                    ...(!reduceMotion ? [animation(Animation.interpolatingSpring(motion.spring.responsive), selectedDay)] : []),
+                  ]}
+                >
+                  <Spacer />
+                </VStack>
+                <HStack spacing={0} modifiers={[frame({ width: daySelectorWidth, height: 64 })]}>
+                  {week.map((item, index) => {
+                    const selected = index === selectedDay;
+                    return (
+                      <Button
+                        key={`${item.shortDay}-${item.date}`}
+                        onPress={() => onChooseDay(index)}
+                        modifiers={[
+                          buttonStyle('plain'),
+                          frame({ width: dayColumnWidth, height: 64 }),
+                          disabled(editingWorkout),
+                          accessibilityLabel(`${item.shortDay} ${item.date}, ${item.title}`),
+                          accessibilityHint("Shows this day's workout"),
+                          ...(selected ? [accessibilityAddTraits(['isSelected'])] : []),
+                        ]}
+                      >
+                        <VStack spacing={7} modifiers={[frame({ width: dayColumnWidth, height: 64 })]}>
+                          <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), foregroundStyle(selected ? theme.primaryText : theme.muted)]}>
+                            {item.shortDay.slice(0, 1)}
+                          </NativeText>
+                          <NativeText modifiers={[font({ textStyle: 'caption', weight: 'semibold' }), foregroundStyle(selected ? theme.primaryText : theme.muted), monospacedDigit()]}>
+                            {item.date}
+                          </NativeText>
+                        </VStack>
+                      </Button>
+                    );
+                  })}
+                </HStack>
+              </ZStack>
             </VStack>
 
-            {totalSets ? (
+            {!editingWorkout ? (
+              <VStack alignment="leading" spacing={9} modifiers={[...commonRow, padding({ top: spacing.lg, horizontal: 4, bottom: spacing.md })]}>
+                <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), kerning(1.45), foregroundStyle(theme.muted)]}>
+                  {dateLabel}
+                </NativeText>
+                <HStack spacing={spacing.sm} modifiers={[frame({ maxWidth: 1000 })]}>
+                  <NativeText modifiers={[font({ textStyle: 'largeTitle', weight: 'semibold' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>
+                    {day.title}
+                  </NativeText>
+                  <Spacer />
+                  <Button
+                    onPress={onEditWorkout}
+                    modifiers={[
+                      buttonStyle('plain'),
+                      frame({ minWidth: 44, minHeight: 44 }),
+                      accessibilityLabel(`Edit ${day.title}`),
+                      accessibilityHint('Makes this workout list editable'),
+                    ]}
+                  >
+                    <SwiftUIImage color={theme.ink} size={18} systemName="square.and.pencil" />
+                  </Button>
+                </HStack>
+                <NativeText modifiers={[font({ textStyle: 'subheadline' }), foregroundStyle(theme.muted)]}>
+                  {day.focus}
+                </NativeText>
+              </VStack>
+            ) : null}
+
+            {!editingWorkout && totalSets ? (
               <HStack spacing={spacing.sm} modifiers={[...commonRow, frame({ width: contentWidth - 8 }), padding({ top: 24, horizontal: 4, bottom: 16 })]}>
                 <ProgressView
                   value={progress}
@@ -825,16 +900,16 @@ export function NativeTodayWorkout({
                   {Math.round(progress * 100)}%
                 </NativeText>
               </HStack>
-            ) : (
+            ) : !editingWorkout ? (
               <HStack spacing={8} modifiers={[...commonRow, frame({ minHeight: 64 }), padding({ horizontal: 4 })]}>
                 <SwiftUIImage color={theme.muted} size={16} systemName="figure.walk" />
                 <NativeText modifiers={[font({ textStyle: 'caption', weight: 'semibold' }), foregroundStyle(theme.muted)]}>
                   {day.duration}
                 </NativeText>
               </HStack>
-            )}
+            ) : null}
 
-            {spotifyBar ? (
+            {!editingWorkout && spotifyBar ? (
               <Group
                 modifiers={[
                   ...commonRow,
@@ -855,6 +930,39 @@ export function NativeTodayWorkout({
                   Keep the day easy. Your next training session is already scheduled.
                 </NativeText>
               </VStack>
+            ) : editingWorkout ? (
+              <Group
+                modifiers={[
+                  ...commonRow,
+                  frame({ width: contentWidth, height: editListHeight }),
+                ]}
+              >
+                <RNHostView>
+                  <NativeWorkoutEditorList
+                    activeBackgroundColor={input}
+                    backgroundColor={canvas}
+                    exercises={exercises.map((exercise, index) => ({
+                      id: exercise.id ?? `${exercise.name}-${index}`,
+                      name: exercise.name,
+                      summary: `${exercise.total} sets · ${restLabel(exercise.restSeconds)} rest`,
+                      artworkUrl: exerciseArtworkUri(exercise),
+                    }))}
+                    foregroundColor={theme.ink}
+                    instructions="Drag to reorder. Swipe left to replace or delete. Tap an exercise to change it."
+                    mutedColor={theme.muted}
+                    onAddExercise={onAddExercise}
+                    onDeleteExercise={({ nativeEvent }) => onDeleteExercises([nativeEvent.index])}
+                    onMoveExercise={({ nativeEvent }) => onMoveExercises(
+                      [nativeEvent.from],
+                      nativeEvent.from < nativeEvent.to ? nativeEvent.to + 1 : nativeEvent.to
+                    )}
+                    onReplaceExercise={({ nativeEvent }) => onReplaceExercise(nativeEvent.index)}
+                    onSelectExercise={({ nativeEvent }) => onEditExercise(nativeEvent.index)}
+                    style={{ width: contentWidth, height: editListHeight }}
+                    title={day.title}
+                  />
+                </RNHostView>
+              </Group>
             ) : exercises.map((item, index) => (
               <ExerciseListRow
                 key={item.name}
@@ -870,7 +978,7 @@ export function NativeTodayWorkout({
               <Group key={row.key} modifiers={commonRow}>{row}</Group>
             ))}
 
-            {day.kind !== 'recovery' && exercises.length > 0 ? (
+            {!editingWorkout && day.kind !== 'recovery' && exercises.length > 0 ? (
               <VStack
                 modifiers={[
                   ...commonRow,
@@ -986,11 +1094,40 @@ export function NativeTodayWorkout({
           </BottomSheet>
         </ZStack>
       </Host>
+      {editingWorkout ? (
+        <View
+          pointerEvents="box-none"
+          style={[styles.editActionBar, { top: safeAreaInsets.top + 8 }]}
+        >
+          <GlassTextButton
+            accessibilityLabel="Cancel workout edits"
+            color={theme.ink}
+            colorScheme={mode}
+            label="Cancel"
+            onPress={onCancelWorkout}
+          />
+          <GlassTextButton
+            accessibilityLabel="Save workout edits"
+            color={theme.ink}
+            colorScheme={mode}
+            label="Save"
+            onPress={onSaveWorkout}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  editActionBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   exerciseRow: {
     minHeight: 88,
     paddingVertical: 14,

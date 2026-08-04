@@ -34,6 +34,7 @@ import { useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -45,15 +46,46 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { appSurfaces, radius, spacing, themeFor } from '@/constants/theme';
-import { NativeMaterialSheet } from '@/components/native-material-sheet';
-import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
+import { FlyntSheet, FlyntSheetCard } from '@/components/flynt-sheet';
+import { NativeSymbol } from '@/components/native-symbol';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { selection } from '@/lib/haptics';
+import { savePersonalBasics, savePreferences } from '@/lib/api-client';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 import { useSettingsPreferences } from '@/providers/settings-preferences-provider';
 
 type Panel = 'profile' | 'app';
 type ProfileSheet = 'personal' | 'training' | null;
+
+function recordValue(value: unknown, key: string) {
+  if (!value || typeof value !== 'object' || !(key in value)) return undefined;
+  return (value as Record<string, unknown>)[key];
+}
+
+function firstText(value: unknown) {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (Array.isArray(value)) {
+    const item = value.find((entry) => typeof entry === 'string' && entry.trim());
+    return typeof item === 'string' ? item.trim() : '';
+  }
+  return '';
+}
+
+function formatHeight(value: number | null) {
+  if (value === null) return 'Not set';
+  return `${Math.floor(value / 12)}′ ${Math.round(value % 12)}″`;
+}
+
+function initialsForName(value: string) {
+  return value.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'F';
+}
+
+function twentyFourHourTime(value: string) {
+  const match = /^(\d{1,2}):(\d{2})\s(AM|PM)$/.exec(value);
+  if (!match) return '08:00';
+  const hour = Number(match[1]) % 12 + (match[3] === 'PM' ? 12 : 0);
+  return `${String(hour).padStart(2, '0')}:${match[2]}`;
+}
 
 function NativeMenuPicker({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: readonly string[]; value: string }) {
   const { theme } = useFlyntTheme();
@@ -187,8 +219,6 @@ function ProfileEditSheet({
   const usesCurrentSheetStyle = kind === 'personal';
   const sheetMode = usesCurrentSheetStyle ? mode : mode === 'light' ? 'dark' : 'light';
   const theme = themeFor(sheetMode);
-  const sheetItemBackground = sheetMode === 'dark' ? '#222222' : '#F2F2F1';
-  const title = kind === 'personal' ? 'Personal Details' : 'Training Profile';
   const trainingRows = [
     { label: 'Primary goal', value: goal, choices: ['Build strength', 'Build muscle', 'General fitness', 'Athletic performance'], setValue: setGoal },
     { label: 'Experience', value: experience, choices: ['Beginner', 'Intermediate', 'Advanced'], setValue: setExperience },
@@ -198,92 +228,69 @@ function ProfileEditSheet({
   const [activeTrainingChoice, setActiveTrainingChoice] = useState<string | null>(null);
   const activeRow = trainingRows.find((row) => row.label === activeTrainingChoice);
 
+  if (kind === 'personal') {
+    return (
+      <FlyntSheet isPresented={visible} onDismiss={onClose} title="Personal Details">
+        <FlyntSheetCard style={styles.personalEditFields}>
+          <EditField label="Name" onChangeText={setName} value={name} />
+          <EditField keyboardType="number-pad" label="Age" onChangeText={setAge} value={age} />
+          <EditField label="Height" onChangeText={setHeight} value={height} />
+          <EditField label="Weight" onChangeText={setWeight} showDivider={false} value={weight} />
+        </FlyntSheetCard>
+        <Text style={[styles.sheetNote, { color: theme.muted }]}>These details help Trainer understand your context. Program decisions remain server-owned.</Text>
+      </FlyntSheet>
+    );
+  }
+
   return (
-    <NativeMaterialSheet
-      colorScheme={sheetMode}
+    <FlyntSheet
       isPresented={visible}
+      mode={sheetMode}
+      onBack={activeRow ? () => setActiveTrainingChoice(null) : undefined}
       onDismiss={onClose}
+      title={activeRow?.label ?? 'Training Profile'}
     >
-      <View style={styles.sheet}>
-        <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
-          {usesCurrentSheetStyle ? (
-            <View style={styles.currentSheetHeader}>
-              <Text accessibilityRole="header" style={[styles.currentSheetTitle, { color: theme.ink }]}>Personal Details</Text>
-              <GlassSymbolButton
-                accessibilityLabel="Close Personal Details"
-                color={theme.ink}
-                colorScheme={sheetMode}
-                name="xmark"
-                onPress={onClose}
-              />
-            </View>
-          ) : (
-            <View style={[styles.sheetHeader, { borderBottomColor: theme.line }]}>
-              <View style={styles.sheetHeaderSide}>
-                {activeRow ? (
-                  <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={() => setActiveTrainingChoice(null)} style={styles.sheetBackButton}>
-                    <NativeSymbol color={theme.ink} name="chevron.left" size={17} />
-                  </Pressable>
-                ) : null}
-              </View>
-              <Text accessibilityRole="header" style={[styles.sheetTitle, { color: theme.ink }]}>{activeRow?.label ?? title}</Text>
-              <View style={styles.sheetHeaderSide}>
-                <Pressable accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={[styles.sheetCloseButton, { backgroundColor: theme.card }]}>
-                  <NativeSymbol color={theme.ink} name="xmark" size={16} />
+      <FlyntSheetCard mode={sheetMode} style={styles.trainingChoices}>
+        {activeRow ? (
+          <View>
+            {activeRow.choices.map((choice, index) => (
+              <View key={choice}>
+                {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.line }]} /> : null}
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: choice === activeRow.value }}
+                  onPress={() => {
+                    void selection();
+                    activeRow.setValue(choice);
+                    setActiveTrainingChoice(null);
+                  }}
+                  style={styles.sheetChoiceRow}
+                >
+                  <Text style={[styles.rowTitle, { color: theme.ink }]}>{choice}</Text>
+                  {choice === activeRow.value ? <NativeSymbol color={theme.ink} name="checkmark" size={15} /> : null}
                 </Pressable>
               </View>
-            </View>
-          )}
-          <ScrollView contentContainerStyle={usesCurrentSheetStyle ? styles.currentSheetContent : styles.sheetContent} keyboardDismissMode="interactive">
-            {activeRow ? (
-              <View style={styles.sheetChoices}>
-                {activeRow.choices.map((choice, index) => (
-                  <View key={choice}>
-                    {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.line }]} /> : null}
-                    <Pressable
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: choice === activeRow.value }}
-                      onPress={() => {
-                        void selection();
-                        activeRow.setValue(choice);
-                        setActiveTrainingChoice(null);
-                      }}
-                      style={styles.sheetChoiceRow}
-                    >
-                      <Text style={[styles.rowTitle, { color: theme.ink }]}>{choice}</Text>
-                      {choice === activeRow.value ? <NativeSymbol color={theme.ink} name="checkmark" size={15} /> : null}
-                    </Pressable>
+            ))}
+          </View>
+        ) : (
+          <View>
+            {trainingRows.map((row, index) => (
+              <View key={row.label}>
+                {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.line }]} /> : null}
+                <Pressable accessibilityRole="button" onPress={() => { void selection(); setActiveTrainingChoice(row.label); }} style={styles.sheetChoiceRow}>
+                  <Text style={[styles.rowTitle, { color: theme.ink }]}>{row.label}</Text>
+                  <View style={styles.rowTrailing}>
+                    <Text style={[styles.rowValue, { color: theme.muted }]}>{row.value}</Text>
+                    <NativeSymbol color={theme.muted} name="chevron.right" size={13} />
                   </View>
-                ))}
+                </Pressable>
               </View>
-            ) : kind === 'personal' ? (
-              <View style={[styles.editFields, styles.personalEditFields, { backgroundColor: sheetItemBackground }]}>
-                <EditField label="Name" onChangeText={setName} value={name} />
-                <EditField keyboardType="number-pad" label="Age" onChangeText={setAge} value={age} />
-                <EditField label="Height" onChangeText={setHeight} value={height} />
-                <EditField label="Weight" onChangeText={setWeight} showDivider={false} value={weight} />
-              </View>
-            ) : (
-              <View style={styles.sheetChoices}>
-                {trainingRows.map((row, index) => (
-                  <View key={row.label}>
-                    {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.line }]} /> : null}
-                    <Pressable accessibilityRole="button" onPress={() => { void selection(); setActiveTrainingChoice(row.label); }} style={styles.sheetChoiceRow}>
-                      <Text style={[styles.rowTitle, { color: theme.ink }]}>{row.label}</Text>
-                      <View style={styles.rowTrailing}>
-                        <Text style={[styles.rowValue, { color: theme.muted }]}>{row.value}</Text>
-                        <NativeSymbol color={theme.muted} name="chevron.right" size={13} />
-                      </View>
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            )}
-            {!activeRow ? <Text style={[styles.sheetNote, { color: theme.muted }]}>These details help Trainer understand your context. Program decisions remain server-owned.</Text> : null}
-          </ScrollView>
-        </SafeAreaView>
-      </View>
-    </NativeMaterialSheet>
+            ))}
+          </View>
+        )}
+      </FlyntSheetCard>
+      {!activeRow ? <Text style={[styles.sheetNote, { color: theme.muted }]}>These details help Trainer understand your context. Program decisions remain server-owned.</Text> : null}
+    </FlyntSheet>
   );
 }
 
@@ -291,7 +298,7 @@ export default function SettingsScreen() {
   const { mode, preference, setPreference, theme } = useFlyntTheme();
   const primaryBackground = appSurfaces[mode].primaryBackground;
   const itemBackground = appSurfaces[mode].itemBackground;
-  const { signOut } = useLifecycleNavigation();
+  const { appState, signOut } = useLifecycleNavigation();
   const {
     reminders,
     setReminders,
@@ -308,16 +315,81 @@ export default function SettingsScreen() {
     spotifyDisplay,
     setSpotifyDisplay,
   } = useSettingsPreferences();
+  const profile = appState?.profile;
+  const report = profile?.trainerReport;
+  const snapshotProfile = recordValue(profile?.consultationSnapshot, 'profile');
+  const snapshotAnswers = recordValue(profile?.consultationSnapshot, 'answers');
+  const primaryGoals = recordValue(snapshotAnswers, 'primaryGoals');
+  const trainingDays = appState?.program?.filter((day) => day.dayType !== 'rest' && day.exercises.length > 0).length ?? 0;
   const [panel, setPanel] = useState<Panel>('profile');
   const [profileSheet, setProfileSheet] = useState<ProfileSheet>(null);
-  const [name, setName] = useState('Luke');
-  const [age, setAge] = useState('35');
-  const [height, setHeight] = useState(`5′ 11″`);
-  const [weight, setWeight] = useState('180 lb');
-  const [goal, setGoal] = useState('Build strength');
-  const [experience, setExperience] = useState('Intermediate');
-  const [schedule, setSchedule] = useState('4 days');
-  const [equipment, setEquipment] = useState('Full gym');
+  const [name, setName] = useState(profile?.fullName || profile?.email.split('@')[0] || 'Your profile');
+  const [age, setAge] = useState(profile?.age == null ? 'Not set' : String(profile.age));
+  const [height, setHeight] = useState(formatHeight(profile?.heightInches ?? null));
+  const [weight, setWeight] = useState(profile?.currentWeightLb == null ? 'Not set' : `${profile.currentWeightLb} lb`);
+  const [goal, setGoal] = useState(firstText(primaryGoals) || firstText(recordValue(report, 'summary')) || 'Your current program');
+  const [experience, setExperience] = useState(firstText(recordValue(snapshotProfile, 'experience')) || 'Training profile complete');
+  const [schedule, setSchedule] = useState(trainingDays ? `${trainingDays} days` : 'Current program');
+  const [equipment, setEquipment] = useState(firstText(recordValue(report, 'equipment')) || firstText(recordValue(snapshotAnswers, 'equipment')) || 'Saved equipment');
+
+  async function persistPreferences(overrides: Partial<NonNullable<typeof appState>['preferences']>) {
+    if (!appState) return;
+    const next = {
+      ...appState.preferences,
+      appearance: preference,
+      reminderEnabled: reminders,
+      reminderTime: twentyFourHourTime(reminderTime),
+      progressionEnabled: progression,
+      progressionMode: progressionStyle.toLowerCase() as NonNullable<typeof appState>['preferences']['progressionMode'],
+      restTimersEnabled: restTimers,
+      restTimerMode: (restLength === 'Full recovery' ? 'full_recovery' : restLength === 'Quick' ? 'quick' : 'balanced') as NonNullable<typeof appState>['preferences']['restTimerMode'],
+      spotifyPlayerDisplay: spotifyDisplay.toLowerCase() as NonNullable<typeof appState>['preferences']['spotifyPlayerDisplay'],
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || appState.preferences.timeZone,
+      ...overrides,
+    };
+    try {
+      await savePreferences(next);
+    } catch {
+      Alert.alert('Setting not saved', 'FLYNT could not update this setting.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Retry', onPress: () => void persistPreferences(overrides) },
+      ]);
+    }
+  }
+
+  function personalBasics() {
+    const heightMatch = /(\d+)\D+(\d+)/.exec(height);
+    const nextAge = Number.parseInt(age, 10);
+    const nextWeight = Number.parseFloat(weight);
+    const heightInches = heightMatch
+      ? Number(heightMatch[1]) * 12 + Number(heightMatch[2])
+      : Number.parseFloat(height);
+    return {
+      fullName: name.trim(),
+      age: Number.isFinite(nextAge) ? nextAge : null,
+      heightInches: Number.isFinite(heightInches) ? heightInches : null,
+      currentWeightLb: Number.isFinite(nextWeight) ? nextWeight : null,
+    };
+  }
+
+  async function persistPersonalBasics() {
+    if (!appState) return;
+    const profile = personalBasics();
+    try {
+      await savePersonalBasics(profile);
+    } catch {
+      Alert.alert('Profile not saved', 'FLYNT could not update your personal details.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Retry', onPress: () => void persistPersonalBasics() },
+      ]);
+    }
+  }
+
+  function closeProfileSheet() {
+    const closingSheet = profileSheet;
+    setProfileSheet(null);
+    if (closingSheet === 'personal') void persistPersonalBasics();
+  }
 
   async function performSignOut() {
     await signOut();
@@ -405,10 +477,16 @@ export default function SettingsScreen() {
           <ScrollView contentContainerStyle={styles.profileContent} showsVerticalScrollIndicator={false}>
             <View style={styles.profileHero}>
               <View style={[styles.avatarRing, { borderColor: theme.line }]}>
-                <View style={[styles.profileAvatar, { backgroundColor: theme.primaryFill }]}><Text style={[styles.profileAvatarText, { color: theme.primaryText }]}>LM</Text></View>
+                <View style={[styles.profileAvatar, { backgroundColor: theme.primaryFill }]}>
+                  {appState?.profile.avatarUrl ? (
+                    <Image accessibilityLabel={`${name} profile photo`} source={{ uri: appState.profile.avatarUrl }} style={styles.profileAvatarImage} />
+                  ) : (
+                    <Text style={[styles.profileAvatarText, { color: theme.primaryText }]}>{initialsForName(name)}</Text>
+                  )}
+                </View>
               </View>
               <Text accessibilityRole="header" style={[styles.profileName, { color: theme.ink }]}>{name || 'Your profile'}</Text>
-              <Text style={[styles.profileIdentity, { color: theme.muted }]}>{goal} · {experience}</Text>
+              <Text style={[styles.profileIdentity, { color: theme.muted }]}>{experience}</Text>
               <Pressable accessibilityRole="button" onPress={() => setProfileSheet('personal')} style={({ pressed }) => [styles.editProfileButton, { backgroundColor: itemBackground, borderColor: theme.line, opacity: pressed ? 0.55 : 1 }]}>
                 <Text style={[styles.editProfileText, { color: theme.ink }]}>Edit Personal Details</Text>
               </Pressable>
@@ -452,7 +530,11 @@ export default function SettingsScreen() {
                     frame({ height: 40 }),
                     ...(mode === 'light' ? [tint('#0B0B0B')] : []),
                   ]}
-                  onSelectionChange={(next) => setPreference(next as typeof preference)}
+                  onSelectionChange={(next) => {
+                    const value = next as typeof preference;
+                    setPreference(value);
+                    void persistPreferences({ appearance: value });
+                  }}
                   selection={preference}
                 >
                   <SwiftText modifiers={[tag('system')]}>System</SwiftText>
@@ -462,27 +544,31 @@ export default function SettingsScreen() {
               </Section>
 
               <Section modifiers={[listRowBackground(itemBackground)]} title="Music">
-                <NativeMenuPicker label="Spotify Player" onChange={setSpotifyDisplay} options={['Bar', 'Pill', 'Hidden']} value={spotifyDisplay} />
+                <NativeMenuPicker label="Spotify Player" onChange={(value) => { setSpotifyDisplay(value); void persistPreferences({ spotifyPlayerDisplay: value.toLowerCase() as 'bar' | 'pill' | 'hidden' }); }} options={['Bar', 'Pill', 'Hidden']} value={spotifyDisplay} />
               </Section>
 
               <Section modifiers={[listRowBackground(itemBackground)]} title="Workout">
-                <SwiftToggle isOn={reminders} label="Workout Reminders" onIsOnChange={setReminders} />
+                <SwiftToggle isOn={reminders} label="Workout Reminders" onIsOnChange={(value) => { setReminders(value); void persistPreferences({ reminderEnabled: value }); }} />
                 {reminders ? (
                   <DatePicker
                     displayedComponents={['hourAndMinute']}
                     modifiers={[datePickerStyle('compact'), tint(theme.ink)]}
-                    onDateChange={(next) => setReminderTime(reminderTimeForDate(next))}
+                    onDateChange={(next) => {
+                      const value = reminderTimeForDate(next);
+                      setReminderTime(value);
+                      void persistPreferences({ reminderTime: twentyFourHourTime(value) });
+                    }}
                     selection={dateForReminderTime(reminderTime)}
                     title="Reminder Time"
                   />
                 ) : null}
-                <SwiftToggle isOn={progression} label="Automatic Progression" onIsOnChange={setProgression} />
-                {progression ? <NativeMenuPicker label="Progression Style" onChange={setProgressionStyle} options={['Conservative', 'Balanced', 'Assertive', 'Custom']} value={progressionStyle} /> : null}
-                <SwiftToggle isOn={restTimers} label="Rest Timers" onIsOnChange={setRestTimers} />
-                {restTimers ? <NativeMenuPicker label="Rest Duration" onChange={setRestLength} options={['Quick', 'Adaptive', 'Full recovery']} value={restLength} /> : null}
+                <SwiftToggle isOn={progression} label="Automatic Progression" onIsOnChange={(value) => { setProgression(value); void persistPreferences({ progressionEnabled: value }); }} />
+                {progression ? <NativeMenuPicker label="Progression Style" onChange={(value) => { setProgressionStyle(value); void persistPreferences({ progressionMode: value.toLowerCase() as 'conservative' | 'balanced' | 'assertive' | 'custom' }); }} options={['Conservative', 'Balanced', 'Assertive', 'Custom']} value={progressionStyle} /> : null}
+                <SwiftToggle isOn={restTimers} label="Rest Timers" onIsOnChange={(value) => { setRestTimers(value); void persistPreferences({ restTimersEnabled: value }); }} />
+                {restTimers ? <NativeMenuPicker label="Rest Duration" onChange={(value) => { setRestLength(value); void persistPreferences({ restTimerMode: value === 'Full recovery' ? 'full_recovery' : value === 'Quick' ? 'quick' : 'balanced' }); }} options={['Quick', 'Adaptive', 'Full recovery']} value={restLength} /> : null}
               </Section>
 
-              <Section footer={<SwiftText>Preview settings are local. Account actions connect after authentication.</SwiftText>} modifiers={[listRowBackground(primaryBackground)]} title="Account & Data">
+              <Section footer={<SwiftText>{appState ? `Signed in as ${appState.profile.email}. Settings save to your FLYNT account.` : 'Sign in to save account settings.'}</SwiftText>} modifiers={[listRowBackground(primaryBackground)]} title="Account & Data">
                 <VStack
                   modifiers={[
                     listRowBackground(primaryBackground),
@@ -510,7 +596,7 @@ export default function SettingsScreen() {
           height={height}
           kind={profileSheet}
           name={name}
-          onClose={() => setProfileSheet(null)}
+          onClose={closeProfileSheet}
           schedule={schedule}
           setAge={setAge}
           setEquipment={setEquipment}
@@ -542,6 +628,7 @@ const styles = StyleSheet.create({
   profileHero: { alignItems: 'center' },
   avatarRing: { width: 94, height: 94, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderRadius: 47 },
   profileAvatar: { width: 82, height: 82, alignItems: 'center', justifyContent: 'center', borderRadius: 41 },
+  profileAvatarImage: { width: 82, height: 82, borderRadius: 41 },
   profileAvatarText: { fontSize: 22, lineHeight: 27, fontWeight: '700', letterSpacing: -0.4 },
   profileName: { marginTop: 18, fontSize: 32, lineHeight: 36, fontWeight: '600', letterSpacing: -1.2 },
   profileIdentity: { marginTop: 5, fontSize: 14, lineHeight: 19, textTransform: 'capitalize' },
@@ -564,23 +651,11 @@ const styles = StyleSheet.create({
   rowTitle: { flexShrink: 1, fontSize: 16, lineHeight: 21, fontWeight: '500', letterSpacing: -0.15 },
   rowTrailing: { maxWidth: '58%', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
   rowValue: { flexShrink: 1, fontSize: 14, lineHeight: 19, textAlign: 'right' },
-  sheet: { flex: 1 },
-  sheetSafeArea: { flex: 1 },
-  currentSheetHeader: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 8 },
-  currentSheetTitle: { flex: 1, paddingRight: spacing.md, fontSize: 28, lineHeight: 33, fontWeight: '600', letterSpacing: -0.9 },
-  currentSheetContent: { paddingHorizontal: 18, paddingTop: spacing.md, paddingBottom: spacing.xxl },
-  sheetHeader: { minHeight: 72, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.sm, paddingTop: 14 },
-  sheetHeaderSide: { width: 64, alignItems: 'flex-end', justifyContent: 'center' },
-  sheetBackButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  sheetTitle: { flex: 1, fontSize: 17, lineHeight: 22, fontWeight: '600', textAlign: 'center' },
-  sheetCloseButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 },
-  sheetContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  editFields: { gap: spacing.xs },
   personalEditFields: { gap: 0, borderCurve: 'continuous', borderRadius: radius.lg, overflow: 'hidden', paddingHorizontal: spacing.md },
   editField: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   editLabel: { width: 92, fontSize: 14, lineHeight: 19, fontWeight: '500' },
   editInput: { flex: 1, minHeight: 44, fontSize: 17, lineHeight: 22, textAlign: 'right' },
-  sheetChoices: { marginTop: spacing.xs },
+  trainingChoices: { paddingHorizontal: spacing.md },
   sheetChoiceRow: { minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   sheetNote: { marginTop: spacing.lg, fontSize: 13, lineHeight: 19 },
 });

@@ -1,4 +1,6 @@
-import { createContext, type PropsWithChildren, useContext, useMemo, useState } from 'react';
+import { createContext, type PropsWithChildren, useContext, useState } from 'react';
+
+import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 
 type SettingsPreferencesContextValue = {
   reminders: boolean;
@@ -20,14 +22,38 @@ type SettingsPreferencesContextValue = {
 const SettingsPreferencesContext = createContext<SettingsPreferencesContextValue | null>(null);
 
 export function SettingsPreferencesProvider({ children }: PropsWithChildren) {
-  const [reminders, setReminders] = useState(true);
-  const [reminderTime, setReminderTime] = useState('8:00 AM');
-  const [progression, setProgression] = useState(true);
-  const [progressionStyle, setProgressionStyle] = useState('Balanced');
-  const [restTimers, setRestTimers] = useState(true);
-  const [restLength, setRestLength] = useState('Adaptive');
-  const [spotifyDisplay, setSpotifyDisplay] = useState('Pill');
-  const value = useMemo(() => ({
+  const { appState } = useLifecycleNavigation();
+  const accountKey = appState?.profile.email ?? 'signed-out';
+  const preferences = appState?.preferences;
+  const [hourValue, minute = '00'] = (preferences?.reminderTime ?? '08:00').split(':');
+  const hour = Number(hourValue);
+  const displayHour = hour % 12 || 12;
+  const authoritative = {
+    reminders: preferences?.reminderEnabled ?? true,
+    reminderTime: `${displayHour}:${minute} ${hour >= 12 ? 'PM' : 'AM'}`,
+    progression: preferences?.progressionEnabled ?? true,
+    progressionStyle: preferences ? preferences.progressionMode.charAt(0).toUpperCase() + preferences.progressionMode.slice(1) : 'Balanced',
+    restTimers: preferences?.restTimersEnabled ?? true,
+    restLength: preferences?.restTimerMode === 'full_recovery' ? 'Full recovery' : preferences?.restTimerMode === 'quick' ? 'Quick' : 'Adaptive',
+    spotifyDisplay: preferences ? preferences.spotifyPlayerDisplay.charAt(0).toUpperCase() + preferences.spotifyPlayerDisplay.slice(1) : 'Pill',
+  };
+  const [local, setLocal] = useState<{ accountKey: string; values: typeof authoritative } | null>(null);
+  const values = local?.accountKey === accountKey ? local.values : authoritative;
+  const update = <Key extends keyof typeof authoritative>(key: Key, value: typeof authoritative[Key]) => {
+    setLocal((current) => ({
+      accountKey,
+      values: { ...(current?.accountKey === accountKey ? current.values : authoritative), [key]: value },
+    }));
+  };
+  const { reminders, reminderTime, progression, progressionStyle, restTimers, restLength, spotifyDisplay } = values;
+  const setReminders = (value: boolean) => update('reminders', value);
+  const setReminderTime = (value: string) => update('reminderTime', value);
+  const setProgression = (value: boolean) => update('progression', value);
+  const setProgressionStyle = (value: string) => update('progressionStyle', value);
+  const setRestTimers = (value: boolean) => update('restTimers', value);
+  const setRestLength = (value: string) => update('restLength', value);
+  const setSpotifyDisplay = (value: string) => update('spotifyDisplay', value);
+  const value = {
     reminders,
     setReminders,
     reminderTime,
@@ -42,7 +68,7 @@ export function SettingsPreferencesProvider({ children }: PropsWithChildren) {
     setRestLength,
     spotifyDisplay,
     setSpotifyDisplay,
-  }), [reminders, reminderTime, progression, progressionStyle, restTimers, restLength, spotifyDisplay]);
+  };
 
   return <SettingsPreferencesContext.Provider value={value}>{children}</SettingsPreferencesContext.Provider>;
 }

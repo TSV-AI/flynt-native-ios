@@ -15,6 +15,7 @@ const initialState: SpotifyState = {
 type SpotifyContextValue = {
   authorize: () => Promise<void>;
   connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
   next: () => Promise<void>;
   openSpotify: () => Promise<void>;
   pause: () => Promise<void>;
@@ -49,6 +50,7 @@ export function SpotifyProvider({ children }: PropsWithChildren) {
       await FlyntSpotify.authorize();
     },
     connect: async () => { await FlyntSpotify?.connect(); },
+    disconnect: async () => { await FlyntSpotify?.disconnect(); },
     next: async () => { await FlyntSpotify?.next(); },
     openSpotify: async () => { await FlyntSpotify?.openSpotify(); },
     pause: async () => { await FlyntSpotify?.pause(); },

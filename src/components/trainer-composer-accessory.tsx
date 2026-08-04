@@ -1,12 +1,10 @@
 import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
-import { useEffect, useState } from 'react';
-import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { radius, spacing } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
-import { selection } from '@/lib/haptics';
 import { useRestTimer } from '@/providers/rest-timer-provider';
 import { useTrainerConversation } from '@/providers/trainer-conversation-provider';
 
@@ -40,11 +38,6 @@ export function TrainerComposerSurface() {
   const canSend = message.trim().length > 0;
   const visibleTimer = timer && timer.seconds > 0 && !isExpanded ? timer : null;
 
-  function unavailable(action: string) {
-    void selection();
-    Alert.alert(action, `${action} will be available when live Trainer messaging is connected.`);
-  }
-
   return (
     <View style={[styles.accessoryFrame, { height: composerHeight }]}>
       {visibleTimer ? (
@@ -58,16 +51,7 @@ export function TrainerComposerSurface() {
           <ComposerSymbol color={theme.ink} name="timer" size={14} />
           <Text style={[styles.timerText, { color: theme.ink }]}>{formatTimer(visibleTimer.seconds)}</Text>
         </Pressable>
-      ) : (
-        <Pressable
-          accessibilityLabel="Add an attachment"
-          accessibilityRole="button"
-          onPress={() => unavailable('Attachments')}
-          style={({ pressed }) => [styles.utilityButton, pressed && styles.pressed]}
-        >
-          <ComposerSymbol color={theme.ink} name="plus" size={19} />
-        </Pressable>
-      )}
+      ) : null}
       <TextInput
         accessibilityLabel="Message Trainer"
         autoCapitalize="sentences"
@@ -93,14 +77,6 @@ export function TrainerComposerSurface() {
         value={message}
       />
       <Pressable
-        accessibilityLabel="Record a voice message"
-        accessibilityRole="button"
-        onPress={() => unavailable('Voice messages')}
-        style={({ pressed }) => [styles.utilityButton, pressed && styles.pressed]}
-      >
-        <ComposerSymbol color={theme.ink} name="mic.fill" size={17} />
-      </Pressable>
-      <Pressable
         accessibilityLabel="Send message"
         accessibilityRole="button"
         disabled={!canSend}
@@ -115,27 +91,13 @@ export function TrainerComposerSurface() {
   );
 }
 
-export function TrainerComposerFooter() {
+export function TrainerChatInputToolbar() {
   const { mode } = useFlyntTheme();
   const reduceTransparency = useReduceTransparency();
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardWillShow', (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    });
-    const hideSubscription = Keyboard.addListener('keyboardWillHide', () => setKeyboardHeight(0));
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
-
-  const frameStyle = [styles.footerFrame, { bottom: keyboardHeight > 0 ? keyboardHeight + 10 : 90 }];
 
   if (isGlassEffectAPIAvailable() && !reduceTransparency) {
     return (
-      <View style={frameStyle}>
+      <View style={styles.toolbarFrame}>
         <GlassView colorScheme={mode} glassEffectStyle="regular" isInteractive style={styles.glassHost}>
           <TrainerComposerSurface />
         </GlassView>
@@ -144,7 +106,7 @@ export function TrainerComposerFooter() {
   }
 
   return (
-    <View style={frameStyle}>
+    <View style={styles.toolbarFrame}>
       <View style={[styles.glassHost, { backgroundColor: mode === 'dark' ? '#222222' : '#F2F2F1' }]}>
         <TrainerComposerSurface />
       </View>
@@ -154,7 +116,7 @@ export function TrainerComposerFooter() {
 
 const styles = StyleSheet.create({
   accessoryFrame: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xxs, paddingHorizontal: 8 },
-  footerFrame: { position: 'absolute', right: 0, left: 0, zIndex: 20, paddingHorizontal: 20 },
+  toolbarFrame: { paddingHorizontal: 2, paddingTop: spacing.xs, paddingBottom: spacing.xs },
   glassHost: { borderRadius: 22, overflow: 'hidden' },
   utilityButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
   timerChip: { height: 44, flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: radius.pill, paddingHorizontal: 9 },

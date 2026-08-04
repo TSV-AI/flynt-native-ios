@@ -1,13 +1,15 @@
-import * as SecureStore from 'expo-secure-store';
+import { File, Paths } from 'expo-file-system';
 
-const introductionKey = 'flynt.first-run-introduction.v1';
+function introductionMarker() {
+  return new File(Paths.document, '.flynt-first-run-introduction.v1');
+}
 
 export async function hasSeenFirstRunIntroduction() {
-  return (await SecureStore.getItemAsync(introductionKey)) === 'seen';
+  return introductionMarker().exists;
 }
 
 export async function markFirstRunIntroductionSeen() {
-  await SecureStore.setItemAsync(introductionKey, 'seen', {
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  });
+  const marker = introductionMarker();
+  marker.create({ overwrite: true });
+  marker.write('seen');
 }

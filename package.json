@@ -9,6 +9,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~57.0.8",
+    "@kesha-antonov/react-native-chat": "4.1.0",
     "@supabase/supabase-js": "^2.111.0",
     "expo": "~57.0.9",
     "expo-apple-authentication": "~57.0.1",
@@ -16,6 +17,7 @@
     "expo-constants": "~57.0.8",
     "expo-crypto": "~57.0.1",
     "expo-dev-client": "~57.0.10",
+    "expo-file-system": "~57.0.1",
     "expo-font": "~57.0.1",
     "expo-glass-effect": "~57.0.1",
     "expo-haptics": "~57.0.1",
@@ -27,11 +29,15 @@
     "expo-symbols": "~57.0.1",
     "expo-system-ui": "~57.0.2",
     "expo-web-browser": "~57.0.2",
+    "expo-widgets": "~57.0.7",
     "flynt-spotify": "workspace:*",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
+    "react-native-draggable-flatlist": "4.0.3",
+    "react-native-enriched-markdown": "0.7.4",
     "react-native-gesture-handler": "~2.32.0",
+    "react-native-keyboard-controller": "1.22.2",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
@@ -57,10 +63,11 @@
     "test:auth": "node --test src/lib/auth-flow.test.mjs",
     "test:boot": "node --test src/lib/authoritative-boot.test.mjs",
     "test:navigation": "node --test src/navigation/lifecycle.test.mjs",
+    "test:features": "node --test src/lib/native-feature-contracts.test.mjs",
     "typecheck": "tsc --noEmit",
     "copy:check": "node ./scripts/check-copy-style.mjs",
     "doctor": "expo-doctor",
-    "check": "pnpm test:auth && pnpm test:boot && pnpm test:navigation && pnpm typecheck && pnpm lint && pnpm copy:check && pnpm doctor"
+    "check": "pnpm test:auth && pnpm test:boot && pnpm test:navigation && pnpm test:features && pnpm typecheck && pnpm lint && pnpm copy:check && pnpm doctor"
   },
   "private": true
 }

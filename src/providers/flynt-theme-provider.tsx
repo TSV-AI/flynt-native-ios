@@ -1,7 +1,8 @@
-import { createContext, type PropsWithChildren, useContext, useLayoutEffect, useMemo, useState } from 'react';
+import { createContext, type PropsWithChildren, useContext, useLayoutEffect, useState } from 'react';
 import { Appearance, useColorScheme } from 'react-native';
 
 import { type ColorMode, themeFor } from '@/constants/theme';
+import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -15,11 +16,17 @@ type FlyntThemeContextValue = {
 const FlyntThemeContext = createContext<FlyntThemeContextValue | null>(null);
 
 export function FlyntThemeProvider({ children }: PropsWithChildren) {
+  const { appState } = useLifecycleNavigation();
   const systemMode: ColorMode = useColorScheme() === 'dark' ? 'dark' : 'light';
   const previewPreference: ThemePreference = __DEV__ && process.env.EXPO_PUBLIC_FLYNT_PREVIEW === 'ready' ? 'dark' : 'system';
-  const [preference, setPreference] = useState<ThemePreference>(previewPreference);
+  const accountKey = appState?.profile.email ?? 'signed-out';
+  const [localPreference, setLocalPreference] = useState<{ accountKey: string; value: ThemePreference } | null>(null);
+  const preference = localPreference?.accountKey === accountKey
+    ? localPreference.value
+    : appState?.preferences.appearance ?? previewPreference;
+  const setPreference = (value: ThemePreference) => setLocalPreference({ accountKey, value });
   const mode = preference === 'system' ? systemMode : preference;
-  const value = useMemo(() => ({ mode, preference, setPreference, theme: themeFor(mode) }), [mode, preference]);
+  const value = { mode, preference, setPreference, theme: themeFor(mode) };
 
   useLayoutEffect(() => {
     Appearance.setColorScheme(preference === 'system' ? 'unspecified' : preference);

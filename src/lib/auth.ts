@@ -19,7 +19,7 @@ export function authRedirectUrl() {
   return Linking.createURL('auth-callback');
 }
 
-export async function requestEmailLink(email: string, mode: EmailAuthMode) {
+export async function requestEmailOtp(email: string, mode: EmailAuthMode) {
   const client = getSupabaseClient();
   const { error } = await client.auth.signInWithOtp({
     email: normalizeEmail(email),
@@ -27,6 +27,16 @@ export async function requestEmailLink(email: string, mode: EmailAuthMode) {
       emailRedirectTo: authRedirectUrl(),
       shouldCreateUser: mode === 'create',
     },
+  });
+  if (error) throw error;
+}
+
+export async function verifyEmailOtp(email: string, token: string) {
+  const client = getSupabaseClient();
+  const { error } = await client.auth.verifyOtp({
+    email: normalizeEmail(email),
+    token,
+    type: 'email',
   });
   if (error) throw error;
 }
