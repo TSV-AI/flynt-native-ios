@@ -36,7 +36,6 @@ export function RestTimerSheet({ isPresented, onAdjust, onDismiss, onSkip, timer
   return (
     <NativeMaterialSheet
       colorScheme={isDarkSheet ? 'dark' : 'light'}
-      detents={[{ fraction: 0.44 }]}
       isPresented={isPresented}
       onDismiss={onDismiss}
     >

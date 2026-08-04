@@ -71,6 +71,19 @@ Project rules:
   declined.
 - Use native controls and behavior first. Respect Dynamic Type, VoiceOver,
   Reduce Motion, safe areas, and a minimum 44 by 44 point touch target.
+- Every sheet in the app must use `FlyntSheet` or `NativeMaterialSheet`. The
+  only direct SwiftUI `BottomSheet` host is the existing Today workout host,
+  because its content is native SwiftUI. All sheet hosts must consume
+  `flyntSheetBackgroundColor` and `flyntSheetDetent` from
+  `src/constants/sheet.ts`. That file is the sole authority for the approved
+  full-size translucent presentation background and 98-percent detent. Do not
+  add a local material, overlay, opacity, background, or detent to a feature.
+  `src/lib/sheet-system.test.mjs` enforces this boundary.
+- A request to change every sheet changes the defaults in
+  `src/constants/sheet.ts`. A request naming one specific sheet must leave those
+  defaults unchanged and pass a `FlyntSheetPresentationOverride` only from that
+  sheet's call site. Never turn a sheet-specific request into a global change,
+  and never change the global defaults when the user named only one sheet.
 - Use semantic design and haptic tokens. Feature code must not invent local
   feedback rules.
 - Do not use em dashes in product copy, documentation, or comments.

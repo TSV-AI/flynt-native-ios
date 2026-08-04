@@ -43,8 +43,8 @@ import {
   multilineTextAlignment,
   offset,
   padding,
+  presentationBackground,
   presentationBackgroundInteraction,
-  presentationBackgroundMaterial,
   presentationDetents,
   presentationDragIndicator,
   progressViewStyle,
@@ -54,7 +54,6 @@ import {
   tabViewStyle,
   textFieldStyle,
   tint,
-  type PresentationDetent,
 } from '@expo/ui/swift-ui/modifiers';
 import { type ReactElement, useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -63,9 +62,11 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
 import { RestTimerAccessorySurface } from '@/components/rest-timer-accessory';
 import { motion } from '@/constants/motion';
+import { flyntSheetBackgroundColor, flyntSheetDetent } from '@/constants/sheet';
 import { appSurfaces, spacing, type ColorMode, type Theme } from '@/constants/theme';
 import type { PreviewDay } from '@/features/app-preview-data';
 import { getExerciseArtwork } from '@/features/exercise-artwork';
+import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
 import { useModalPresentation } from '@/providers/modal-presentation-provider';
 import { useRestTimer } from '@/providers/rest-timer-provider';
 
@@ -115,9 +116,6 @@ type NativeSetRowProps = {
 };
 
 const dayShape = shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: 'continuous' });
-const expandedSheetDetent = { fraction: 0.98 } satisfies PresentationDetent;
-const nativeSheetMaterial = presentationBackgroundMaterial('regular');
-
 function exerciseSummary(detail: string): string {
   return detail.replace(/^\d+\s+sets\s+·\s*/i, '');
 }
@@ -677,8 +675,8 @@ export function NativeTodayWorkout({
 }: NativeTodayWorkoutProps) {
   const { width } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
+  const reduceTransparency = useReduceTransparency();
   const { setModalPresented } = useModalPresentation();
-  const [sheetDetent, setSheetDetent] = useState<PresentationDetent>(expandedSheetDetent);
   const [sheetPage, setSheetPage] = useState<'exercise' | 'stats'>('exercise');
   const contentWidth = width - 32;
   const daySelectorWidth = contentWidth - 8;
@@ -689,7 +687,8 @@ export function NativeTodayWorkout({
   const exerciseEntryBackground = 'rgba(34,34,34,0.90)';
   const sheetInput = exerciseEntryBackground;
   const mediaBackground = exerciseEntryBackground;
-  const sheetContentOverlay = 'rgba(23,23,23,0.90)';
+  const sheetBackgroundColor = flyntSheetBackgroundColor(mode, reduceTransparency);
+  const sheetDetent = flyntSheetDetent();
   const outline = mode === 'light' ? 'rgba(216,214,207,0.72)' : 'rgba(255,255,255,0.10)';
   const sheetPresented = selectedExercise >= 0 && selectedExercise < exercises.length;
   const exercise = sheetPresented ? exercises[selectedExercise] : null;
@@ -707,7 +706,6 @@ export function NativeTodayWorkout({
   }, [setModalPresented, sheetPresented]);
 
   function selectExercise(index: number) {
-    setSheetDetent(expandedSheetDetent);
     setSheetPage('exercise');
     onSelectExercise(index);
   }
@@ -914,24 +912,16 @@ export function NativeTodayWorkout({
           >
             <Group
               modifiers={[
-                presentationDetents([expandedSheetDetent]),
-                presentationBackgroundInteraction({ type: 'enabledUpThrough', detent: expandedSheetDetent }),
+                presentationDetents([sheetDetent]),
+                presentationBackgroundInteraction({ type: 'enabledUpThrough', detent: sheetDetent }),
                 presentationDragIndicator('visible'),
-                nativeSheetMaterial,
+                presentationBackground(sheetBackgroundColor),
                 environment('colorScheme', mode),
               ]}
             >
-              <ZStack>
-                <Spacer
-                  modifiers={[
-                    frame({ maxWidth: 1000, maxHeight: 1000 }),
-                    background(sheetContentOverlay),
-                  ]}
-                />
-                <RNHostView>
-                  <View style={styles.spotifySheetContent}>{spotifySheet}</View>
-                </RNHostView>
-              </ZStack>
+              <RNHostView>
+                <View style={styles.spotifySheetContent}>{spotifySheet}</View>
+              </RNHostView>
             </Group>
           </BottomSheet>
 
@@ -945,28 +935,18 @@ export function NativeTodayWorkout({
           >
             <Group
               modifiers={[
-                presentationDetents([expandedSheetDetent, 'medium'], {
-                  selection: sheetDetent,
-                  onSelectionChange: setSheetDetent,
-                }),
-                presentationBackgroundInteraction({ type: 'enabledUpThrough', detent: expandedSheetDetent }),
+                presentationDetents([sheetDetent]),
+                presentationBackgroundInteraction({ type: 'enabledUpThrough', detent: sheetDetent }),
                 presentationDragIndicator('visible'),
-                nativeSheetMaterial,
+                presentationBackground(sheetBackgroundColor),
                 environment('colorScheme', mode),
               ]}
             >
               {exercise ? (
-                <ZStack>
-                  <Spacer
-                    modifiers={[
-                      frame({ maxWidth: 1000, maxHeight: 1000 }),
-                      background(sheetContentOverlay),
-                    ]}
-                  />
-                  <TabView
-                    modifiers={[tabViewStyle({ type: 'page', indexDisplayMode: 'never' }), frame({ maxWidth: 1000, maxHeight: 1000 })]}
-                    selection={sheetPage}
-                  >
+                <TabView
+                  modifiers={[tabViewStyle({ type: 'page', indexDisplayMode: 'never' }), frame({ maxWidth: 1000, maxHeight: 1000 })]}
+                  selection={sheetPage}
+                >
                     <TabView.Tab value="exercise">
                       <ExerciseSheetContent
                         advanceLabel={nextExerciseIndex === undefined ? 'Back to workout' : 'Next exercise'}
@@ -974,7 +954,7 @@ export function NativeTodayWorkout({
                         exercise={exercise}
                         exerciseIndex={selectedExercise}
                         input={sheetInput}
-                        isLarge={sheetDetent !== 'medium'}
+                        isLarge
                         mediaBackground={mediaBackground}
                         mediaWidth={Math.min(width - spacing.xxl, 560)}
                         onAdvance={() => {
@@ -1000,8 +980,7 @@ export function NativeTodayWorkout({
                         theme={theme}
                       />
                     </TabView.Tab>
-                  </TabView>
-                </ZStack>
+                </TabView>
               ) : <Spacer />}
             </Group>
           </BottomSheet>

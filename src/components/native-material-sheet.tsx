@@ -2,38 +2,35 @@ import { BottomSheet, Group, Host, RNHostView } from '@expo/ui/swift-ui';
 import {
   environment,
   presentationBackground,
-  presentationBackgroundMaterial,
   presentationDetents,
   presentationDragIndicator,
-  type PresentationDetent,
 } from '@expo/ui/swift-ui/modifiers';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
+import {
+  flyntSheetBackgroundColor,
+  flyntSheetDetent,
+  type FlyntSheetPresentationOverride,
+} from '@/constants/sheet';
 import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
 import { useModalPresentation } from '@/providers/modal-presentation-provider';
 
 type NativeMaterialSheetProps = {
   children: ReactNode;
   colorScheme: 'light' | 'dark';
-  detents: PresentationDetent[];
   isPresented: boolean;
-  materialOverlayColor?: string;
   onDismiss: () => void;
+  presentationOverride?: FlyntSheetPresentationOverride;
 };
 
-export function NativeMaterialSheet({ children, colorScheme, detents, isPresented, materialOverlayColor, onDismiss }: NativeMaterialSheetProps) {
+export function NativeMaterialSheet({ children, colorScheme, isPresented, onDismiss, presentationOverride }: NativeMaterialSheetProps) {
   const { fontScale, width } = useWindowDimensions();
   const reduceTransparency = useReduceTransparency();
   const { setModalPresented } = useModalPresentation();
-  const backgroundColor = colorScheme === 'dark'
-    ? reduceTransparency ? '#18181A' : '#18181ADD'
-    : reduceTransparency ? '#F7F6F2' : '#F7F6F2E8';
-  const effectiveDetents = fontScale >= 1.35 ? [{ fraction: 0.94 } satisfies PresentationDetent] : detents;
-  const effectiveOverlayColor = materialOverlayColor
-    ? reduceTransparency ? colorScheme === 'dark' ? '#171717' : '#F7F6F2' : materialOverlayColor
-    : undefined;
+  const backgroundColor = flyntSheetBackgroundColor(colorScheme, reduceTransparency, presentationOverride);
+  const effectiveDetents = fontScale >= 1.35 ? [{ fraction: 0.94 }] : [flyntSheetDetent(presentationOverride)];
 
   useEffect(() => {
     if (!isPresented) return;
@@ -54,12 +51,12 @@ export function NativeMaterialSheet({ children, colorScheme, detents, isPresente
           modifiers={[
             presentationDetents(effectiveDetents),
             presentationDragIndicator('visible'),
-            materialOverlayColor ? presentationBackgroundMaterial('regular') : presentationBackground(backgroundColor),
+            presentationBackground(backgroundColor),
             environment('colorScheme', colorScheme),
           ]}
         >
           <RNHostView>
-            <View accessibilityViewIsModal style={[styles.content, effectiveOverlayColor && { backgroundColor: effectiveOverlayColor }]}>{children}</View>
+            <View accessibilityViewIsModal style={styles.content}>{children}</View>
           </RNHostView>
         </Group>
       </BottomSheet>

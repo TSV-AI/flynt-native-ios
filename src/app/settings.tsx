@@ -201,9 +201,7 @@ function ProfileEditSheet({
   return (
     <NativeMaterialSheet
       colorScheme={sheetMode}
-      detents={[{ fraction: kind === 'personal' ? 0.98 : 0.66 }]}
       isPresented={visible}
-      materialOverlayColor={usesCurrentSheetStyle ? sheetMode === 'dark' ? 'rgba(23,23,23,0.90)' : 'rgba(247,246,242,0.90)' : undefined}
       onDismiss={onClose}
     >
       <View style={styles.sheet}>
