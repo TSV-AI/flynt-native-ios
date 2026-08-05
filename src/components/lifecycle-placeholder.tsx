@@ -1,4 +1,4 @@
-import { router, type Href } from 'expo-router';
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,7 +25,7 @@ export function LifecyclePlaceholder({
   const { signOut: clearAuthenticatedFlow } = useLifecycleNavigation();
 
   async function openSettings() {
-    router.push('/lifecycle-settings' as Href);
+    router.push('/settings');
   }
 
   async function signOut() {

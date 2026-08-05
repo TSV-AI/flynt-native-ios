@@ -18,12 +18,12 @@ const failureCopy: Record<AuthoritativeBootFailure, string> = {
 };
 
 export default function BootScreen() {
-  const { theme } = useFlyntTheme();
+  const { mode, theme } = useFlyntTheme();
   const { bootError, phase, retry, signOut } = useLifecycleNavigation();
   const isLoading = phase === 'loading';
 
   async function openSettings() {
-    router.push('/lifecycle-settings');
+    router.push('/settings');
   }
 
   async function leaveAccount() {
@@ -32,7 +32,7 @@ export default function BootScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: appSurfaces.dark.primaryBackground }]} testID="screen-authoritative-boot">
+    <View style={[styles.screen, { backgroundColor: appSurfaces[mode].primaryBackground }]} testID="screen-authoritative-boot">
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.copy}>
           <Text style={[styles.eyebrow, { color: theme.muted }]}>FLYNT</Text>

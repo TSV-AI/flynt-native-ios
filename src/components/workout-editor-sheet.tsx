@@ -5,7 +5,7 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View 
 
 import { FlyntSheet, FlyntSheetCard } from '@/components/flynt-sheet';
 import { NativeSymbol } from '@/components/native-symbol';
-import { radius, spacing, type ColorMode, type Theme } from '@/constants/theme';
+import { appSurfaces, radius, spacing, type ColorMode, type Theme } from '@/constants/theme';
 import type { ExerciseLibraryEntry } from '@/contracts/app-state';
 import type { PreviewExercise } from '@/features/app-preview-data';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
@@ -262,6 +262,7 @@ export function WorkoutEditorSheet({ exercises, initialExerciseIndex, initialPag
           draft={draft}
           error={catalogError}
           loading={catalogLoading}
+          mode={mode}
           onAdd={applyExercise}
           onAddCustom={addCustomExercise}
           onCustomName={setCustomName}
@@ -370,9 +371,9 @@ function ValuePickerPage({ exercise, field, mode, onUpdate, theme }: { exercise:
   </View>;
 }
 
-function LibraryPage({ catalog, customName, customOpen, draft, error, loading, onAdd, onAddCustom, onCustomName, onOpenCustom, onQuery, onRetry, query, replacingId, theme }: {
+function LibraryPage({ catalog, customName, customOpen, draft, error, loading, mode, onAdd, onAddCustom, onCustomName, onOpenCustom, onQuery, onRetry, query, replacingId, theme }: {
   catalog: ExerciseLibraryEntry[]; customName: string; customOpen: boolean; draft: PreviewExercise[]; error: string | null; loading: boolean;
-  onAdd: (exercise: PreviewExercise) => void; onAddCustom: () => void; onCustomName: (value: string) => void; onOpenCustom: () => void; onQuery: (value: string) => void; onRetry: () => void; query: string; replacingId: string | null; theme: Theme;
+  mode: ColorMode; onAdd: (exercise: PreviewExercise) => void; onAddCustom: () => void; onCustomName: (value: string) => void; onOpenCustom: () => void; onQuery: (value: string) => void; onRetry: () => void; query: string; replacingId: string | null; theme: Theme;
 }) {
   return <View style={styles.stack}>
     <View style={[styles.search, { backgroundColor: theme.raised }]}><NativeSymbol color={theme.muted} name="magnifyingglass" size={16} /><TextInput accessibilityLabel="Search exercises" autoCapitalize="none" autoCorrect={false} onChangeText={onQuery} placeholder="Search exercises" placeholderTextColor={theme.muted} returnKeyType="search" style={[styles.searchInput, { color: theme.ink }]} value={query} /></View>
@@ -383,7 +384,7 @@ function LibraryPage({ catalog, customName, customOpen, draft, error, loading, o
       const alreadyAdded = draft.some((exercise) => exercise.id === entry.slug && exercise.id !== replacingId);
       const visual = resolveApiAssetUrl(entry.visual_url);
       return <FlyntSheetCard key={entry.slug} style={styles.libraryRow}>
-        <View style={[styles.libraryVisual, { backgroundColor: theme.raised }]}>{visual ? <Image accessibilityIgnoresInvertColors resizeMode="contain" source={{ uri: visual }} style={styles.libraryImage} /> : <NativeSymbol color={theme.muted} name="figure.strengthtraining.traditional" size={22} />}</View>
+        <View style={[styles.libraryVisual, { backgroundColor: appSurfaces[mode].exerciseSurface }]}>{visual ? <Image accessibilityIgnoresInvertColors resizeMode="contain" source={{ uri: visual }} style={styles.libraryImage} /> : <NativeSymbol color={theme.muted} name="figure.strengthtraining.traditional" size={22} />}</View>
         <View style={styles.libraryCopy}><Text style={[styles.fieldLabel, { color: theme.muted }]}>{entry.category.toLocaleUpperCase()}</Text><Text style={[styles.rowTitle, { color: theme.ink }]}>{entry.name}</Text><Text style={[styles.rowDetail, { color: theme.muted }]}>{entry.equipment.length ? entry.equipment.join(' · ') : 'Bodyweight'}</Text></View>
         <Pressable accessibilityLabel={alreadyAdded ? `${entry.name} already added` : replacingId ? `Replace with ${entry.name}` : `Add ${entry.name}`} accessibilityRole="button" disabled={alreadyAdded} onPress={() => onAdd(libraryExercise(entry))} style={styles.iconButton}><NativeSymbol color={alreadyAdded ? theme.muted : theme.ink} name={alreadyAdded ? 'checkmark' : replacingId ? 'arrow.left.arrow.right' : 'plus'} size={17} /></Pressable>
       </FlyntSheetCard>;

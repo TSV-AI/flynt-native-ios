@@ -1,0 +1,13 @@
+{
+  "name": "flynt-google-auth",
+  "version": "1.0.0",
+  "description": "FLYNT's native Google authentication bridge for iOS.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

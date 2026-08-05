@@ -2,7 +2,10 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import FlyntGoogleAuth from 'flynt-google-auth';
+import { Platform } from 'react-native';
 
+import { googleAuthConfig } from '@/constants/google-auth';
 import { completeAuthCallback, normalizeEmail } from '@/lib/auth-flow';
 import { getSupabaseClient } from '@/lib/supabase-client';
 
@@ -13,6 +16,12 @@ export class UserCancelledAuthError extends Error {
     super('The sign-in request was cancelled.');
     this.name = 'UserCancelledAuthError';
   }
+}
+
+function isNativeAuthCancellation(error: unknown) {
+  return error instanceof Error
+    && 'code' in error
+    && error.code === 'ERR_REQUEST_CANCELED';
 }
 
 export function authRedirectUrl() {
@@ -45,7 +54,7 @@ export async function finishAuthUrl(url: string) {
   await completeAuthCallback(url, getSupabaseClient().auth);
 }
 
-export async function signInWithGoogle() {
+async function signInWithGoogleWeb() {
   const client = getSupabaseClient();
   const redirectTo = authRedirectUrl();
   const { data, error } = await client.auth.signInWithOAuth({
@@ -62,6 +71,43 @@ export async function signInWithGoogle() {
   if (result.type === 'cancel' || result.type === 'dismiss') throw new UserCancelledAuthError();
   if (result.type !== 'success') throw new Error('Google sign-in could not be completed.');
   await finishAuthUrl(result.url);
+}
+
+export async function signInWithGoogle() {
+  if (Platform.OS !== 'ios') {
+    await signInWithGoogleWeb();
+    return;
+  }
+
+  if (!FlyntGoogleAuth) {
+    throw new Error('Native Google sign-in is unavailable in this build.');
+  }
+
+  await FlyntGoogleAuth.configure(
+    googleAuthConfig.iosClientId,
+    googleAuthConfig.webClientId,
+  );
+
+  const rawNonce = Crypto.randomUUID();
+  const hashedNonce = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    rawNonce,
+  );
+  let credential;
+  try {
+    credential = await FlyntGoogleAuth.signIn(hashedNonce);
+  } catch (error) {
+    if (isNativeAuthCancellation(error)) throw new UserCancelledAuthError();
+    throw error;
+  }
+
+  const client = getSupabaseClient();
+  const { error } = await client.auth.signInWithIdToken({
+    nonce: rawNonce,
+    provider: 'google',
+    token: credential.idToken,
+  });
+  if (error) throw error;
 }
 
 function appleNameMetadata(fullName: AppleAuthentication.AppleAuthenticationFullName | null) {
@@ -120,4 +166,7 @@ export async function signOutFromSupabase() {
   const client = getSupabaseClient();
   const { error } = await client.auth.signOut({ scope: 'local' });
   if (error) throw error;
+  if (Platform.OS === 'ios') {
+    await FlyntGoogleAuth?.signOut().catch(() => undefined);
+  }
 }

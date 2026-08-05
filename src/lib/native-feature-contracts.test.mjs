@@ -3,12 +3,15 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
+  appStateSchema,
   completedConsultationSchema,
   consultationBasicsSchema,
   programChangeSchema,
   workoutOverrideExerciseSchema,
 } from '../contracts/app-state.ts';
 import { firstRunSlides } from '../features/first-run-content.ts';
+import { hasCurrentFlyntAccount } from './auth-admission.ts';
+import { sentenceCaseMarkdownListItems } from './markdown-presentation.ts';
 
 test('workout overrides preserve the editable production prescription fields', () => {
   const parsed = workoutOverrideExerciseSchema.parse({
@@ -34,6 +37,77 @@ test('consultation basics require both communication and training intent choices
   assert.equal(consultationBasicsSchema.safeParse({
     name: 'Priya', age: 34, height: 66, weight: 142, experience: 'some',
   }).success, false);
+});
+
+test('provider sign-in admits only an existing account with current legal acceptance', () => {
+  assert.equal(hasCurrentFlyntAccount({ exists: false, legal: null }, '2026-07-27'), false);
+  assert.equal(hasCurrentFlyntAccount({
+    exists: true,
+    legal: { acceptedAt: '2026-08-05T08:00:00.000Z', termsVersion: '2026-07-26' },
+  }, '2026-07-27'), false);
+  assert.equal(hasCurrentFlyntAccount({
+    exists: true,
+    legal: { acceptedAt: '2026-08-05T08:00:00.000Z', termsVersion: '2026-07-27' },
+  }, '2026-07-27'), true);
+});
+
+test('authoritative boot normalizes only empty numeric profile sentinels', () => {
+  const parsed = appStateSchema.parse({
+    lifecycle: 'consultation_required',
+    profile: {
+      fullName: 'Luke',
+      age: 0,
+      heightInches: 0,
+      currentWeightLb: 0,
+      email: 'luke@example.com',
+      avatarUrl: null,
+      trainerReport: {},
+      consultationSnapshot: {},
+    },
+    preferences: {},
+    program: null,
+    programMeta: null,
+    build: null,
+    conversation: null,
+    workoutState: {
+      logs: {},
+      loads: {},
+      sessions: [],
+      liftHistory: {},
+      workoutOverrides: {},
+    },
+  });
+
+  assert.equal(parsed.profile.age, null);
+  assert.equal(parsed.profile.heightInches, null);
+  assert.equal(parsed.profile.currentWeightLb, null);
+  assert.equal(appStateSchema.safeParse({
+    ...parsed,
+    profile: { ...parsed.profile, age: 12 },
+  }).success, false);
+});
+
+test('post-account consultation matches the PWA setup and securely resumes its draft', async () => {
+  const source = await readFile(new URL('../app/consultation.tsx', import.meta.url), 'utf8');
+  const rootNavigation = await readFile(new URL('../app/_layout.tsx', import.meta.url), 'utf8');
+  const lifecyclePlaceholder = await readFile(new URL('../components/lifecycle-placeholder.tsx', import.meta.url), 'utf8');
+
+  assert.match(source, /I’m new to this/);
+  assert.match(source, /I’ve trained a bit/);
+  assert.match(source, /I train regularly/);
+  assert.match(source, /Build my plan/);
+  assert.match(source, /Bring my own workouts/);
+  assert.match(source, /Mix both/);
+  assert.match(source, /const draftStorageKey = `\$\{storageKey\}\.draft`/);
+  assert.match(source, /setupDraftSchema\.safeParse\(JSON\.parse\(storedDraft\)\)/);
+  assert.match(source, /SecureStore\.setItemAsync\(draftStorageKey/);
+  assert.match(source, /SecureStore\.deleteItemAsync\(draftStorageKey\)/);
+  assert.match(source, /accessibilityState=\{\{ selected: selected === value \}\}/);
+  assert.match(source, /router\.push\('\/settings'\)/);
+  assert.match(source, /<GlassSymbolButton[\s\S]*name="ellipsis"/);
+  assert.doesNotMatch(source, /styles\.brand/);
+  assert.match(lifecyclePlaceholder, /router\.push\('\/settings'\)/);
+  assert.doesNotMatch(`${source}\n${rootNavigation}\n${lifecyclePlaceholder}`, /lifecycle-settings/);
 });
 
 test('Trainer approvals validate consultation and bounded program-change payloads', () => {
@@ -62,6 +136,13 @@ test('Trainer approvals validate consultation and bounded program-change payload
   assert.equal(change.success, true);
 });
 
+test('Trainer Markdown presents list items in sentence case without changing code fences', () => {
+  assert.equal(
+    sentenceCaseMarkdownListItems('- goal: feel stronger\n1. schedule: three days\n- iOS workout sync\n```\n- lowercase code\n```'),
+    '- Goal: feel stronger\n1. Schedule: three days\n- iOS workout sync\n```\n- lowercase code\n```',
+  );
+});
+
 test('every workout customization sheet uses the shared FLYNT sheet component', async () => {
   const source = await readFile(new URL('../components/workout-editor-sheet.tsx', import.meta.url), 'utf8');
   assert.match(source, /<FlyntSheet/);
@@ -71,14 +152,32 @@ test('every workout customization sheet uses the shared FLYNT sheet component', 
 test('Trainer uses the maintained native chat shell and native Markdown responses', async () => {
   const screenSource = await readFile(new URL('../app/(tabs)/trainer.tsx', import.meta.url), 'utf8');
   const tabsSource = await readFile(new URL('../app/(tabs)/_layout.tsx', import.meta.url), 'utf8');
+  const chatSource = await readFile(new URL('../components/flynt-chat-thread.tsx', import.meta.url), 'utf8');
+  const composerSource = await readFile(new URL('../components/trainer-composer-accessory.tsx', import.meta.url), 'utf8');
   const markdownSource = await readFile(new URL('../components/trainer-markdown-message.tsx', import.meta.url), 'utf8');
-  assert.match(screenSource, /@kesha-antonov\/react-native-chat/);
-  assert.match(screenSource, /<Chat<TrainerChatMessage>/);
+  assert.match(chatSource, /@kesha-antonov\/react-native-chat/);
+  assert.match(chatSource, /<Chat<TMessage>/);
+  assert.match(chatSource, /onContentSizeChange: scrollToBottom/);
+  assert.match(chatSource, /ListFooterComponent: \(/);
+  assert.match(chatSource, /\{renderThinking\(\)\}/);
+  assert.match(chatSource, /height: listEndClearance/);
+  assert.match(chatSource, /thinkingLabel = 'FLYNT is thinking'/);
+  assert.match(screenSource, /<FlyntChatThread<TrainerChatMessage>/);
+  assert.match(screenSource, /<AppScreen contentExtendsUnderTopbar/);
+  assert.match(screenSource, /topInset=\{appTopbarHeight\}/);
   assert.match(screenSource, /kind: 'welcome'/);
-  assert.match(screenSource, /Trainer is thinking/);
   assert.match(markdownSource, /<EnrichedMarkdownText/);
   assert.match(markdownSource, /flavor="github"/);
   assert.match(markdownSource, /bulletColor/);
+  const consultationSource = await readFile(new URL('../app/consultation.tsx', import.meta.url), 'utf8');
+  assert.match(consultationSource, /<FlyntChatThread<ConsultationChatMessage>/);
+  assert.match(consultationSource, /contentExtendsUnderTopbar/);
+  assert.match(consultationSource, /topInset=\{appTopbarHeight\}/);
+  assert.match(consultationSource, /<FlyntAssistantMessage markdown=\{currentMessage\.text\}/);
+  assert.match(composerSource, /onContentSizeChange/);
+  assert.match(consultationSource, /consultationComposerMaximumHeight/);
+  assert.match(consultationSource, /consultationIsReadyForReview/);
+  assert.match(consultationSource, /userTurns <= 5 \|\| readyForReview/);
   assert.doesNotMatch(screenSource, /<FlatList/);
   assert.doesNotMatch(screenSource, /scrollToEnd/);
   assert.doesNotMatch(screenSource, /coachBubble/);
@@ -108,6 +207,20 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   const introduction = await readFile(new URL('../components/first-run-introduction.tsx', import.meta.url), 'utf8');
   const account = await readFile(new URL('../components/account-entry-screen.tsx', import.meta.url), 'utf8');
   const entry = await readFile(new URL('../app/index.tsx', import.meta.url), 'utf8');
+  const auth = await readFile(new URL('./auth.ts', import.meta.url), 'utf8');
+  const googleModule = await readFile(
+    new URL('../../modules/flynt-google-auth/ios/FlyntGoogleAuthModule.swift', import.meta.url),
+    'utf8',
+  );
+  const googleConfig = await readFile(new URL('../constants/google-auth.ts', import.meta.url), 'utf8');
+  const appConfig = JSON.parse(await readFile(new URL('../../app.json', import.meta.url), 'utf8'));
+  const packageConfig = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'));
+  const theme = await readFile(new URL('../constants/theme.ts', import.meta.url), 'utf8');
+  const themeProvider = await readFile(new URL('../providers/flynt-theme-provider.tsx', import.meta.url), 'utf8');
+
+  assert.match(theme, /signedOutColorMode: ColorMode = 'light'/);
+  assert.match(themeProvider, /phase === 'ready' && !hasSession/);
+  assert.match(themeProvider, /isSignedOut[\s\S]*signedOutColorMode/);
 
   assert.doesNotMatch(introduction, /styles\.skip|skipCopy/);
   assert.match(introduction, />Sign in</);
@@ -118,13 +231,72 @@ test('signed-out onboarding preserves the approved PWA story and unified account
     'Apple must be the first authentication provider',
   );
   assert.match(account, /Continue with email/);
+  assert.match(account, /fetchAccountStatus\(\)/);
+  assert.match(account, /hasCurrentFlyntAccount\(status, flyntLegalVersion\)/);
+  assert.match(account, /No existing FLYNT account was found/);
   assert.match(account, /styles\.emailTextAction/);
   assert.doesNotMatch(account, /markFirstRunIntroductionSeen/);
   assert.match(account, /<FlyntSheet/);
   assert.match(entry, /await markFirstRunIntroductionSeen\(\)/);
   assert.doesNotMatch(entry, /Training that learns you/);
+  assert.match(auth, /FlyntGoogleAuth\.signIn\(hashedNonce\)/);
+  assert.match(auth, /nonce: rawNonce/);
+  assert.match(auth, /signInWithIdToken\(\{[\s\S]*provider: 'google'/);
+  assert.match(auth, /Platform\.OS !== 'ios'/);
+  assert.doesNotMatch(auth, /@react-native-google-signin\/google-signin/);
+  assert.match(googleModule, /GIDConfiguration\(/);
+  assert.match(googleModule, /nonce: hashedNonce/);
+  assert.match(googleModule, /result\?\.user\.idToken\?\.tokenString/);
+  assert.equal(packageConfig.dependencies['flynt-google-auth'], 'workspace:*');
+  assert.equal(packageConfig.dependencies['@react-native-google-signin/google-signin'], undefined);
+  assert.match(googleConfig, /iosClientId/);
+  assert.match(googleConfig, /webClientId/);
+  assert.ok(
+    appConfig.expo.plugins.some((plugin) => Array.isArray(plugin)
+      && plugin[0] === 'flynt-google-auth'
+      && plugin[1]?.iosUrlScheme === 'com.googleusercontent.apps.404535560676-jpvemrs30oki2pt6vdgfvh5s0854r20j'),
+    'Google native sign-in must register the iOS OAuth callback scheme',
+  );
+  assert.ok(
+    appConfig.expo.plugins.some((plugin) => Array.isArray(plugin)
+      && plugin[0] === 'expo-build-properties'
+      && plugin[1]?.ios?.useFrameworks === 'static'),
+    'Google Sign-In App Check dependencies must be integrated as static frameworks',
+  );
 
   const firstRun = await readFile(new URL('./first-run.ts', import.meta.url), 'utf8');
   assert.match(firstRun, /new File\(Paths\.document/);
   assert.doesNotMatch(firstRun, /SecureStore/);
+});
+
+test('program building reports real progress and asks for notifications in context', async () => {
+  const screen = await readFile(new URL('../app/program-building.tsx', import.meta.url), 'utf8');
+  const api = await readFile(new URL('./api-client.ts', import.meta.url), 'utf8');
+  const rootLayout = await readFile(new URL('../app/_layout.tsx', import.meta.url), 'utf8');
+
+  assert.match(screen, /fetchProgramStatus\(\)/);
+  assert.match(screen, /import Svg, \{ Circle \} from 'react-native-svg'/);
+  assert.match(screen, /progressRingCenter - progressRingRadius/);
+  assert.match(screen, /strokeDashoffset=\{progressOffset\}/);
+  assert.match(screen, /strokeWidth=\{progressRingStroke\}/);
+  assert.match(screen, /<Circle cx=\{markerX\} cy=\{markerY\}/);
+  assert.doesNotMatch(screen, /Built around you/);
+  assert.match(screen, /Notifications\.requestPermissionsAsync/);
+  assert.match(screen, /Notify me when it’s ready/);
+  assert.doesNotMatch(screen, /LifecyclePlaceholder/);
+  assert.match(api, /requestJson\('\/api\/program\/status'/);
+  assert.match(rootLayout, /Notifications\.setNotificationHandler/);
+  assert.match(rootLayout, /shouldShowBanner: true/);
+});
+
+test('exercise media and entry controls share the approved semantic surface', async () => {
+  const theme = await readFile(new URL('../constants/theme.ts', import.meta.url), 'utf8');
+  const today = await readFile(new URL('../components/native-today-workout.tsx', import.meta.url), 'utf8');
+  const editor = await readFile(new URL('../components/workout-editor-sheet.tsx', import.meta.url), 'utf8');
+
+  assert.match(theme, /exerciseSurface: '#DEDDDA'/);
+  assert.match(today, /appSurfaces\[mode\]\.exerciseSurface/);
+  assert.match(today, /sheetInput = mode === 'dark' \? '#282828' : appSurfaces\.light\.exerciseSurface/);
+  assert.match(today, /mediaBackground = mode === 'dark' \? exerciseEntryBackground : appSurfaces\.light\.exerciseSurface/);
+  assert.match(editor, /backgroundColor: appSurfaces\[mode\]\.exerciseSurface/);
 });

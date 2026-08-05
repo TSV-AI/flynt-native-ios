@@ -32,6 +32,21 @@ export function textFromTrainerMessage(message: TrainerMessage) {
   }).join('\n');
 }
 
+export function consultationIsReadyForReview(messages: TrainerMessage[]) {
+  const latestAssistantText = [...messages]
+    .reverse()
+    .find((message) => message.role === 'assistant');
+  if (!latestAssistantText) return false;
+
+  const text = textFromTrainerMessage(latestAssistantText).toLowerCase();
+  return [
+    /\b(?:have|got)\s+(?:all\s+the\s+)?(?:information|details|context|everything|enough)\b[\s\S]*\b(?:build|review|plan|program)\b/,
+    /\benough\s+(?:information|detail|context)?\s*(?:to|for)\s+(?:build|review|the\s+plan|the\s+program)\b/,
+    /\bready\s+(?:for|to)\s+(?:review|build|confirm)\b/,
+    /\bconfirm\s+(?:the|your)\s+consultation\s+profile\b[\s\S]*\bbuild\s+(?:the|your)\s+plan\b/,
+  ].some((pattern) => pattern.test(text));
+}
+
 function toolParts(messages: TrainerMessage[], type: string) {
   return messages.flatMap((message) => message.parts.flatMap((part) => {
     if (!part || typeof part !== 'object') return [];

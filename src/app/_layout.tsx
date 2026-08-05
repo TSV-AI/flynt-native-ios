@@ -2,11 +2,12 @@ import 'react-native-url-polyfill/auto';
 import '@/global.css';
 
 import * as Linking from 'expo-linking';
+import * as Notifications from 'expo-notifications';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 
-import { appSurfaces } from '@/constants/theme';
+import { appSurfaces, signedOutColorMode } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { RestTimerSheet } from '@/components/rest-timer-sheet';
 import { WidgetLifecycleSync } from '@/components/widget-lifecycle-sync';
@@ -16,6 +17,15 @@ import { ModalPresentationProvider } from '@/providers/modal-presentation-provid
 import { RestTimerProvider, useRestTimer } from '@/providers/rest-timer-provider';
 import { SettingsPreferencesProvider } from '@/providers/settings-preferences-provider';
 import { SpotifyProvider } from '@/providers/spotify-provider';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 function RootNavigator() {
   const { mode, theme } = useFlyntTheme();
@@ -62,9 +72,9 @@ function RootNavigator() {
           <Stack.Screen name="boot" options={{ headerShown: false }} />
         </Stack.Protected>
         <Stack.Protected guard={bootReady && destination === 'signed-out'}>
-          <Stack.Screen name="index" options={{ contentStyle: { backgroundColor: appSurfaces.dark.primaryBackground }, headerShown: false }} />
-          <Stack.Screen name="create-account" options={{ contentStyle: { backgroundColor: appSurfaces.dark.primaryBackground }, headerShown: false }} />
-          <Stack.Screen name="sign-in" options={{ contentStyle: { backgroundColor: appSurfaces.dark.primaryBackground }, headerShown: false }} />
+          <Stack.Screen name="index" options={{ contentStyle: { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }, headerShown: false }} />
+          <Stack.Screen name="create-account" options={{ contentStyle: { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }, headerShown: false }} />
+          <Stack.Screen name="sign-in" options={{ contentStyle: { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }, headerShown: false }} />
         </Stack.Protected>
         <Stack.Protected guard={bootReady && destination === 'consultation'}>
           <Stack.Screen name="consultation" options={{ headerShown: false }} />
@@ -79,10 +89,9 @@ function RootNavigator() {
           <Stack.Screen name="build-attention" options={{ headerShown: false }} />
         </Stack.Protected>
         <Stack.Protected guard={hasSession}>
-          <Stack.Screen name="lifecycle-settings" />
           <Stack.Screen name="settings" options={{ headerShown: false, presentation: 'card' }} />
         </Stack.Protected>
-        <Stack.Screen name="auth-callback" options={{ contentStyle: { backgroundColor: appSurfaces.dark.primaryBackground }, headerShown: false }} />
+        <Stack.Screen name="auth-callback" options={{ contentStyle: { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }, headerShown: false }} />
       </Stack>
       <RestTimerSheet
         isPresented={restTimer.isExpanded && restTimer.timer !== null}

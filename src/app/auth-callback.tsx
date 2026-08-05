@@ -4,15 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { appSurfaces, radius, spacing, type } from '@/constants/theme';
-import { useFlyntTheme } from '@/hooks/use-flynt-theme';
+import { appSurfaces, radius, signedOutColorMode, spacing, themeFor, type } from '@/constants/theme';
 import { finishAuthUrl } from '@/lib/auth';
 import { failed, saved } from '@/lib/haptics';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 
 export default function AuthCallbackScreen() {
   const url = Linking.useLinkingURL();
-  const { theme } = useFlyntTheme();
+  const theme = themeFor(signedOutColorMode);
   const { retry } = useLifecycleNavigation();
   const handledUrl = useRef<string | null>(null);
   const [failure, setFailure] = useState(false);
@@ -31,7 +30,7 @@ export default function AuthCallbackScreen() {
   }, [retry, url]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: appSurfaces.dark.primaryBackground }]}>
+    <View style={[styles.screen, { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }]}>
       <SafeAreaView edges={['top', 'bottom']} style={styles.content}>
         <View style={styles.copy}>
           <Text style={[styles.eyebrow, { color: theme.muted }]}>FLYNT</Text>

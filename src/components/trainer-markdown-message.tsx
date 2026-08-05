@@ -4,10 +4,12 @@ import { EnrichedMarkdownText, type MarkdownStyle } from 'react-native-enriched-
 
 import { appSurfaces, radius } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
+import { sentenceCaseMarkdownListItems } from '@/lib/markdown-presentation';
 
 export function TrainerMarkdownMessage({ markdown, containerStyle }: { markdown: string; containerStyle?: ViewStyle }) {
   const { mode, theme } = useFlyntTheme();
   const linkColor = mode === 'dark' ? '#0A84FF' : '#007AFF';
+  const renderedMarkdown = useMemo(() => sentenceCaseMarkdownListItems(markdown), [markdown]);
   const markdownStyle = useMemo<MarkdownStyle>(() => ({
     paragraph: {
       color: theme.ink,
@@ -109,7 +111,7 @@ export function TrainerMarkdownMessage({ markdown, containerStyle }: { markdown:
       containerStyle={containerStyle}
       flavor="github"
       lineBreakStrategyIOS="standard"
-      markdown={markdown}
+      markdown={renderedMarkdown}
       markdownStyle={markdownStyle}
       onLinkPress={openLink}
       selectable

@@ -14,6 +14,7 @@ import {
   type ProgramChange,
   type WorkoutOverrideExercise,
 } from '@/contracts/app-state';
+import type { FlyntAccountStatus } from '@/lib/auth-admission';
 import { getSupabaseClient } from '@/lib/supabase-client';
 
 const apiBaseUrl = (process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://flynt.training')
@@ -63,7 +64,21 @@ export async function requestJson<T>(
     );
   }
 
-  return schema.parse(await response.json());
+  const payload: unknown = await response.json();
+  const parsed = schema.safeParse(payload);
+  if (!parsed.success) {
+    if (__DEV__) {
+      console.warn(
+        `FLYNT response validation failed for ${path}.`,
+        parsed.error.issues.map(({ code, path: issuePath }) => ({
+          code,
+          path: issuePath.join('.'),
+        })),
+      );
+    }
+    throw parsed.error;
+  }
+  return parsed.data;
 }
 
 export function fetchAppState(accessToken: string): Promise<AppState> {
@@ -190,6 +205,22 @@ export async function saveWorkoutOverrides({
 
 const acceptedTermsSchema = z.object({ accepted: z.literal(true) }).passthrough();
 
+const accountStatusSchema = z.object({
+  exists: z.boolean(),
+  legal: z.object({
+    acceptedAt: z.string().nullable(),
+    termsVersion: z.string().nullable(),
+  }).nullable(),
+});
+
+export function fetchAccountStatus(): Promise<FlyntAccountStatus> {
+  return currentAccessToken().then((accessToken) => requestJson('/api/account/status', accountStatusSchema, {
+    accessToken,
+    method: 'GET',
+    cache: 'no-store',
+  }));
+}
+
 export function acceptTerms(termsVersion: string) {
   return currentAccessToken().then((accessToken) => requestJson('/api/account/accept-terms', acceptedTermsSchema, {
     accessToken,
@@ -213,6 +244,38 @@ export function queueProgramChange(change: ProgramChange, toolCallId: string) {
     accessToken,
     body: JSON.stringify({ change, idempotencyKey: `trainer-change:${toolCallId}` }),
     method: 'POST',
+  }));
+}
+
+const programStatusSchema = z.object({
+  lifecycle: z.enum([
+    'account_required',
+    'consultation_required',
+    'consultation_in_progress',
+    'program_building',
+    'ready',
+    'build_attention',
+  ]),
+  ready: z.boolean(),
+  build: z.object({
+    id: z.string().uuid(),
+    status: z.string(),
+    phase: z.string(),
+    error_message: z.string().nullable().optional(),
+    updated_at: z.string(),
+  }).nullable(),
+  progress: z.object({
+    percent: z.number().min(0).max(100),
+    completed: z.number().int().min(0).nullable(),
+    total: z.number().int().min(0).nullable(),
+  }),
+});
+
+export function fetchProgramStatus() {
+  return currentAccessToken().then((accessToken) => requestJson('/api/program/status', programStatusSchema, {
+    accessToken,
+    method: 'GET',
+    cache: 'no-store',
   }));
 }
 

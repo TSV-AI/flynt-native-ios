@@ -17,10 +17,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FlyntSheet } from '@/components/flynt-sheet';
 import { NativeSymbol } from '@/components/native-symbol';
-import { appSurfaces, radius, spacing, type } from '@/constants/theme';
+import { appSurfaces, radius, signedOutColorMode, spacing, type } from '@/constants/theme';
 import { accountCopy, flyntLegalVersion } from '@/features/first-run-content';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
-import { acceptTerms } from '@/lib/api-client';
+import { acceptTerms, ApiError, fetchAccountStatus } from '@/lib/api-client';
+import { hasCurrentFlyntAccount } from '@/lib/auth-admission';
 import {
   requestEmailOtp,
   signInWithApple,
@@ -45,10 +46,39 @@ type AccountEntryScreenProps = {
 };
 
 type LegalView = 'privacy' | 'terms' | null;
+type ProviderAuthStage = 'provider' | 'account-admission';
 
-function authErrorCopy(error: unknown) {
+class ExistingAccountRequiredError extends Error {
+  constructor() {
+    super('No existing FLYNT account was found.');
+    this.name = 'ExistingAccountRequiredError';
+  }
+}
+
+function authErrorDetail(error: unknown) {
+  if (!(error instanceof Error)) return null;
+  const status = 'status' in error && typeof error.status === 'number'
+    ? ` (${error.status})`
+    : '';
+  return `${error.name}${status}: ${error.message}`;
+}
+
+function authErrorCopy(
+  error: unknown,
+  context?: { intent: EmailAuthMode; provider: 'apple' | 'google'; stage: ProviderAuthStage },
+) {
   if (error instanceof AuthConfigurationError) {
     return 'Authentication is not configured in this development build yet.';
+  }
+  if (error instanceof ExistingAccountRequiredError) {
+    return 'No existing FLYNT account was found. Choose Create account and accept the Terms to continue.';
+  }
+  if (context?.stage === 'account-admission') {
+    const fallback = context.intent === 'create'
+      ? 'Your identity was verified, but FLYNT could not finish creating the account. Try again.'
+      : 'Your identity was verified, but FLYNT could not verify this account. Try again.';
+    const detail = __DEV__ ? authErrorDetail(error) : null;
+    return detail ? `${fallback}\n\nDeveloper detail: ${detail}` : fallback;
   }
   if (error instanceof Error) {
     if (/signups not allowed for otp|otp_disabled/i.test(error.message)) {
@@ -58,7 +88,11 @@ function authErrorCopy(error: unknown) {
       return 'Email delivery is temporarily unavailable. Try again later or continue with Google.';
     }
   }
-  return 'FLYNT could not complete that request. Check your connection and try again.';
+  const fallback = context?.provider === 'google'
+    ? 'Google could not finish signing you in to FLYNT. Try again or continue with email.'
+    : 'FLYNT could not complete that request. Check your connection and try again.';
+  const detail = __DEV__ ? authErrorDetail(error) : null;
+  return detail ? `${fallback}\n\nDeveloper detail: ${detail}` : fallback;
 }
 
 export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
@@ -119,6 +153,19 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
         await signOutFromSupabase().catch(() => undefined);
         throw acceptanceError;
       }
+    } else {
+      try {
+        const status = await fetchAccountStatus();
+        if (!hasCurrentFlyntAccount(status, flyntLegalVersion)) {
+          await signOutFromSupabase().catch(() => undefined);
+          throw new ExistingAccountRequiredError();
+        }
+      } catch (admissionError) {
+        if (!(admissionError instanceof ExistingAccountRequiredError)) {
+          await signOutFromSupabase().catch(() => undefined);
+        }
+        throw admissionError;
+      }
     }
     await saved();
     retry();
@@ -129,13 +176,22 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
     if (providerDisabled) return;
     setError(null);
     setPending(provider);
+    let stage: ProviderAuthStage = 'provider';
     try {
       if (provider === 'apple') await signInWithApple();
       else await signInWithGoogle();
+      stage = 'account-admission';
       await completeAuthentication();
     } catch (providerError) {
       if (!(providerError instanceof UserCancelledAuthError)) {
-        setError(authErrorCopy(providerError));
+        if (__DEV__) {
+          console.warn('FLYNT authentication failed', {
+            detail: authErrorDetail(providerError),
+            provider,
+            stage,
+          });
+        }
+        setError(authErrorCopy(providerError, { intent: authMode, provider, stage }));
         await failed();
       }
     } finally {
@@ -173,11 +229,15 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
       await verifyEmailOtp(sentTo, emailOtp);
       await completeAuthentication();
     } catch (otpError) {
-      setError(
-        otpError instanceof Error && /terms|acceptance/i.test(otpError.message)
-          ? 'Unable to save your Terms acceptance. Try creating the account again.'
-          : 'That code is incorrect or has expired. Request a new code and try again.',
-      );
+      if (otpError instanceof ExistingAccountRequiredError || otpError instanceof ApiError) {
+        setError(authErrorCopy(otpError));
+      } else {
+        setError(
+          otpError instanceof Error && /terms|acceptance/i.test(otpError.message)
+            ? 'Unable to save your Terms acceptance. Try creating the account again.'
+            : 'That code is incorrect or has expired. Request a new code and try again.',
+        );
+      }
       await failed();
     } finally {
       setPending(null);
@@ -187,7 +247,7 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={[styles.screen, { backgroundColor: appSurfaces.dark.primaryBackground }]}
+      style={[styles.screen, { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }]}
     >
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <ScrollView
@@ -376,14 +436,14 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: termsAccepted }}
                   onPress={() => setTermsAccepted((accepted) => !accepted)}
-                  style={styles.checkboxTarget}
+                  style={({ pressed }) => [styles.checkboxTarget, pressed && styles.checkboxTargetPressed]}
                 >
                   <View
                     style={[
                       styles.checkbox,
                       {
-                        backgroundColor: termsAccepted ? theme.primaryFill : theme.raised,
-                        borderColor: termsAccepted ? theme.primaryFill : theme.line,
+                        backgroundColor: termsAccepted ? theme.primaryFill : theme.card,
+                        borderColor: termsAccepted ? theme.primaryFill : theme.muted,
                       },
                     ]}
                   >
@@ -557,7 +617,8 @@ const styles = StyleSheet.create({
   backToOptions: { minHeight: 32, alignItems: 'center', justifyContent: 'center' },
   consentRow: { marginTop: 2, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   checkboxTarget: { width: 44, height: 44, marginLeft: -11, marginTop: -11, alignItems: 'center', justifyContent: 'center' },
-  checkbox: { width: 22, height: 22, borderCurve: 'continuous', borderRadius: 7, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  checkboxTargetPressed: { opacity: 0.7 },
+  checkbox: { width: 24, height: 24, borderCurve: 'continuous', borderRadius: 7, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   consentCopy: { flex: 1, gap: 3 },
   consentText: { fontSize: 11, lineHeight: 17 },
   legalLinks: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 5 },

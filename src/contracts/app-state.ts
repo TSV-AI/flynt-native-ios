@@ -30,6 +30,11 @@ export const personalBasicsSchema = z.object({
   currentWeightLb: z.number().min(50).max(1000).nullable(),
 });
 
+const authoritativeNullableNumber = (minimum: number, maximum: number) => z.preprocess(
+  (value) => value === 0 ? null : value,
+  z.number().min(minimum).max(maximum).nullable(),
+);
+
 export const exerciseSchema = z.object({
   id: z.string().trim().min(1).max(80).regex(/^[a-z0-9-]+$/),
   name: z.string().trim().min(1).max(100),
@@ -206,6 +211,9 @@ export const programChangeSchema = z.object({
 export const appStateSchema = z.object({
   lifecycle: lifecycleStatusSchema,
   profile: personalBasicsSchema.extend({
+    age: authoritativeNullableNumber(13, 120),
+    heightInches: authoritativeNullableNumber(36, 108),
+    currentWeightLb: authoritativeNullableNumber(50, 1000),
     email: z.string().email(),
     avatarUrl: z.string().url().nullable(),
     trainerReport: z.record(z.string(), z.unknown()),

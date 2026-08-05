@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { FirstRunIntroduction } from '@/components/first-run-introduction';
-import { appSurfaces } from '@/constants/theme';
+import { appSurfaces, signedOutColorMode } from '@/constants/theme';
 import { hasSeenFirstRunIntroduction, markFirstRunIntroductionSeen } from '@/lib/first-run';
 
 export default function HomeScreen() {
@@ -36,14 +36,14 @@ export default function HomeScreen() {
   }
 
   if (showIntroduction === null) {
-    return <View style={[styles.container, { backgroundColor: appSurfaces.dark.primaryBackground }]} />;
+    return <View style={[styles.container, { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }]} />;
   }
 
   if (showIntroduction) {
     return <FirstRunIntroduction onFinish={finishIntroduction} />;
   }
 
-  return <View style={[styles.container, { backgroundColor: appSurfaces.dark.primaryBackground }]} />;
+  return <View style={[styles.container, { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }]} />;
 }
 
 const styles = StyleSheet.create({

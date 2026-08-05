@@ -1,7 +1,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View, type ColorValue } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appSurfaces, palette, radius, spacing, type } from '@/constants/theme';
 import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
@@ -19,10 +19,26 @@ type AppScreenProps = PropsWithChildren<{
   footer?: ReactNode;
   modalActive?: boolean;
   scrollable?: boolean;
+  contentExtendsUnderTopbar?: boolean;
 }>;
 
-export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle, showsBackButton = false, children, testID, backgroundColor, footer, modalActive = false, scrollable = true }: AppScreenProps) {
+export const appTopbarHeight = 58;
+
+export function AppScreenHero({ eyebrow, intro, title }: Pick<AppScreenProps, 'eyebrow' | 'intro' | 'title'>) {
+  const { theme } = useFlyntTheme();
+  if (!title) return null;
+  return (
+    <View style={styles.hero}>
+      {eyebrow ? <Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text> : null}
+      <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
+      {intro ? <Text style={[styles.intro, { color: theme.muted }]}>{intro}</Text> : null}
+    </View>
+  );
+}
+
+export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle, showsBackButton = false, children, testID, backgroundColor, footer, modalActive = false, scrollable = true, contentExtendsUnderTopbar = false }: AppScreenProps) {
   const { mode, theme } = useFlyntTheme();
+  const insets = useSafeAreaInsets();
   function openSettings() {
     router.push('/settings');
   }
@@ -32,9 +48,9 @@ export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle,
         accessibilityElementsHidden={modalActive}
         importantForAccessibility={modalActive ? 'no-hide-descendants' : 'auto'}
         style={styles.safeArea}
-        edges={['top']}
+        edges={contentExtendsUnderTopbar ? [] : ['top']}
       >
-        <View style={styles.topbar}>
+        <View style={[styles.topbar, contentExtendsUnderTopbar && styles.topbarOverlay, contentExtendsUnderTopbar && { top: insets.top }]}>
           {showsBackButton ? (
             <>
               <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
@@ -58,24 +74,24 @@ export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle,
             </>
           )}
         </View>
+        {contentExtendsUnderTopbar ? (
+          <View
+            pointerEvents="none"
+            style={[
+              styles.statusBarScrim,
+              {
+                height: insets.top + spacing.sm,
+                experimental_backgroundImage: `linear-gradient(180deg, ${appSurfaces[mode].edgeScrim} 0%, ${appSurfaces[mode].edgeScrim} 34%, transparent 100%)`,
+              },
+            ]}
+          />
+        ) : null}
         {scrollable ? <ScrollView automaticallyAdjustContentInsets contentContainerStyle={styles.content} keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
-          {title ? (
-            <View style={styles.hero}>
-              {eyebrow ? <Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text> : null}
-              <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
-              {intro ? <Text style={[styles.intro, { color: theme.muted }]}>{intro}</Text> : null}
-            </View>
-          ) : null}
+          <AppScreenHero eyebrow={eyebrow} intro={intro} title={title} />
           {children}
           <View style={styles.bottomSpace} />
         </ScrollView> : <View style={styles.staticContent}>
-          {title ? (
-            <View style={styles.hero}>
-              {eyebrow ? <Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text> : null}
-              <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
-              {intro ? <Text style={[styles.intro, { color: theme.muted }]}>{intro}</Text> : null}
-            </View>
-          ) : null}
+          <AppScreenHero eyebrow={eyebrow} intro={intro} title={title} />
           {children}
         </View>}
         {footer}
@@ -115,7 +131,9 @@ export const appSurfaceStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   safeArea: { flex: 1 },
-  topbar: { height: 58, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topbar: { height: appTopbarHeight, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topbarOverlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3 },
+  statusBarScrim: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2 },
   topbarPlaceholder: { width: 44, height: 44 },
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topbarTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600' },

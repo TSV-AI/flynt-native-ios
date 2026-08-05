@@ -1,6 +1,6 @@
 # FLYNT native app plan and release ledger
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 Planning repository: `/Users/lukemcglynn/FLYNT-Native`
 Native client repository: `/Users/lukemcglynn/FLYNT-Native`
 Target client: Expo React Native development build with focused Swift modules
@@ -8,9 +8,9 @@ Backend: Existing FLYNT Vercel API and workflows
 System of record: Existing FLYNT Supabase project `nnfxswxzjqocnlkoqsbl`
 Distribution: Apple App Store through App Store Connect
 
-Current source state: Native foundation, lifecycle navigation, first-sign-in consultation, database-backed ready-state surfaces, Trainer conversation and approval handling, workout customization, native icon, authentication, Spotify App Remote boundary, rest-timer behavior, the native-list Today experiment, and one Today WidgetKit configuration are implemented on `codex/native-foundation`. The widget currently supports only system small, medium, and large. Next Set and Week designs are deferred and are not registered or published by the current source. The working tree preserves the broader uncommitted native build while widget and application work remains uncommitted.
-Current local verification: On 2026-08-04, eight authentication callback and validation tests, 11 authoritative boot tests, two lifecycle navigation tests, seven native feature-contract tests, one global sheet-system contract, TypeScript, ESLint, copy style, and whitespace validation passed. The shell used Node 22.23.1 rather than the repository requirement of Node 24.14.0 and reported the known engine warning. Expo Doctor passed 18 of 20 checks with network access. It reported six one-patch Expo SDK 57 package mismatches and the known local-module ignore warning. Those dependency versions were not changed because `package.json` and the lockfile contain broader user-owned work.
-Current Simulator verification: On 2026-08-04 the current source built, installed, and launched on iPhone 17 / iOS 26.5. The signed-out marketing flow rendered the six PWA-approved stories, product previews, blurred color fields, and unified account transition in dark appearance. The first-sign-in setup rendered and advanced through welcome, basic text and numeric fields, and experience selection in light and dark appearances. The ready-state Today workout editor transformed in place, exposed its safe-area-fixed Cancel and Save actions, opened an exercise detail editor, reordered Back Squat beneath Romanian Deadlift through a direct grab-handle drag, and exposed Replace and Delete through a left swipe. Active swipe and drag rows used the raised card treatment and returned to the resting list surface after release. The Trainer tab rendered its maintained native chat shell, native Markdown response hierarchy, opening-only quick prompts, and native tab-bar composer accessory. No production athlete data was mutated. Signed-out marketing in light appearance, live authenticated consultation messaging, legal approval, program build confirmation, published exercise-catalog results, persisted workout override writes, Trainer program-change approval, larger Dynamic Type, VoiceOver speech, Reduce Motion, Reduce Transparency, TestFlight, and physical-iPhone behavior remain unverified. Widget evidence below remains unchanged.
+Current source state: Native foundation, lifecycle navigation, first-sign-in consultation, real program-build progress, contextual notification permission capture, database-backed ready-state surfaces, Trainer conversation and approval handling, workout customization, native icon, authentication, Spotify App Remote boundary, rest-timer behavior, the native-list Today experiment, and one Today WidgetKit configuration are implemented on `codex/native-foundation`. The widget currently supports only system small, medium, and large. Next Set and Week designs are deferred and are not registered or published by the current source.
+Current local verification: On 2026-08-05, eight authentication callback and validation tests, 11 authoritative boot tests, two lifecycle navigation tests, 13 native feature-contract tests, one global sheet-system contract, TypeScript, focused ESLint, copy style, and whitespace validation passed. The iOS workspace also compiled the FLYNT-owned Swift Google authentication bridge against GoogleSignIn 9.2 and linked Expo Notifications 57.0.8. The shell used Node 22.23.1 rather than the repository requirement of Node 24.14.0 and reported the known engine warning. Expo Doctor last passed 18 of 20 checks with network access on 2026-08-04. It reported six one-patch Expo SDK 57 package mismatches and the known local-module ignore warning. Those Expo versions were not changed.
+Current Simulator verification: On 2026-08-04 the current source built, installed, and launched on iPhone 17 / iOS 26.5. The signed-out marketing flow rendered the six PWA-approved stories, product previews, blurred color fields, and unified account transition in dark appearance. On 2026-08-05 the signed-out marketing and Sign in screens also rendered with the forced FLYNT light canvas, light native system appearance, dark status-bar content, and adaptive provider controls on iPhone 17e / iOS 26.5. A staged account-creation smoke test deleted the exact `info@threesixtyvue.com` Auth user and all discovered owned rows, recreated it through native Google authentication, wrote legal acceptance, and reached the authoritative first consultation screen with a new account identifier. The brief authoritative boot screen now follows the active surface appearance rather than combining a hard-coded dark background with light-theme text. The first consultation welcome uses the standalone FLYNT mark at 72-point height rather than the placeholder letter. The first-sign-in setup rendered and advanced through welcome, basic text and numeric fields, and experience selection in light and dark appearances. The ready-state Today workout editor transformed in place, exposed its safe-area-fixed Cancel and Save actions, opened an exercise detail editor, reordered Back Squat beneath Romanian Deadlift through a direct grab-handle drag, and exposed Replace and Delete through a left swipe. Active swipe and drag rows used the raised card treatment and returned to the resting list surface after release. The authenticated consultation rendered through the same shared chat thread and composer used by Trainer. Its hero scrolled away with the conversation while the settings row stayed fixed, messages moved under the glass composer, the newest content settled above it, the composer expanded and reset to its bounded multiline height, and dark-mode athlete bubbles used the shared `#222222` item surface. The live consultation completed its grouped answers, correctly withheld Review after an incomplete safety template, accepted an explicit safety correction, exposed Review only after the server response said the profile was ready, generated a structured review, and exercised the correction path. A recorded request showed the shared `FLYNT is thinking` row while the server was responding. Chat content now reaches the physical top edge beneath a short translucent status-bar scrim, the menu remains below the safe-area inset, and the light inline composer uses only a subtle glass shadow with its bottom scrim confined below the composer. Existing Markdown replies present sentence-case bullets, while the Trainer server prompt now requests sentence-case bullets for future replies. The program build published one version and activated one current week without duplicate builds or versions. A development-only lifecycle fixture displayed the real build screen without changing that account. The screen rendered a large circular progress track with a thick black clockwise fill and matching rounded moving endpoint, a centered percentage, one compact phase label, and the contextual notification action. The complete content group was shifted down together and verified in iPhone 17e / iOS 26.5 Simulator. Today loaded the resulting exercise catalog with real thumbnails. The list thumbnails, exercise media panel, and set-entry controls use the shared light `#DEDDDA` exercise surface; Simulator verification of the refined shade is pending. No set was completed and no workout session was created. Persisted workout override writes, Trainer program-change approval, larger Dynamic Type, VoiceOver speech, Reduce Motion, Reduce Transparency, TestFlight, and physical-iPhone behavior remain unverified. Widget evidence below remains unchanged.
 Current TestFlight verification: Not started
 Current physical iPhone verification: Not started
 
@@ -77,12 +77,65 @@ Current physical iPhone verification: Not started
   uninstall and clean reinstall, larger Dynamic Type, VoiceOver speech and
   order, Reduce Transparency, TestFlight, and a physical iPhone remain
   unverified.
-- Known authentication configuration gap: Google still uses the Supabase web
-  OAuth route and therefore presents the raw project hostname in the iOS system
-  web-authentication consent dialog. Replacing that route with Google's native
-  iOS sign-in and Supabase ID-token exchange requires an iOS OAuth client for
-  bundle identifier `com.threesixtyvue.flynt`; that client ID and URL scheme are
-  not present in either repository and were not guessed.
+- Implemented in source on 2026-08-05: Google now uses the FLYNT-owned
+  `FlyntGoogleAuth` Swift Expo module and the official GoogleSignIn 9.2 iOS
+  SDK. Swift configures the registered iOS and server clients, presents the
+  provider, supplies the SHA-256 nonce through Google's native nonce overload,
+  and returns only the identity token. The shared authentication layer retains
+  the raw nonce for Supabase verification and remains the only Supabase session
+  authority. The React Native Google wrapper and its CocoaPods adapter were
+  removed rather than patched. Apple's provider boundary remains the native
+  Swift `expo-apple-authentication` implementation. The Create account route
+  retains explicit FLYNT legal consent before starting either provider and
+  records acceptance only after Supabase returns a session.
+- Verified locally on 2026-08-05: the nine native feature contracts, eight
+  authentication tests, 11 authoritative boot tests, two lifecycle navigation
+  tests, global sheet contract, whole-project TypeScript, ESLint, copy style,
+  and whitespace validation passed. CocoaPods linked `FlyntGoogleAuth` and
+  removed `RNGoogleSignin` and `ExpoAdapterGoogleSignIn`. The Debug workspace
+  built, installed, and launched on iPhone 17e / iOS 26.5, then reached
+  Google's native `accounts.google.com` account chooser from Create account.
+  The selected-account token exchange, account creation, legal acceptance
+  write, lifecycle boot, TestFlight, and physical iPhone remain unverified.
+- Corrected and verified in Simulator on 2026-08-05: a development-only
+  `consultation_required` server flag had bypassed the real session gate and
+  made signed-out state look authenticated. The forced preview server was
+  stopped and replaced by one normal Metro server on port 8081. Reloading the
+  same Simulator with no stored session opened Sign in, not consultation. The
+  separate lifecycle Settings placeholder was removed; consultation, loading
+  failure, program-building, and attention-state actions now share the real
+  authenticated Profile & Settings route. Native feature contracts prevent the
+  deleted route from being restored.
+- Implemented in source on 2026-08-05: native provider authentication now
+  separates identity authentication from admission to an existing FLYNT
+  account, matching the production PWA. Sign in reads the server-owned
+  `/api/account/status` endpoint and proceeds only when an athlete profile has
+  accepted the current Terms. A Google, Apple, or email identity without that
+  application account is signed out locally and directed to Create account.
+  Create account records the current Terms through
+  `/api/account/accept-terms` before authoritative boot can enter consultation.
+  The client does not infer account existence from provider identity or create
+  athlete state during the sign-in check.
+- Implemented in source on 2026-08-05: the complete signed-out marketing,
+  Sign in, Create account, legal, and authentication-callback experience now
+  defaults to FLYNT light appearance regardless of the device appearance. The
+  shared lifecycle-aware theme boundary restores the authenticated account's
+  System, Light, or Dark preference after sign-in. Signed-out route canvases,
+  status-bar content, provider buttons, text, and transition backgrounds share
+  the light tokens, preventing a dark flash between first-run and account
+  entry. This is a FLYNT product decision; Apple Color and Accessibility
+  guidance governs contrast and adaptation but does not prescribe this default.
+- Verified locally on 2026-08-05: whole-project TypeScript, focused ESLint,
+  nine native feature contracts, lifecycle navigation, copy style, and
+  whitespace validation passed after the signed-out light-default boundary was
+  added.
+- Verified in the running iPhone 17e / iOS 26.5 Simulator on 2026-08-05: a
+  fresh Debug build connected to the single LAN Metro server, rendered the
+  signed-out marketing flow with the FLYNT light canvas and dark status-bar
+  content, and transitioned to the light Sign in screen with adaptive Apple,
+  Google, and email actions. Removing unsupported per-screen status-bar options
+  left the shared Expo StatusBar and lifecycle-aware theme as the sole status
+  appearance authority; the route transition completed without a native error.
 - Design basis: current Apple HIG pages for Onboarding, Managing accounts, Sign
   in with Apple, Layout, Accessibility, and Launching, plus
   `docs/APPLE_HIG_BASELINE.md` and `docs/INTERACTION_SYSTEM.md`. Product copy,
@@ -122,6 +175,33 @@ Current physical iPhone verification: Not started
   sizing, and timer state render directly inside the system accessory. They do
   not add a second `GlassView` inside the native glass capsule. Earlier iOS and
   Reduce Transparency fallbacks retain one explicit FLYNT surface.
+- Implemented in source on 2026-08-05: consultation and signed-in Trainer now
+  render through one `FlyntChatThread` and one shared native composer surface.
+  Both use the same virtualized list, Markdown Trainer responses, FLYNT thinking
+  state, automatic bottom tracking, athlete bubble, bounded multiline input,
+  and overlay clearance. Consultation retains its server-owned guided prompts,
+  secure draft, retry, review, legal, and build logic, and omits only the tab
+  bar. The shared Trainer hero is a list header, so its title and explanatory
+  copy scroll away while the safe-area menu row remains fixed. Inline composers
+  float above the conversation; messages can move beneath the translucent
+  material, and shared bottom clearance keeps the final item readable. Athlete
+  bubbles use the FLYNT black fill in light appearance and the shared `#222222`
+  item surface in dark appearance.
+- Refined and verified in Simulator on 2026-08-05: the shared chat list uses a
+  real footer spacer, so automatic bottom tracking includes the overlaid
+  composer rather than ending beneath it. The same footer owns the visible
+  `FLYNT is thinking` state, which was confirmed in a recorded server request.
+  Consultation no longer treats a sixth user message as proof of completion;
+  it waits for the server response to state that the profile is ready before
+  exposing Review. Content extends behind the fixed menu to the physical top
+  edge, where a short translucent status-bar scrim replaces the former hard
+  clipping line. The inline light-mode composer retains its glass shape and
+  receives only a subtle shadow. Its bottom scrim begins below the composer in
+  the safe-area region. Current and future Markdown bullets use sentence case;
+  the native renderer normalizes stored replies and the PWA Trainer prompt was
+  corrected for future output. These are FLYNT presentation decisions grounded
+  in Apple Layout, Materials, Accessibility, and Motion guidance. No departure
+  from Apple guidance was required.
 - Implemented in source: Today exposes Edit beside the workout title. The
   Today page transforms in place into a maintained draggable list with
   handle-only reordering and native gesture-handler swipe actions. Add, custom

@@ -1,11 +1,16 @@
 import { useCallback, useMemo } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Chat, type IMessage, type MessageProps } from '@kesha-antonov/react-native-chat';
-import { useReducedMotion } from 'react-native-reanimated';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import type { IMessage, MessageProps } from '@kesha-antonov/react-native-chat';
 
-import { AppScreen, appSurfaceStyles } from '@/components/app-surface';
+import { AppScreen, AppScreenHero, appSurfaceStyles, appTopbarHeight } from '@/components/app-surface';
+import {
+  FlyntAssistantMessage,
+  FlyntChatThread,
+  FlyntUserMessage,
+  flyntAthlete,
+  flyntTrainer,
+} from '@/components/flynt-chat-thread';
 import { TrainerChatInputToolbar } from '@/components/trainer-composer-accessory';
-import { TrainerMarkdownMessage } from '@/components/trainer-markdown-message';
 import { appSurfaces, radius, spacing } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { programChangeOperationDescription, programChangeReviews, textFromTrainerMessage } from '@/features/trainer-messages';
@@ -23,14 +28,10 @@ type TrainerChatMessage = IMessage & {
   proposal?: ReturnType<typeof programChangeReviews>[number];
 };
 
-const athlete = { _id: 'athlete' } as const;
-const trainer = { _id: 'trainer' } as const;
-
 export default function TrainerScreen() {
   const { mode, theme } = useFlyntTheme();
   const { appState } = useLifecycleNavigation();
-  const { canRetry, choosePrompt, dismissError, error, respondingToolCallId, respondToChange, retry, sending, sentMessages } = useTrainerConversation();
-  const reduceMotion = useReducedMotion();
+  const { canRetry, choosePrompt, composerHeight, dismissError, error, respondingToolCallId, respondToChange, retry, sending, sentMessages } = useTrainerConversation();
   const itemBackground = appSurfaces[mode].itemBackground;
   const supportsNativeTabAccessory = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
   const firstName = appState?.profile.fullName.trim().split(/\s+/)[0] || null;
@@ -55,7 +56,7 @@ export default function TrainerScreen() {
           createdAt: new Date(message.createdAt),
           kind: message.role,
           text,
-          user: message.role === 'user' ? athlete : trainer,
+          user: message.role === 'user' ? flyntAthlete : flyntTrainer,
         } satisfies TrainerChatMessage];
       })
       .slice(-20);
@@ -67,7 +68,7 @@ export default function TrainerScreen() {
       createdAt: lastTimestamp + index + 1,
       kind: 'user' as const,
       text,
-      user: athlete,
+      user: flyntAthlete,
     }));
     const proposalMessages = proposals.map((proposal, index) => ({
       _id: `proposal:${proposal.part.toolCallId}`,
@@ -75,7 +76,7 @@ export default function TrainerScreen() {
       kind: 'proposal' as const,
       proposal,
       text: proposal.change.summary,
-      user: trainer,
+      user: flyntTrainer,
     }));
     const conversation = [...persisted, ...proposalMessages, ...optimistic];
     if (conversation.length) return conversation;
@@ -84,7 +85,7 @@ export default function TrainerScreen() {
       createdAt: 0,
       kind: 'welcome',
       text: `**${fallbackTitle}**\n\n${fallbackBody}`,
-      user: trainer,
+      user: flyntTrainer,
     }];
   }, [appState?.conversation?.messages, fallbackBody, fallbackTitle, proposals, sentMessages]);
 
@@ -92,7 +93,7 @@ export default function TrainerScreen() {
     if (currentMessage.kind === 'welcome') {
       return (
         <View style={styles.welcomeMessage}>
-          <TrainerMarkdownMessage containerStyle={styles.trainerResponse} markdown={currentMessage.text} />
+          <FlyntAssistantMessage markdown={currentMessage.text} />
           <View style={styles.prompts}>
             {prompts.map(([label, prompt]) => (
               <Pressable
@@ -109,11 +110,7 @@ export default function TrainerScreen() {
       );
     }
     if (currentMessage.kind === 'user') {
-      return (
-        <View style={[styles.userBubble, { backgroundColor: theme.primaryFill }]}>
-          <Text selectable style={[appSurfaceStyles.body, { color: theme.primaryText }]}>{currentMessage.text}</Text>
-        </View>
-      );
+      return <FlyntUserMessage text={currentMessage.text} />;
     }
     if (currentMessage.kind === 'proposal' && currentMessage.proposal) {
       const { change, part } = currentMessage.proposal;
@@ -133,17 +130,8 @@ export default function TrainerScreen() {
         </View>
       );
     }
-    return (
-      <TrainerMarkdownMessage containerStyle={styles.trainerResponse} markdown={currentMessage.text} />
-    );
+    return <FlyntAssistantMessage markdown={currentMessage.text} />;
   }, [choosePrompt, itemBackground, respondToChange, respondingToolCallId, theme]);
-
-  const renderThinking = useCallback(() => sending ? (
-    <View accessible accessibilityLabel="Trainer is thinking" accessibilityLiveRegion="polite" accessibilityRole="progressbar" style={styles.thinkingRow}>
-      {reduceMotion ? <View style={[styles.staticThinkingDot, { backgroundColor: theme.muted }]} /> : <ActivityIndicator color={theme.muted} size="small" />}
-      <Text accessible={false} style={[styles.thinkingText, { color: theme.muted }]}>Thinking…</Text>
-    </View>
-  ) : null, [reduceMotion, sending, theme.muted]);
 
   const renderError = useCallback(() => error ? (
     <View accessibilityRole="alert" style={[styles.errorCard, { borderColor: theme.danger }]}>
@@ -157,27 +145,18 @@ export default function TrainerScreen() {
 
   return (
     <View style={styles.flex}>
-      <AppScreen eyebrow="YOUR COACH" scrollable={false} title="Trainer" intro="Ask about today, your plan, or an adjustment you need." testID="screen-trainer">
-        <Chat<TrainerChatMessage>
-          colorScheme={mode}
-          isDayAnimationEnabled={false}
-          isInverted={false}
-          isScrollToBottomEnabled
-          isTyping={sending}
-          keyboardAvoidingViewProps={{ keyboardVerticalOffset: 0 }}
-          listProps={{
-            showsVerticalScrollIndicator: false,
-            contentContainerStyle: [styles.conversationContent, !supportsNativeTabAccessory && styles.conversationContentWithoutAccessory],
-          }}
+      <AppScreen contentExtendsUnderTopbar scrollable={false} testID="screen-trainer">
+        <FlyntChatThread<TrainerChatMessage>
+          extendsUnderStatusBar
+          hasExternalComposer={supportsNativeTabAccessory}
+          header={<AppScreenHero eyebrow="YOUR COACH" intro="Ask about today, your plan, or an adjustment you need." title="Trainer" />}
           messages={messages}
-          messagesContainerStyle={styles.messagesContainer}
-          onSend={() => undefined}
           renderChatFooter={renderError}
-          renderDay={() => null}
           renderInputToolbar={() => supportsNativeTabAccessory ? null : <TrainerChatInputToolbar />}
           renderMessage={renderMessage}
-          renderTypingIndicator={renderThinking}
-          user={athlete}
+          scrollRevision={composerHeight}
+          sending={sending}
+          topInset={appTopbarHeight}
         />
       </AppScreen>
     </View>
@@ -186,15 +165,7 @@ export default function TrainerScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  messagesContainer: { flex: 1 },
-  conversationContent: { flexGrow: 1, gap: spacing.lg, paddingHorizontal: 4, paddingTop: spacing.sm, paddingBottom: spacing.hero },
-  conversationContentWithoutAccessory: { paddingBottom: spacing.sm },
   welcomeMessage: { gap: spacing.lg },
-  trainerResponse: { width: '100%' },
-  userBubble: { maxWidth: '88%', alignSelf: 'flex-end', borderRadius: radius.lg, borderBottomRightRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  thinkingRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, alignSelf: 'flex-start' },
-  staticThinkingDot: { width: 7, height: 7, borderRadius: 4 },
-  thinkingText: { fontSize: 15, lineHeight: 21, fontWeight: '500' },
   bubbleBody: { marginTop: spacing.xs },
   prompts: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   prompt: { minHeight: 44, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.pill, justifyContent: 'center', paddingHorizontal: spacing.md },

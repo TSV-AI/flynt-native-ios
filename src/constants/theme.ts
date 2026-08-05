@@ -54,15 +54,23 @@ export const appSurfaces = {
   light: {
     primaryBackground: palette.warmWhite,
     itemBackground: palette.todayCanvas,
+    exerciseSurface: '#DEDDDA',
+    edgeScrim: 'rgba(247,246,242,0.92)',
+    composerEdgeScrim: 'rgba(247,246,242,0.58)',
   },
   dark: {
     primaryBackground: '#111111',
     itemBackground: '#222222',
+    exerciseSurface: '#222222',
+    edgeScrim: 'rgba(17,17,17,0.92)',
+    composerEdgeScrim: 'rgba(17,17,17,0.52)',
   },
 } as const;
 
 export type ColorMode = keyof typeof colors;
 export type Theme = (typeof colors)[ColorMode];
+
+export const signedOutColorMode: ColorMode = 'light';
 
 export const fonts = Platform.select({
   ios: {

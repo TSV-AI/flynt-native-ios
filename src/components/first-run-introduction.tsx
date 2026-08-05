@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { appSurfaces, spacing } from '@/constants/theme';
+import { appSurfaces, signedOutColorMode, spacing } from '@/constants/theme';
 import { firstRunSlides, type FirstRunPreviewKind } from '@/features/first-run-content';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { selection } from '@/lib/haptics';
@@ -73,7 +73,7 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: appSurfaces.dark.primaryBackground }]}>
+    <View style={[styles.screen, { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }]}>
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.header} />
 

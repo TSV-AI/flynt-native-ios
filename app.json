@@ -51,6 +51,13 @@
       ],
       "expo-apple-authentication",
       "expo-web-browser",
+      "expo-notifications",
+      [
+        "flynt-google-auth",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.404535560676-jpvemrs30oki2pt6vdgfvh5s0854r20j"
+        }
+      ],
       [
         "expo-widgets",
         {
@@ -69,6 +76,14 @@
               ]
             }
           ]
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
         }
       ]
     ],
