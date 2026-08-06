@@ -50,6 +50,23 @@ Current physical iPhone verification: Not started
   consume the five approved pre-rendered color fields in their explicit
   left-to-right order. The feature cards, copy, sizing, and sixth Spotify slide
   remain unchanged.
+- Implemented in source on 2026-08-06: the marketing stage no longer uses
+  pre-rendered color-field images. A native SVG composition now draws the PWA's
+  dark base, bottom bloom, exact sage, cream, blue, grey, and bronze gradient
+  stops, Gaussian blur, synthetic grain, and per-story transforms behind the
+  unchanged native preview cards.
+- Implemented in source on 2026-08-06: the complete marketing introduction now
+  uses the existing FLYNT dark canvas, ink, muted-copy, divider, and light
+  status-bar tokens. This exception is scoped to the marketing stories; Sign in
+  and Create account retain the signed-out light appearance.
+- Implemented in source on 2026-08-06: the generated color stage uses the
+  supplied dark concave inset treatment: 38-point blurred inner shadows with a
+  30-percent white highlight at minus 20 points and a solid `#000000` shade at
+  plus 20 points. The color field remains unchanged.
+- Implemented in source on 2026-08-06: each foreground marketing preview card
+  now sits inside a separate unclipped rounded shadow host. Its stronger soft
+  black shadow renders outside the clipped glass card, giving the preview clear
+  lift above the recessed generated color stage.
 - Implemented in source: the Spotify capture is full-width, uses its natural
   source aspect ratio, remains pinned to the top, and allows only the bottom to
   be clipped by the preview card, matching the PWA image rule.

@@ -256,6 +256,18 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   assert.match(themeProvider, /isSignedOut[\s\S]*signedOutColorMode/);
 
   assert.doesNotMatch(introduction, /styles\.skip|skipCopy/);
+  assert.match(introduction, /function MarketingStageBackground/);
+  assert.match(introduction, /id="sageCream"[\s\S]*id="blueGrey"[\s\S]*id="bronzeBlue"/);
+  assert.match(introduction, /FeGaussianBlur stdDeviation="22"/);
+  assert.match(introduction, /id="stageInsetBlur"[\s\S]*stdDeviation="19"/);
+  assert.doesNotMatch(introduction, /stageInsetBlackBlur/);
+  assert.match(introduction, /stroke="#FFFFFF"[\s\S]*strokeOpacity=\{0\.3\}[\s\S]*strokeWidth="28"[\s\S]*transform="translate\(-20 -20\)"/);
+  assert.match(introduction, /stroke="#000000"[\s\S]*strokeWidth="28"[\s\S]*transform="translate\(20 20\)"/);
+  assert.match(introduction, /styles\.interfaceCardShadow[\s\S]*<BlurView intensity=\{36\} style=\{styles\.interfaceCard\}/);
+  assert.match(introduction, /interfaceCardShadow:[\s\S]*shadowOpacity: 0\.72[\s\S]*shadowRadius: 34/);
+  assert.doesNotMatch(introduction, /marketing-stage-[a-z]+\.png/);
+  assert.match(introduction, /appSurfaces\.dark\.primaryBackground/);
+  assert.match(introduction, /<StatusBar animated style="light"/);
   assert.match(introduction, />Sign in</);
   assert.match(account, /Continue with Google/);
   assert.match(account, /AppleAuthenticationButtonType\.CONTINUE/);

@@ -1,4 +1,5 @@
 import { BlurView } from 'expo-blur';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -13,10 +14,21 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, {
+  Circle,
+  Defs,
+  FeGaussianBlur,
+  Filter,
+  G,
+  LinearGradient,
+  Pattern,
+  RadialGradient,
+  Rect,
+  Stop,
+} from 'react-native-svg';
 
-import { appSurfaces, signedOutColorMode, spacing } from '@/constants/theme';
+import { appSurfaces, colors, spacing } from '@/constants/theme';
 import { firstRunSlides, type FirstRunPreviewKind } from '@/features/first-run-content';
-import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { selection } from '@/lib/haptics';
 
 type FirstRunIntroductionProps = {
@@ -25,7 +37,6 @@ type FirstRunIntroductionProps = {
 
 export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
   const { height, width } = useWindowDimensions();
-  const { theme } = useFlyntTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -73,7 +84,8 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }]}>
+    <View style={[styles.screen, { backgroundColor: appSurfaces.dark.primaryBackground }]}>
+      <StatusBar animated style="light" />
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.header} />
 
@@ -106,10 +118,10 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
                 width={Math.min(420, width - 44)}
               />
               <View style={styles.copy}>
-                <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>
+                <Text accessibilityRole="header" style={[styles.title, { color: colors.dark.ink }]}>
                   {slide.title}
                 </Text>
-                <Text style={[styles.body, { color: theme.muted }]}>{slide.body}</Text>
+                <Text style={[styles.body, { color: colors.dark.muted }]}>{slide.body}</Text>
               </View>
             </View>
           ))}
@@ -129,7 +141,7 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
                 <View
                   style={[
                     styles.dot,
-                    { backgroundColor: page === index ? theme.ink : theme.line },
+                    { backgroundColor: page === index ? colors.dark.ink : colors.dark.line },
                     page === index && styles.activeDot,
                   ]}
                 />
@@ -142,8 +154,8 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
               onPress={onFinish}
               style={({ pressed }) => [styles.signInButton, pressed && styles.pressed]}
             >
-              <Text style={[styles.signInCopy, { color: theme.muted }]}>Sign in</Text>
-              <Text accessibilityElementsHidden style={[styles.chevron, { color: theme.muted }]}>›</Text>
+              <Text style={[styles.signInCopy, { color: colors.dark.muted }]}>Sign in</Text>
+              <Text accessibilityElementsHidden style={[styles.chevron, { color: colors.dark.muted }]}>›</Text>
             </Pressable>
           ) : null}
         </View>
@@ -163,30 +175,118 @@ function ProductPreview({
 }) {
   return (
     <View style={[styles.productStage, { height }]}>
-      <Image
-        accessibilityIgnoresInvertColors
-        accessibilityElementsHidden
-        resizeMode="stretch"
-        source={stageBackgrounds[kind]}
-        style={styles.stageBackground}
-      />
-      <BlurView
-        intensity={36}
-        style={[
-          styles.interfaceCard,
-          cardSizes[kind],
-        ]}
-        tint="systemThinMaterialDark"
-      >
-        <View style={styles.cardTint} />
-        {kind === 'today' ? <WorkoutPreview /> : null}
-        {kind === 'timer' ? <TimerPreview /> : null}
-        {kind === 'guide' ? <GuidePreview /> : null}
-        {kind === 'progress' ? <StatsPreview /> : null}
-        {kind === 'trainer' ? <TrainerPreview /> : null}
-        {kind === 'spotify' ? <SpotifyPreview width={width * 0.92} /> : null}
-      </BlurView>
+      <MarketingStageBackground kind={kind} />
+      <View style={[styles.interfaceCardShadow, cardSizes[kind]]}>
+        <BlurView intensity={36} style={styles.interfaceCard} tint="systemThinMaterialDark">
+          <View style={styles.cardTint} />
+          {kind === 'today' ? <WorkoutPreview /> : null}
+          {kind === 'timer' ? <TimerPreview /> : null}
+          {kind === 'guide' ? <GuidePreview /> : null}
+          {kind === 'progress' ? <StatsPreview /> : null}
+          {kind === 'trainer' ? <TrainerPreview /> : null}
+          {kind === 'spotify' ? <SpotifyPreview width={width * 0.92} /> : null}
+        </BlurView>
+      </View>
     </View>
+  );
+}
+
+const colorFieldTransforms: Record<FirstRunPreviewKind, { opacity: number; rotate: number; scale: number }> = {
+  today: { opacity: 0.84, rotate: 0, scale: 1 },
+  progress: { opacity: 0.84, rotate: 180, scale: 1.08 },
+  trainer: { opacity: 0.72, rotate: 12, scale: 1.06 },
+  spotify: { opacity: 0.76, rotate: -9, scale: 1.12 },
+  guide: { opacity: 0.68, rotate: 142, scale: 1.08 },
+  timer: { opacity: 0.66, rotate: 64, scale: 1.1 },
+};
+
+function MarketingStageBackground({ kind }: { kind: FirstRunPreviewKind }) {
+  const field = colorFieldTransforms[kind];
+  const fieldTransform = `translate(210 240) rotate(${field.rotate}) scale(${field.scale}) translate(-210 -240)`;
+
+  return (
+    <Svg
+      accessibilityElementsHidden
+      pointerEvents="none"
+      preserveAspectRatio="none"
+      style={styles.stageBackground}
+      viewBox="0 0 420 480"
+    >
+      <Defs>
+        <RadialGradient id="stageBloom" cx="50%" cy="105%" fx="50%" fy="105%" r="52%">
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.07} />
+          <Stop offset="71%" stopColor="#FFFFFF" stopOpacity={0} />
+        </RadialGradient>
+        <LinearGradient id="sageCream" x1="0%" x2="100%" y1="0%" y2="0%">
+          <Stop offset="3%" stopColor="#869D7F" stopOpacity={0} />
+          <Stop offset="38%" stopColor="#869D7F" stopOpacity={0.84} />
+          <Stop offset="63%" stopColor="#E7D8B1" stopOpacity={0.85} />
+          <Stop offset="92%" stopColor="#E7D8B1" stopOpacity={0} />
+        </LinearGradient>
+        <LinearGradient id="blueGrey" x1="0%" x2="100%" y1="0%" y2="0%">
+          <Stop offset="3%" stopColor="#7A9DC6" stopOpacity={0} />
+          <Stop offset="39%" stopColor="#7A9DC6" stopOpacity={0.88} />
+          <Stop offset="62%" stopColor="#D7E0D9" stopOpacity={0.82} />
+          <Stop offset="94%" stopColor="#D7E0D9" stopOpacity={0} />
+        </LinearGradient>
+        <LinearGradient id="bronzeBlue" x1="0%" x2="100%" y1="0%" y2="0%">
+          <Stop offset="4%" stopColor="#B79165" stopOpacity={0} />
+          <Stop offset="36%" stopColor="#B79165" stopOpacity={0.5} />
+          <Stop offset="66%" stopColor="#5B7A97" stopOpacity={0.78} />
+          <Stop offset="94%" stopColor="#5B7A97" stopOpacity={0} />
+        </LinearGradient>
+        <Filter id="colorFieldBlur" x="-35%" y="-50%" width="170%" height="200%">
+          <FeGaussianBlur stdDeviation="22" />
+        </Filter>
+        <Filter id="stageInsetBlur" x="-20%" y="-20%" width="140%" height="140%">
+          <FeGaussianBlur stdDeviation="19" />
+        </Filter>
+        <Pattern id="stageGrain" width="4" height="4" patternUnits="userSpaceOnUse">
+          <Circle cx="0.5" cy="0.5" fill="#FFFFFF" fillOpacity={0.13} r="0.45" />
+          <Circle cx="1.35" cy="1.35" fill="#000000" fillOpacity={0.15} r="0.35" />
+        </Pattern>
+      </Defs>
+
+      <Rect width="420" height="480" fill="#101110" />
+      <Rect width="420" height="480" fill="url(#stageBloom)" />
+      <G opacity={field.opacity} transform={fieldTransform}>
+        <G filter="url(#colorFieldBlur)" transform="rotate(-25 34.5 104.5)">
+          <Rect x="-322" y="46" width="713" height="117" rx="58.5" fill="url(#sageCream)" />
+        </G>
+        <G filter="url(#colorFieldBlur)" transform="rotate(-25 416.5 277.5)">
+          <Rect x="60" y="219" width="713" height="117" rx="58.5" fill="url(#blueGrey)" />
+        </G>
+        <G filter="url(#colorFieldBlur)" transform="rotate(-25 95.5 485.5)">
+          <Rect x="-261" y="427" width="713" height="117" rx="58.5" fill="url(#bronzeBlue)" />
+        </G>
+      </G>
+      <Rect width="420" height="480" fill="url(#stageGrain)" opacity={0.22} />
+      <Rect
+        x="0"
+        y="0"
+        width="420"
+        height="480"
+        rx="30"
+        fill="none"
+        filter="url(#stageInsetBlur)"
+        stroke="#FFFFFF"
+        strokeOpacity={0.3}
+        strokeWidth="28"
+        transform="translate(-20 -20)"
+      />
+      <Rect
+        x="0"
+        y="0"
+        width="420"
+        height="480"
+        rx="30"
+        fill="none"
+        filter="url(#stageInsetBlur)"
+        stroke="#000000"
+        strokeWidth="28"
+        transform="translate(20 20)"
+      />
+    </Svg>
   );
 }
 
@@ -407,15 +507,6 @@ function SheetHandle() {
   return <View style={styles.sheetHandle} />;
 }
 
-const stageBackgrounds = {
-  today: require('../../assets/images/marketing/marketing-stage-today.png'),
-  timer: require('../../assets/images/marketing/marketing-stage-guide.png'),
-  guide: require('../../assets/images/marketing/marketing-stage-progress.png'),
-  progress: require('../../assets/images/marketing/marketing-stage-trainer.png'),
-  trainer: require('../../assets/images/marketing/marketing-stage-spotify.png'),
-  spotify: require('../../assets/images/marketing/marketing-stage-spotify.png'),
-} as const;
-
 const cardSizes = StyleSheet.create({
   today: { width: '92%', height: '84%' },
   timer: { width: '92%', height: 260 },
@@ -444,19 +535,24 @@ const styles = StyleSheet.create({
   stageBackground: {
     ...StyleSheet.absoluteFill,
   },
-  interfaceCard: {
+  interfaceCardShadow: {
     position: 'relative',
+    borderCurve: 'continuous',
+    borderRadius: 28,
+    shadowColor: '#000000',
+    shadowOpacity: 0.72,
+    shadowRadius: 34,
+    shadowOffset: { width: 0, height: 22 },
+    transform: [{ scale: 0.82 }],
+  },
+  interfaceCard: {
+    flex: 1,
     overflow: 'hidden',
     borderCurve: 'continuous',
     borderRadius: 28,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.15)',
     backgroundColor: 'rgba(30,30,29,0.58)',
-    shadowColor: '#000',
-    shadowOpacity: 0.42,
-    shadowRadius: 29,
-    shadowOffset: { width: 0, height: 18 },
-    transform: [{ scale: 0.82 }],
   },
   cardTint: { position: 'absolute', inset: 0, backgroundColor: 'rgba(17,18,17,0.1)' },
   copy: { paddingHorizontal: 7, paddingTop: 20, paddingBottom: 14, gap: spacing.md },
