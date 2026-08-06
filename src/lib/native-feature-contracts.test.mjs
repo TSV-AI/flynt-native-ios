@@ -103,6 +103,14 @@ test('post-account consultation matches the PWA setup and securely resumes its d
   assert.match(source, /SecureStore\.setItemAsync\(draftStorageKey/);
   assert.match(source, /SecureStore\.deleteItemAsync\(draftStorageKey\)/);
   assert.match(source, /accessibilityState=\{\{ selected: selected === value \}\}/);
+  assert.match(source, /type MetricPicker = 'age' \| 'height' \| 'weight'/);
+  assert.match(source, /metricPickerPresentation = \{ detent: 'medium' \}/);
+  assert.match(source, /<MetricPickerSheet/);
+  assert.match(source, /<FlyntSheet[\s\S]*pickerStyle\('wheel'\)/);
+  assert.match(source, /label="Height"[\s\S]*formatHeight\(draft\.height\)/);
+  assert.match(source, /accessibilityValue=\{\{ text: accessibilityValue \?\? value \}\}/);
+  assert.match(source, /styles\.selectionIndicator[\s\S]*name="checkmark"/);
+  assert.doesNotMatch(source, /styles\.radio|styles\.radioFill/);
   assert.match(source, /router\.push\('\/settings'\)/);
   assert.match(source, /<GlassSymbolButton[\s\S]*name="ellipsis"/);
   assert.doesNotMatch(source, /styles\.brand/);

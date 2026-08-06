@@ -3,6 +3,8 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Host as SwiftUIHost, Picker as SwiftUIPicker, Text as SwiftUIText } from '@expo/ui/swift-ui';
+import { pickerStyle, tag } from '@expo/ui/swift-ui/modifiers';
 import type { IMessage, MessageProps } from '@kesha-antonov/react-native-chat';
 import { z } from 'zod';
 
@@ -17,6 +19,7 @@ import {
 import { FlyntSheet } from '@/components/flynt-sheet';
 import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
 import { FlyntChatInputToolbar } from '@/components/trainer-composer-accessory';
+import type { FlyntSheetPresentationOverride } from '@/constants/sheet';
 import { appSurfaces, radius, spacing, type } from '@/constants/theme';
 import { consultationBasicsSchema, type ConsultationBasics } from '@/contracts/app-state';
 import { consultationIsReadyForReview, consultationReview, messagesWithToolApproval, requestMessages, textFromTrainerMessage, type TrainerMessage } from '@/features/trainer-messages';
@@ -51,6 +54,14 @@ type SetupDraft = {
   weight: string;
 };
 
+type MetricPicker = 'age' | 'height' | 'weight';
+
+const ageOptions = Array.from({ length: 108 }, (_, index) => index + 13);
+const feetOptions = Array.from({ length: 7 }, (_, index) => index + 3);
+const standardInchOptions = Array.from({ length: 12 }, (_, index) => index);
+const weightOptions = Array.from({ length: 951 }, (_, index) => index + 50);
+const metricPickerPresentation = { detent: 'medium' } satisfies FlyntSheetPresentationOverride;
+
 type ConsultationChatMessage = IMessage & {
   kind: 'assistant' | 'prompt' | 'review' | 'user';
   prompt?: ReturnType<typeof promptForTurn>;
@@ -72,6 +83,21 @@ function startingDraft(fullName: string, age: number | null, height: number | nu
     age: String(age ?? 30), experience: '', height: String(height ?? 68), name: fullName,
     step: 0, trainingIntent: '', weight: String(weight ?? 175),
   };
+}
+
+function boundedInteger(value: string, fallback: number, minimum: number, maximum: number) {
+  const parsed = Number.parseInt(value, 10);
+  return Math.min(maximum, Math.max(minimum, Number.isFinite(parsed) ? parsed : fallback));
+}
+
+function heightParts(value: string) {
+  const totalInches = boundedInteger(value, 68, 36, 108);
+  return { feet: Math.floor(totalInches / 12), inches: totalInches % 12 };
+}
+
+function formatHeight(value: string) {
+  const { feet, inches } = heightParts(value);
+  return `${feet} ft ${inches} in`;
 }
 
 function promptForTurn(turn: number, name: string) {
@@ -470,25 +496,47 @@ export default function ConsultationScreen() {
 
 function SetupFlow({ draft, error, onFinish, onUpdate, theme }: { draft: SetupDraft; error: string | null; onFinish: () => void; onUpdate: (patch: Partial<SetupDraft>) => void; theme: ReturnType<typeof useFlyntTheme>['theme'] }) {
   const { mode } = useFlyntTheme();
+  const [metricPicker, setMetricPicker] = useState<MetricPicker | null>(null);
   const step = draft.step;
-  return <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.setupContent} keyboardDismissMode="interactive">
+  return <><ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.setupContent} keyboardDismissMode="interactive">
     <View style={styles.progressHeader}><Text style={[styles.eyebrow, { color: theme.muted }]}>MEET YOUR TRAINER</Text><Text style={[styles.progressCount, { color: theme.muted }]}>{step + 1} / 4</Text></View>
     <View style={[styles.progressTrack, { backgroundColor: theme.line }]}><View style={[styles.progressFill, { backgroundColor: theme.ink, width: `${((step + 1) / 4) * 100}%` }]} /></View>
     {step === 0 ? <View style={styles.welcome}><View accessibilityLabel="FLYNT" style={styles.welcomeMarkFrame}><Image accessibilityIgnoresInvertColors source={mode === 'dark' ? require('@/assets/images/flynt-mark-light.png') : require('@/assets/images/flynt-mark-ink.png')} style={styles.welcomeMark} /></View><Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>A few basics, then we’ll talk.</Text><Text style={[styles.body, { color: theme.muted }]}>Start with the easy details. After that, FLYNT will ask a few useful questions and adapt the conversation to you.</Text><Pressable accessibilityRole="button" onPress={() => onUpdate({ step: 1 })} style={[styles.primaryButton, { backgroundColor: theme.primaryFill }]}><Text style={[styles.primaryCopy, { color: theme.primaryText }]}>Get started</Text></Pressable><Text style={[styles.caption, { color: theme.muted }]}>You can type, tap, or use keyboard dictation once the conversation begins.</Text></View> : null}
-    {step === 1 ? <View style={styles.setupStack}><Text style={[styles.eyebrow, { color: theme.muted }]}>THE BASICS</Text><Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>First, a little about you.</Text><SetupField autoComplete="name" label="What should FLYNT call you?" onChange={(name) => onUpdate({ name })} theme={theme} value={draft.name} /><SetupField keyboardType="number-pad" label="Age" onChange={(age) => onUpdate({ age })} theme={theme} value={draft.age} /><SetupField keyboardType="number-pad" label="Height in inches" onChange={(height) => onUpdate({ height })} theme={theme} value={draft.height} /><SetupField keyboardType="decimal-pad" label="Weight in pounds" onChange={(weight) => onUpdate({ weight })} theme={theme} value={draft.weight} /></View> : null}
+    {step === 1 ? <View style={styles.setupStack}><Text style={[styles.eyebrow, { color: theme.muted }]}>THE BASICS</Text><Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>First, a little about you.</Text><SetupField autoComplete="name" label="What should FLYNT call you?" onChange={(name) => onUpdate({ name })} theme={theme} value={draft.name} /><SetupMetricField label="Age" onPress={() => setMetricPicker('age')} theme={theme} value={`${boundedInteger(draft.age, 30, 13, 120)} years`} /><SetupMetricField accessibilityValue={`${heightParts(draft.height).feet} feet ${heightParts(draft.height).inches} inches`} label="Height" onPress={() => setMetricPicker('height')} theme={theme} value={formatHeight(draft.height)} /><SetupMetricField label="Weight" onPress={() => setMetricPicker('weight')} theme={theme} value={`${boundedInteger(draft.weight, 175, 50, 1000)} lb`} /></View> : null}
     {step === 2 ? <OptionStep detail="This changes the language, examples, and depth of the conversation." eyebrow="HOW FLYNT SHOULD TALK WITH YOU" onSelect={(experience) => onUpdate({ experience })} options={experienceOptions} selected={draft.experience} theme={theme} title="How familiar does training feel?" /> : null}
     {step === 3 ? <OptionStep detail="This sets the starting point. You can still change any workout later." eyebrow="HOW YOU WANT TO TRAIN" onSelect={(trainingIntent) => onUpdate({ trainingIntent })} options={intentOptions} selected={draft.trainingIntent} theme={theme} title="What role should FLYNT play?" /> : null}
     {error ? <Text accessibilityRole="alert" style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
     {step > 0 ? <View style={styles.setupActions}><Pressable accessibilityRole="button" onPress={() => onUpdate({ step: step - 1 })} style={styles.textButton}><Text style={[styles.textButtonCopy, { color: theme.ink }]}>Back</Text></Pressable><Pressable accessibilityRole="button" disabled={(step === 1 && !draft.name.trim()) || (step === 2 && !draft.experience) || (step === 3 && !draft.trainingIntent)} onPress={step === 3 ? onFinish : () => onUpdate({ step: step + 1 })} style={[styles.setupContinue, { backgroundColor: theme.primaryFill, opacity: (step === 1 && !draft.name.trim()) || (step === 2 && !draft.experience) || (step === 3 && !draft.trainingIntent) ? 0.4 : 1 }]}><Text style={[styles.primaryCopy, { color: theme.primaryText }]}>{step === 3 ? 'Talk with FLYNT' : 'Continue'}</Text></Pressable></View> : null}
-  </ScrollView>;
+  </ScrollView><MetricPickerSheet draft={draft} metric={metricPicker} onDismiss={() => setMetricPicker(null)} onUpdate={onUpdate} /></>;
 }
 
 function SetupField({ autoComplete, keyboardType = 'default', label, onChange, theme, value }: { autoComplete?: 'name'; keyboardType?: 'default' | 'decimal-pad' | 'number-pad'; label: string; onChange: (value: string) => void; theme: ReturnType<typeof useFlyntTheme>['theme']; value: string }) {
   return <View style={styles.fieldGroup}><Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text><TextInput accessibilityLabel={label} autoComplete={autoComplete} keyboardType={keyboardType} onChangeText={onChange} style={[styles.field, { backgroundColor: theme.raised, borderColor: theme.line, color: theme.ink }]} value={value} /></View>;
 }
 
+function SetupMetricField({ accessibilityValue, label, onPress, theme, value }: { accessibilityValue?: string; label: string; onPress: () => void; theme: ReturnType<typeof useFlyntTheme>['theme']; value: string }) {
+  return <View style={styles.fieldGroup}><Text style={[styles.fieldLabel, { color: theme.muted }]}>{label}</Text><Pressable accessibilityHint={`Opens the ${label.toLowerCase()} selector`} accessibilityLabel={label} accessibilityRole="button" accessibilityValue={{ text: accessibilityValue ?? value }} onPress={() => { void selection(); onPress(); }} style={({ pressed }) => [styles.metricField, { backgroundColor: theme.raised, borderColor: theme.line }, pressed && styles.pressed]}><Text style={[styles.metricValue, { color: theme.ink }]}>{value}</Text><NativeSymbol color={theme.muted} name="chevron.up.chevron.down" size={15} /></Pressable></View>;
+}
+
+function MetricPickerSheet({ draft, metric, onDismiss, onUpdate }: { draft: SetupDraft; metric: MetricPicker | null; onDismiss: () => void; onUpdate: (patch: Partial<SetupDraft>) => void }) {
+  const { mode, theme } = useFlyntTheme();
+  const age = boundedInteger(draft.age, 30, 13, 120);
+  const weight = boundedInteger(draft.weight, 175, 50, 1000);
+  const { feet, inches } = heightParts(draft.height);
+  const inchOptions = feet === 9 ? [0] : standardInchOptions;
+  const title = metric === 'age' ? 'Choose age' : metric === 'height' ? 'Choose height' : 'Choose weight';
+  const helper = metric === 'height' ? 'Select feet and inches.' : metric === 'weight' ? 'Select weight in pounds.' : 'Select age in years.';
+
+  return <FlyntSheet footer={<View style={styles.pickerFooter}><Pressable accessibilityRole="button" onPress={onDismiss} style={({ pressed }) => [styles.pickerDone, { backgroundColor: theme.primaryFill }, pressed && styles.pressed]}><Text style={[styles.primaryCopy, { color: theme.primaryText }]}>Done</Text></Pressable></View>} isPresented={metric !== null} onDismiss={onDismiss} presentationOverride={metricPickerPresentation} scroll={false} title={title}>
+    <Text style={[styles.pickerHelper, { color: theme.muted }]}>{helper}</Text>
+    {metric === 'age' ? <SwiftUIHost colorScheme={mode} style={styles.pickerHost}><SwiftUIPicker label="Age in years" modifiers={[pickerStyle('wheel')]} onSelectionChange={(value) => { onUpdate({ age: String(value) }); void selection(); }} selection={String(age)}>{ageOptions.map((value) => <SwiftUIText key={value} modifiers={[tag(String(value))]}>{`${value} years`}</SwiftUIText>)}</SwiftUIPicker></SwiftUIHost> : null}
+    {metric === 'height' ? <View style={styles.heightPickers}><SwiftUIHost colorScheme={mode} style={styles.heightPickerHost}><SwiftUIPicker label="Feet" modifiers={[pickerStyle('wheel')]} onSelectionChange={(value) => { const nextFeet = Number(value); onUpdate({ height: String(nextFeet * 12 + (nextFeet === 9 ? 0 : inches)) }); void selection(); }} selection={String(feet)}>{feetOptions.map((value) => <SwiftUIText key={value} modifiers={[tag(String(value))]}>{`${value} ft`}</SwiftUIText>)}</SwiftUIPicker></SwiftUIHost><SwiftUIHost colorScheme={mode} style={styles.heightPickerHost}><SwiftUIPicker label="Inches" modifiers={[pickerStyle('wheel')]} onSelectionChange={(value) => { onUpdate({ height: String(Math.min(108, feet * 12 + Number(value))) }); void selection(); }} selection={String(inches)}>{inchOptions.map((value) => <SwiftUIText key={value} modifiers={[tag(String(value))]}>{`${value} in`}</SwiftUIText>)}</SwiftUIPicker></SwiftUIHost></View> : null}
+    {metric === 'weight' ? <SwiftUIHost colorScheme={mode} style={styles.pickerHost}><SwiftUIPicker label="Weight in pounds" modifiers={[pickerStyle('wheel')]} onSelectionChange={(value) => { onUpdate({ weight: String(value) }); void selection(); }} selection={String(weight)}>{weightOptions.map((value) => <SwiftUIText key={value} modifiers={[tag(String(value))]}>{`${value} lb`}</SwiftUIText>)}</SwiftUIPicker></SwiftUIHost> : null}
+  </FlyntSheet>;
+}
+
 function OptionStep<Value extends string>({ detail, eyebrow, onSelect, options, selected, theme, title }: { detail: string; eyebrow: string; onSelect: (value: Value) => void; options: readonly (readonly [Value, string, string])[]; selected: Value | ''; theme: ReturnType<typeof useFlyntTheme>['theme']; title: string }) {
-  return <View style={styles.setupStack}><Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text><Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text><Text style={[styles.body, { color: theme.muted }]}>{detail}</Text>{options.map(([value, label, description]) => <Pressable accessibilityLabel={`${label}. ${description}`} accessibilityRole="button" accessibilityState={{ selected: selected === value }} key={value} onPress={() => { void selection(); onSelect(value); }} style={({ pressed }) => [styles.option, { backgroundColor: theme.raised, borderColor: selected === value ? theme.ink : theme.line }, pressed && styles.pressed]}><View style={styles.optionCopy}><Text style={[styles.optionTitle, { color: theme.ink }]}>{label}</Text><Text style={[styles.optionDetail, { color: theme.muted }]}>{description}</Text></View><View style={[styles.radio, { borderColor: selected === value ? theme.ink : theme.line }]}>{selected === value ? <View style={[styles.radioFill, { backgroundColor: theme.ink }]} /> : null}</View></Pressable>)}</View>;
+  return <View style={styles.setupStack}><Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text><Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text><Text style={[styles.body, { color: theme.muted }]}>{detail}</Text>{options.map(([value, label, description]) => <Pressable accessibilityLabel={`${label}. ${description}`} accessibilityRole="button" accessibilityState={{ selected: selected === value }} key={value} onPress={() => { void selection(); onSelect(value); }} style={({ pressed }) => [styles.option, { backgroundColor: theme.raised, borderColor: selected === value ? theme.ink : theme.line }, pressed && styles.pressed]}><View style={styles.optionCopy}><Text style={[styles.optionTitle, { color: theme.ink }]}>{label}</Text><Text style={[styles.optionDetail, { color: theme.muted }]}>{description}</Text></View><View style={[styles.selectionIndicator, { backgroundColor: selected === value ? theme.primaryFill : 'transparent', borderColor: selected === value ? theme.primaryFill : theme.line }]}>{selected === value ? <NativeSymbol color={theme.primaryText} name="checkmark" size={14} /> : null}</View></Pressable>)}</View>;
 }
 
 function ConsultationPromptCard({ onSelect, prompt, theme }: {
@@ -544,8 +592,9 @@ const styles = StyleSheet.create({
   topBar: { height: 58, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, topBarPlaceholder: { width: 44, height: 44 },
   setupContent: { flexGrow: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }, progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm }, progressCount: { fontSize: 13, fontWeight: '600' }, progressTrack: { height: 3, borderRadius: 2, marginTop: spacing.sm, overflow: 'hidden' }, progressFill: { height: 3 },
   welcome: { flex: 1, justifyContent: 'center', gap: spacing.lg, paddingVertical: spacing.xl }, welcomeMarkFrame: { width: 72, height: 72, alignItems: 'flex-start', justifyContent: 'center' }, welcomeMark: { width: 47, height: 72, resizeMode: 'contain' }, title: { ...type.title }, body: { ...type.body }, caption: { fontSize: 13, lineHeight: 18, textAlign: 'center' }, eyebrow: { fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.3 },
-  setupStack: { gap: spacing.md, marginTop: spacing.xl }, fieldGroup: { gap: 7 }, fieldLabel: { fontSize: 14, lineHeight: 19, fontWeight: '600' }, field: { minHeight: 52, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, paddingHorizontal: spacing.md, fontSize: 17 },
-  option: { minHeight: 88, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.lg, flexDirection: 'row', alignItems: 'center', padding: spacing.md }, optionCopy: { flex: 1, gap: 4 }, optionTitle: { fontSize: 17, lineHeight: 22, fontWeight: '600' }, optionDetail: { fontSize: 14, lineHeight: 20 }, radio: { width: 24, height: 24, borderWidth: 2, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: spacing.sm }, radioFill: { width: 12, height: 12, borderRadius: 6 },
+  setupStack: { gap: spacing.md, marginTop: spacing.xl }, fieldGroup: { gap: 7 }, fieldLabel: { fontSize: 14, lineHeight: 19, fontWeight: '600' }, field: { minHeight: 52, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, paddingHorizontal: spacing.md, fontSize: 17 }, metricField: { minHeight: 52, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, metricValue: { fontSize: 17, lineHeight: 22 },
+  option: { minHeight: 88, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.lg, flexDirection: 'row', alignItems: 'center', padding: spacing.md }, optionCopy: { flex: 1, gap: 4 }, optionTitle: { fontSize: 17, lineHeight: 22, fontWeight: '600' }, optionDetail: { fontSize: 14, lineHeight: 20 }, selectionIndicator: { width: 28, height: 28, borderWidth: 1.5, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginLeft: spacing.sm },
+  pickerHelper: { ...type.body, textAlign: 'center' }, pickerHost: { height: 160, marginTop: spacing.md }, heightPickers: { flexDirection: 'row', marginTop: spacing.md }, heightPickerHost: { flex: 1, height: 160 }, pickerFooter: { paddingHorizontal: 18, paddingTop: spacing.sm, paddingBottom: spacing.md }, pickerDone: { minHeight: 52, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   setupActions: { minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg }, setupContinue: { minWidth: 132, minHeight: 50, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   primaryButton: { minHeight: 56, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg }, primaryCopy: { ...type.button }, textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm }, textButtonCopy: { fontSize: 15, lineHeight: 20, fontWeight: '600' }, pressed: { opacity: 0.7 }, error: { fontSize: 14, lineHeight: 20 },
   unavailable: { flex: 1, justifyContent: 'center', gap: spacing.lg, padding: spacing.lg },

@@ -1,6 +1,6 @@
 # FLYNT native app plan and release ledger
 
-Last updated: 2026-08-05
+Last updated: 2026-08-06
 Planning repository: `/Users/lukemcglynn/FLYNT-Native`
 Native client repository: `/Users/lukemcglynn/FLYNT-Native`
 Target client: Expo React Native development build with focused Swift modules
@@ -227,6 +227,35 @@ Current physical iPhone verification: Not started
   authoritative server state. The set was then unchecked, the app relaunched,
   and the server returned the restored zero-set state. No workout session was
   created, and the missing prior Wednesday weights and reps were not invented.
+- Verified in iPhone 17e / iOS 26.5 Simulator: the development-only
+  `consultation_required` fixture opened the production consultation component
+  at its initial step in the required dark onboarding appearance. The fixture
+  supplied an empty local consultation state and did not mutate the signed-in
+  account or server program.
+- TestFlight readiness audit: EAS CLI authentication for `tsv-ai` and project
+  linkage to `@tsv-ai/flynt-native` were verified. Two prior device development
+  builds exist, both from commit `0d000d2`; no production build of the current
+  source was found. The EAS `production` environment currently contains no
+  variables, so the API base URL, Supabase URL and publishable key, and Spotify
+  client ID must be configured before creating a usable production build.
+- Source-verified but not live-verified: Trainer messages post through the
+  authenticated `/api/trainer` boundary and refresh the server-owned
+  conversation. A validated program-change proposal requires explicit athlete
+  approval before the client posts it to `/api/program/change` with an
+  idempotency key. A real approved and declined proposal, authoritative program
+  round trip, and relaunch remain required release evidence.
+- Implemented and verified in iPhone 17e / iOS 26.5 Simulator: consultation
+  Age, Height, and Weight are no longer keyboard fields. Each value opens the
+  shared FLYNT sheet at a sheet-specific medium detent with a native SwiftUI
+  wheel picker, its current value preselected, an explicit Done action, and a
+  dismiss path. Height uses separate feet and inches wheels while retaining
+  total inches in the existing consultation contract. VoiceOver exposes each
+  launcher as a labeled button with its formatted current value. Consultation
+  option cards now use the app's filled checkmark selection treatment instead
+  of a separate radio-dot treatment. Age, Height, and Weight launchers and the
+  Age, Height, and Weight sheet presentations were exercised in the dark
+  development consultation fixture; larger Dynamic Type, VoiceOver speech,
+  light appearance, and physical-iPhone behavior remain unverified.
 
 ## Consultation, Trainer, and workout customization parity | 2026-08-04
 
