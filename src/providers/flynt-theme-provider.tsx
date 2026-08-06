@@ -16,13 +16,13 @@ type FlyntThemeContextValue = {
 const FlyntThemeContext = createContext<FlyntThemeContextValue | null>(null);
 
 export function FlyntThemeProvider({ children }: PropsWithChildren) {
-  const { appState, hasSession, phase } = useLifecycleNavigation();
+  const { appState, destination, hasSession, phase } = useLifecycleNavigation();
   const systemMode: ColorMode = useColorScheme() === 'dark' ? 'dark' : 'light';
   const previewPreference: ThemePreference = __DEV__ && process.env.EXPO_PUBLIC_FLYNT_PREVIEW === 'ready' ? 'dark' : 'system';
   const accountKey = appState?.profile.email ?? 'signed-out';
   const [localPreference, setLocalPreference] = useState<{ accountKey: string; value: ThemePreference } | null>(null);
-  const isSignedOut = phase === 'ready' && !hasSession;
-  const preference = isSignedOut
+  const usesOnboardingAppearance = phase === 'ready' && (!hasSession || destination === 'consultation');
+  const preference = usesOnboardingAppearance
     ? signedOutColorMode
     : localPreference?.accountKey === accountKey
       ? localPreference.value

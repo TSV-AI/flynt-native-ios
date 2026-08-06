@@ -57,8 +57,9 @@ Current physical iPhone verification: Not started
   unchanged native preview cards.
 - Implemented in source on 2026-08-06: the complete marketing introduction now
   uses the existing FLYNT dark canvas, ink, muted-copy, divider, and light
-  status-bar tokens. This exception is scoped to the marketing stories; Sign in
-  and Create account retain the signed-out light appearance.
+  status-bar tokens. The shared onboarding appearance now carries that dark
+  treatment through Sign in, Create account, recovery, email code entry,
+  authentication callback, and the complete consultation lifecycle.
 - Implemented in source on 2026-08-06: the generated color stage uses the
   supplied dark concave inset treatment: 38-point blurred inner shadows with a
   30-percent white highlight at minus 20 points and a solid `#000000` shade at
@@ -137,15 +138,26 @@ Current physical iPhone verification: Not started
   `/api/account/accept-terms` before authoritative boot can enter consultation.
   The client does not infer account existence from provider identity or create
   athlete state during the sign-in check.
-- Implemented in source on 2026-08-05: the complete signed-out marketing,
-  Sign in, Create account, legal, and authentication-callback experience now
-  defaults to FLYNT light appearance regardless of the device appearance. The
-  shared lifecycle-aware theme boundary restores the authenticated account's
-  System, Light, or Dark preference after sign-in. Signed-out route canvases,
-  status-bar content, provider buttons, text, and transition backgrounds share
-  the light tokens, preventing a dark flash between first-run and account
-  entry. This is a FLYNT product decision; Apple Color and Accessibility
-  guidance governs contrast and adaptation but does not prescribe this default.
+- Implemented in source, updated on 2026-08-06: the complete signed-out
+  marketing, Sign in, Create account, legal, authentication-callback, and
+  consultation experience defaults to FLYNT dark appearance regardless of the
+  device appearance. The shared lifecycle-aware theme boundary restores the
+  authenticated account's saved System, Light, or Dark preference after
+  consultation. Onboarding route canvases, status-bar content, provider
+  controls, text, and transitions share the dark tokens. This is a FLYNT
+  product decision; Apple Color and Accessibility guidance governs contrast and
+  adaptation but does not prescribe this default.
+- Verified in the running iPhone 17e / iOS 26.5 Simulator on 2026-08-06: the
+  existing-account Sign in page and Trouble signing in recovery page use the
+  shared dark canvas, light status-bar content, adaptive FLYNT mark, readable
+  muted copy, and light provider controls. Create account, submitted email-code
+  entry, authentication callback, and consultation were not rerun in Simulator
+  after this appearance-boundary change.
+- Implemented and verified in the running iPhone 17e / iOS 26.5 Simulator on
+  2026-08-06: focused email-entry groups receive additional bottom clearance,
+  moving recovery and regular email tasks higher as one unit without changing
+  the provider Sign in or Create account landing layouts. Submitted code entry
+  uses the same source path but was not submitted or rerun.
 - Verified locally on 2026-08-05: whole-project TypeScript, focused ESLint,
   nine native feature contracts, lifecycle navigation, copy style, and
   whitespace validation passed after the signed-out light-default boundary was

@@ -251,9 +251,9 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   const theme = await readFile(new URL('../constants/theme.ts', import.meta.url), 'utf8');
   const themeProvider = await readFile(new URL('../providers/flynt-theme-provider.tsx', import.meta.url), 'utf8');
 
-  assert.match(theme, /signedOutColorMode: ColorMode = 'light'/);
-  assert.match(themeProvider, /phase === 'ready' && !hasSession/);
-  assert.match(themeProvider, /isSignedOut[\s\S]*signedOutColorMode/);
+  assert.match(theme, /signedOutColorMode: ColorMode = 'dark'/);
+  assert.match(themeProvider, /!hasSession \|\| destination === 'consultation'/);
+  assert.match(themeProvider, /usesOnboardingAppearance[\s\S]*signedOutColorMode/);
 
   assert.doesNotMatch(introduction, /styles\.skip|skipCopy/);
   assert.match(introduction, /function MarketingStageBackground/);
@@ -276,6 +276,8 @@ test('signed-out onboarding preserves the approved PWA story and unified account
     'Apple must be the first authentication provider',
   );
   assert.match(account, /Continue with email/);
+  assert.match(account, /styles\.actions, \(emailOpen \|\| recoveryMode \|\| sentTo\) && styles\.focusedEmailActions/);
+  assert.match(account, /focusedEmailActions: \{ paddingBottom: 96 \}/);
   assert.match(account, /fetchAccountStatus\(\)/);
   assert.match(account, /hasCurrentFlyntAccount\(status, flyntLegalVersion\)/);
   assert.match(account, /No existing FLYNT account was found/);

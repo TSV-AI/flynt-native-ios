@@ -273,7 +273,7 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
           </View>
           <Text style={[styles.accountCopy, { color: theme.muted }]}>{description}</Text>
 
-          <View style={styles.actions}>
+          <View style={[styles.actions, (emailOpen || recoveryMode || sentTo) && styles.focusedEmailActions]}>
             {!recoveryMode && !emailOpen && !sentTo ? (
               isAppleAvailable ? (
                 <View pointerEvents={providerDisabled ? 'none' : 'auto'} style={{ opacity: providerDisabled ? 0.48 : 1 }}>
@@ -599,6 +599,7 @@ const styles = StyleSheet.create({
   wordmark: { marginTop: 25, marginLeft: 12, fontSize: 48, lineHeight: 52, fontWeight: '400', letterSpacing: 12 },
   accountCopy: { alignSelf: 'center', maxWidth: 310, marginTop: spacing.lg, textAlign: 'center', fontSize: 15, lineHeight: 22 },
   actions: { gap: 11, marginTop: 'auto', paddingTop: spacing.xl, paddingBottom: 42 },
+  focusedEmailActions: { paddingBottom: 96 },
   appleButton: { width: '100%', height: 58 },
   providerButton: { position: 'relative', minHeight: 58, borderCurve: 'continuous', borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   providerButtonCopy: { ...type.button, fontSize: 15 },

@@ -74,7 +74,7 @@ export const appSurfaces = {
 export type ColorMode = keyof typeof colors;
 export type Theme = (typeof colors)[ColorMode];
 
-export const signedOutColorMode: ColorMode = 'light';
+export const signedOutColorMode: ColorMode = 'dark';
 
 export const fonts = Platform.select({
   ios: {
