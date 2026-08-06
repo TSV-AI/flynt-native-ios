@@ -409,10 +409,10 @@ function SheetHandle() {
 
 const stageBackgrounds = {
   today: require('../../assets/images/marketing/marketing-stage-today.png'),
-  timer: require('../../assets/images/marketing/marketing-stage-today.png'),
-  guide: require('../../assets/images/marketing/marketing-stage-guide.png'),
-  progress: require('../../assets/images/marketing/marketing-stage-progress.png'),
-  trainer: require('../../assets/images/marketing/marketing-stage-trainer.png'),
+  timer: require('../../assets/images/marketing/marketing-stage-guide.png'),
+  guide: require('../../assets/images/marketing/marketing-stage-progress.png'),
+  progress: require('../../assets/images/marketing/marketing-stage-trainer.png'),
+  trainer: require('../../assets/images/marketing/marketing-stage-spotify.png'),
   spotify: require('../../assets/images/marketing/marketing-stage-spotify.png'),
 } as const;
 

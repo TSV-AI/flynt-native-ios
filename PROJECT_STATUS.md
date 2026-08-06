@@ -46,6 +46,10 @@ Current physical iPhone verification: Not started
   pre-rendered because the installed React Native iOS runtime does not render
   the required blur filter on gradient views. Interface content remains native
   and uses the PWA's approved guide and Spotify imagery.
+- Implemented and verified in Simulator on 2026-08-06: slides one through five
+  consume the five approved pre-rendered color fields in their explicit
+  left-to-right order. The feature cards, copy, sizing, and sixth Spotify slide
+  remain unchanged.
 - Implemented in source: the Spotify capture is full-width, uses its natural
   source aspect ratio, remains pinned to the top, and allows only the bottom to
   be clipped by the preview card, matching the PWA image rule.
