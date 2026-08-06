@@ -187,6 +187,47 @@ Current physical iPhone verification: Not started
   imagery, preview composition, and information hierarchy are FLYNT decisions
   sourced from the PWA.
 
+## Native auth handoff, Trainer sessions, and workout persistence | 2026-08-06
+
+- Implemented in source: iOS Google authentication uses the existing native
+  Google Sign-In bridge and Supabase ID-token exchange. The temporary browser
+  OAuth fallback was removed after it produced an incorrect website redirect.
+  CocoaPods restored `FlyntGoogleAuth` and GoogleSignIn 9.2.0, and a clean
+  iPhone 17e Simulator build presented the Google account chooser.
+- Implemented in source: lifecycle loading before authoritative account state
+  remains on the signed-out dark surface, including matching status-bar
+  content, so successful provider authentication no longer exposes a white
+  intermediate route before Today.
+- Implemented in source: signed-in Trainer history is scoped to the current app
+  session. Messages that existed when the tab provider mounted are excluded
+  from the visible thread and from the next Trainer request. Signing out or
+  relaunching mounts a fresh session while the server continues to own the
+  account conversation record.
+- Implemented in source: workout load, reps, and set-completion changes update
+  optimistically and write through the authenticated `/api/profile` boundary.
+  Text entry is debounced by 500 milliseconds, while field blur, set toggles,
+  app backgrounding, and provider teardown flush pending work immediately.
+  Writes are ordered to prevent a slower older request from overwriting a newer
+  local change. Workout editing continues to use one explicit Save action for
+  additions, replacements, removals, prescription changes, and exercise order.
+- Implemented in source: Finish Workout now waits for pending set persistence,
+  posts the normalized session and its set rows to `/api/workouts`, waits for
+  server acceptance, and refreshes authoritative app state. The completion UI
+  is shown only after success. Failure leaves the local set state visible and
+  presents a retryable error instead of claiming completion.
+- Verified locally: the focused feature contracts, TypeScript, ESLint, copy
+  style, and diff checks pass under Node 22.23.1. The repository still requires
+  Node 24.14, and Expo Doctor's network-backed checks remain unavailable in the
+  restricted shell.
+- Verified in iPhone 17e / iOS 26.5 Simulator: the live authenticated account
+  opened Today, Wednesday exposed database-backed load and reps fields for all
+  sets, and Trainer opened as a fresh session with the three opening prompts
+  instead of the earlier persisted thread. A reversible Friday check marked one
+  set complete, relaunched the app, and read the same one-set progress from the
+  authoritative server state. The set was then unchecked, the app relaunched,
+  and the server returned the restored zero-set state. No workout session was
+  created, and the missing prior Wednesday weights and reps were not invented.
+
 ## Consultation, Trainer, and workout customization parity | 2026-08-04
 
 - Product source of truth: the implementation was traced against the real PWA

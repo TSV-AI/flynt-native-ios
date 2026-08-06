@@ -152,6 +152,42 @@ export async function sendTrainerMessage({
   await response.text();
 }
 
+export type WorkoutSessionWrite = {
+  clientSessionKey: string;
+  programWeekId?: string;
+  programVersionId?: string;
+  workoutDate: string;
+  dayShort: 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
+  title: string;
+  completedSets: number;
+  totalSets: number;
+  volume: number;
+  completedAt: string;
+  sets: {
+    exerciseId: string;
+    exerciseName: string;
+    setIndex: number;
+    prescribedReps?: string;
+    prescribedLoad?: number;
+    actualReps: number;
+    actualLoad: number;
+    complete: boolean;
+  }[];
+};
+
+const savedWorkoutSessionSchema = z.object({
+  saved: z.literal(true),
+  sessionId: z.string().uuid(),
+});
+
+export function recordWorkoutSession(session: WorkoutSessionWrite) {
+  return currentAccessToken().then((accessToken) => requestJson('/api/workouts', savedWorkoutSessionSchema, {
+    accessToken,
+    body: JSON.stringify(session),
+    method: 'POST',
+  }));
+}
+
 export async function fetchWorkoutHistory() {
   return requestJson('/api/workouts', workoutHistoryResponseSchema, {
     accessToken: await currentAccessToken(),

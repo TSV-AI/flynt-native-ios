@@ -1,4 +1,5 @@
-import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState as NativeAppState } from 'react-native';
 
 import type { AppState, ExerciseLibraryEntry, NormalizedWorkoutSession, TrainingDay, WorkoutOverrideExercise } from '@/contracts/app-state';
 import {
@@ -10,10 +11,16 @@ import {
   type PreviewWorkoutHistory,
 } from '@/features/app-preview-data';
 import { activeWorkoutCatalogSlugs } from '@/features/workout-catalog';
-import { fetchExerciseCatalog, fetchExerciseLibrary, fetchWorkoutHistory, resolveApiAssetUrl, saveWorkoutOverrides } from '@/lib/api-client';
+import { fetchExerciseCatalog, fetchExerciseLibrary, fetchWorkoutHistory, recordWorkoutSession, resolveApiAssetUrl, saveWorkoutOverrides } from '@/lib/api-client';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 
 type HistoryPhase = 'idle' | 'loading' | 'ready' | 'error';
+
+export type WorkoutSetEntry = {
+  complete: boolean;
+  reps: string;
+  weight: string;
+};
 
 type WorkoutDataValue = {
   completedByDay: number[][];
@@ -21,16 +28,20 @@ type WorkoutDataValue = {
   dateLabels: string[];
   exercisesByDay: PreviewExercise[][];
   finishedByDay: boolean[];
+  finishDay: (dayIndex: number) => Promise<void>;
   history: PreviewWorkoutHistory[];
   historyError: string | null;
   historyPhase: HistoryPhase;
   isLive: boolean;
   retryHistory: () => void;
   saveDayExercises: (dayIndex: number, exercises: PreviewExercise[]) => Promise<void>;
+  setEntriesByDay: WorkoutSetEntry[][][];
   sessionCount: number;
   setDayFinished: (dayIndex: number, finished: boolean) => void;
   setExerciseCompleted: (dayIndex: number, exerciseIndex: number, completed: number) => void;
+  updateSetEntry: (dayIndex: number, exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>, immediate?: boolean) => void;
   trackedLiftCount: number;
+  workoutSyncError: string | null;
   week: PreviewDay[];
 };
 
@@ -64,10 +75,24 @@ function workoutLogKey(date: Date, day: TrainingDay, exerciseId: string) {
   return `${localDateKey(date)}:${day.short}:${exerciseId}`;
 }
 
-function completedSetCount(logs: AppState['workoutState']['logs'], key: string) {
-  const value = logs[key];
-  if (!Array.isArray(value)) return 0;
-  return value.filter((set) => Boolean(set && typeof set === 'object' && 'complete' in set && set.complete)).length;
+function workoutSetEntries(
+  logs: AppState['workoutState']['logs'],
+  key: string,
+  exercise: WorkoutOverrideExercise,
+  savedLoad: number | undefined,
+) {
+  const stored = Array.isArray(logs[key]) ? logs[key] : [];
+  const defaultReps = exercise.reps.match(/\d+/)?.[0] ?? '';
+  const defaultWeight = String(exercise.targetLoad ?? savedLoad ?? '');
+  return Array.from({ length: exercise.sets }, (_, index): WorkoutSetEntry => {
+    const value = stored[index];
+    const entry = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+    return {
+      complete: entry.complete === true,
+      reps: typeof entry.reps === 'string' || typeof entry.reps === 'number' ? String(entry.reps) : defaultReps,
+      weight: typeof entry.weight === 'string' || typeof entry.weight === 'number' ? String(entry.weight) : defaultWeight,
+    };
+  });
 }
 
 function repsLabel(reps: string) {
@@ -119,10 +144,19 @@ function previewToOverride(exercise: PreviewExercise): WorkoutOverrideExercise {
 function liveWorkoutData(appState: AppState) {
   const program = appState.program ?? [];
   const dates = program.map((_, index) => dateFromWeekStart(appState.programMeta?.weekStart, index));
+  const setEntriesByDay = program.map((day, dayIndex) => {
+    const source = appState.workoutState.workoutOverrides[`${appState.programMeta?.weekId ?? 'unscoped'}:${day.short}`] ?? day.exercises;
+    return source.map((exercise) => workoutSetEntries(
+      appState.workoutState.logs,
+      workoutLogKey(dates[dayIndex], day, exercise.id),
+      exercise,
+      appState.workoutState.loads[exercise.id],
+    ));
+  });
   const exercisesByDay = program.map((day, dayIndex) => {
     const source = appState.workoutState.workoutOverrides[`${appState.programMeta?.weekId ?? 'unscoped'}:${day.short}`] ?? day.exercises;
-    return source.map((exercise) => ({
-      ...overrideToPreview(exercise, completedSetCount(appState.workoutState.logs, workoutLogKey(dates[dayIndex], day, exercise.id))),
+    return source.map((exercise, exerciseIndex) => ({
+      ...overrideToPreview(exercise, setEntriesByDay[dayIndex][exerciseIndex].filter((set) => set.complete).length),
       guideSteps: [],
     }));
   });
@@ -150,7 +184,17 @@ function liveWorkoutData(appState: AppState) {
       session.date.slice(0, 10) === dateKey && session.title === day.title
     ));
   });
-  return { dateLabels, exercisesByDay, finishedByDay, week };
+  return {
+    dateLabels,
+    exercisesByDay: exercisesByDay.map((exercises, index) => finishedByDay[index]
+      ? exercises.map((exercise) => ({ ...exercise, completed: exercise.total }))
+      : exercises),
+    finishedByDay,
+    setEntriesByDay: setEntriesByDay.map((dayEntries, dayIndex) => finishedByDay[dayIndex]
+      ? dayEntries.map((entries) => entries.map((entry) => ({ ...entry, complete: true })))
+      : dayEntries),
+    week,
+  };
 }
 
 function fullDate(value: string) {
@@ -275,10 +319,105 @@ export function WorkoutDataProvider({ children }: PropsWithChildren) {
   const initialCompleted = useMemo(() => exercisesByDay.map((exercises) => exercises.map((exercise) => exercise.completed)), [exercisesByDay]);
   const [completedByDay, setCompletedByDay] = useState(initialCompleted);
   const [finishedByDay, setFinishedByDay] = useState(liveData?.finishedByDay ?? previewWeek.map(() => false));
+  const [setEntriesByDay, setSetEntriesByDay] = useState<WorkoutSetEntry[][][]>(liveData?.setEntriesByDay ?? []);
+  const setEntriesRef = useRef(setEntriesByDay);
+  const latestLogsRef = useRef<AppState['workoutState']['logs']>(appState?.workoutState.logs ?? {});
+  const appStateRef = useRef(appState);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [history, setHistory] = useState<PreviewWorkoutHistory[]>(() => appState ? legacyWorkoutHistory(appState) : previewHistory);
   const [historyPhase, setHistoryPhase] = useState<HistoryPhase>(isLive ? 'idle' : 'ready');
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyRequest, setHistoryRequest] = useState(0);
+
+  useEffect(() => {
+    if (!liveData) return;
+    appStateRef.current = appState;
+    latestLogsRef.current = appState?.workoutState.logs ?? {};
+    setEntriesRef.current = liveData.setEntriesByDay;
+    const timeout = setTimeout(() => {
+      setSetEntriesByDay(liveData.setEntriesByDay);
+      setCompletedByDay(liveData.exercisesByDay.map((exercises) => exercises.map((exercise) => exercise.completed)));
+      setFinishedByDay(liveData.finishedByDay);
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [appState, liveData]);
+
+  const persistLatestWorkoutState = useCallback((delay: number) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    const persist = () => {
+      saveTimerRef.current = null;
+      const current = appStateRef.current;
+      if (!current) return;
+      const logs = latestLogsRef.current;
+      saveQueueRef.current = saveQueueRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          await saveWorkoutOverrides({
+            liftHistory: current.workoutState.liftHistory,
+            loads: current.workoutState.loads,
+            logs,
+            sessions: current.workoutState.sessions,
+            workoutOverrides: current.workoutState.workoutOverrides,
+          });
+          setSyncError(null);
+        })
+        .catch(() => {
+          setSyncError('A workout change could not be saved. Check your connection and try it again.');
+        });
+    };
+    if (delay > 0) saveTimerRef.current = setTimeout(persist, delay);
+    else persist();
+  }, []);
+
+  useEffect(() => {
+    const flush = () => {
+      if (!saveTimerRef.current) return;
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      persistLatestWorkoutState(0);
+    };
+    const subscription = NativeAppState.addEventListener('change', (state) => {
+      if (state !== 'active') flush();
+    });
+    return () => {
+      flush();
+      subscription.remove();
+    };
+  }, [persistLatestWorkoutState]);
+
+  const updateSetEntry = useCallback((dayIndex: number, exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>, immediate = false) => {
+    const current = appStateRef.current;
+    const day = current?.program?.[dayIndex];
+    const exercise = exercisesByDay[dayIndex]?.[exerciseIndex];
+    const existing = setEntriesRef.current[dayIndex]?.[exerciseIndex]?.[setIndex];
+    if (!current || !day || !exercise || !existing) return;
+    const nextEntries = setEntriesRef.current.map((dayEntries, nextDayIndex) => nextDayIndex === dayIndex
+      ? dayEntries.map((entries, nextExerciseIndex) => nextExerciseIndex === exerciseIndex
+        ? entries.map((entry, nextSetIndex) => nextSetIndex === setIndex ? { ...entry, ...patch } : entry)
+        : entries)
+      : dayEntries);
+    setEntriesRef.current = nextEntries;
+    setSetEntriesByDay(nextEntries);
+    setCompletedByDay(nextEntries.map((dayEntries) => dayEntries.map((entries) => entries.filter((entry) => entry.complete).length)));
+    latestLogsRef.current = {
+      ...latestLogsRef.current,
+      [workoutLogKey(dateFromWeekStart(current.programMeta?.weekStart, dayIndex), day, exercise.id ?? `exercise-${exerciseIndex}`)]: nextEntries[dayIndex][exerciseIndex],
+    };
+    persistLatestWorkoutState(immediate ? 0 : 500);
+  }, [exercisesByDay, persistLatestWorkoutState]);
+
+  const setExerciseCompletion = useCallback((dayIndex: number, exerciseIndex: number, completed: number) => {
+    const entries = setEntriesRef.current[dayIndex]?.[exerciseIndex] ?? [];
+    entries.forEach((entry, setIndex) => {
+      const complete = setIndex < completed;
+      if (entry.complete !== complete) {
+        updateSetEntry(dayIndex, exerciseIndex, setIndex, { complete }, setIndex === entries.length - 1);
+      }
+    });
+    persistLatestWorkoutState(0);
+  }, [persistLatestWorkoutState, updateSetEntry]);
 
   useEffect(() => {
     if (!appState || !isLive) return;
@@ -318,10 +457,13 @@ export function WorkoutDataProvider({ children }: PropsWithChildren) {
     }
     const day = appState.program[dayIndex];
     const key = `${appState.programMeta?.weekId ?? 'unscoped'}:${day.short}`;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    persistLatestWorkoutState(0);
+    await saveQueueRef.current;
     await saveWorkoutOverrides({
       liftHistory: appState.workoutState.liftHistory,
       loads: appState.workoutState.loads,
-      logs: appState.workoutState.logs,
+      logs: latestLogsRef.current,
       sessions: appState.workoutState.sessions,
       workoutOverrides: {
         ...appState.workoutState.workoutOverrides,
@@ -335,8 +477,64 @@ export function WorkoutDataProvider({ children }: PropsWithChildren) {
       })
       : dayProgress));
     await refresh();
-  }, [appState, exercisesByDay, refresh]);
+  }, [appState, exercisesByDay, persistLatestWorkoutState, refresh]);
   const currentDayIndex = Math.min(week.length - 1, Math.max(0, new Date().getDay() === 0 ? 6 : new Date().getDay() - 1));
+
+  const finishDay = useCallback(async (dayIndex: number) => {
+    const day = appState?.program?.[dayIndex];
+    const dayExercises = exercisesByDay[dayIndex];
+    const dayEntries = setEntriesRef.current[dayIndex];
+    if (!appState || !day || !dayExercises || !dayEntries) {
+      throw new Error('This workout is unavailable.');
+    }
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    persistLatestWorkoutState(0);
+    await saveQueueRef.current;
+
+    const workoutDate = localDateKey(dateFromWeekStart(appState.programMeta?.weekStart, dayIndex));
+    const completedAt = new Date().toISOString();
+    const sets = dayExercises.flatMap((exercise, exerciseIndex) => Array.from(
+      { length: exercise.total },
+      (_, setIndex) => {
+        const prescribedReps = exercise.targetReps ?? exercise.detail.match(/(\d+(?:[–-]\d+)?)/)?.[1];
+        const entry = dayEntries[exerciseIndex]?.[setIndex];
+        const actualReps = Number.parseInt(entry?.reps ?? '', 10) || 0;
+        const actualLoad = Number.parseFloat(entry?.weight ?? '') || 0;
+        return {
+          exerciseId: exercise.id ?? `exercise-${exerciseIndex}`,
+          exerciseName: exercise.name,
+          setIndex,
+          ...(prescribedReps ? { prescribedReps } : {}),
+          ...(exercise.targetLoad === undefined ? {} : { prescribedLoad: exercise.targetLoad }),
+          actualReps,
+          actualLoad,
+          complete: entry?.complete === true,
+        };
+      },
+    ));
+    const completedSets = sets.filter((set) => set.complete).length;
+    const totalSets = sets.length;
+    if (!totalSets || completedSets !== totalSets) {
+      throw new Error('Complete every set before finishing this workout.');
+    }
+
+    await recordWorkoutSession({
+      clientSessionKey: `${workoutDate}:${day.short}`,
+      ...(appState.programMeta?.weekId ? { programWeekId: appState.programMeta.weekId } : {}),
+      ...(appState.programMeta?.versionId ? { programVersionId: appState.programMeta.versionId } : {}),
+      workoutDate,
+      dayShort: day.short,
+      title: day.title,
+      completedSets,
+      totalSets,
+      volume: sets.reduce((sum, set) => sum + (set.complete ? set.actualLoad * set.actualReps : 0), 0),
+      completedAt,
+      sets,
+    });
+    setFinishedByDay((current) => current.map((value, index) => index === dayIndex ? true : value));
+    await refresh();
+  }, [appState, exercisesByDay, persistLatestWorkoutState, refresh]);
 
   const value = useMemo<WorkoutDataValue>(() => ({
     completedByDay,
@@ -352,28 +550,26 @@ export function WorkoutDataProvider({ children }: PropsWithChildren) {
     ],
     exercisesByDay,
     finishedByDay,
+    finishDay,
     history,
     historyError,
     historyPhase,
     isLive,
     retryHistory,
     saveDayExercises,
+    setEntriesByDay,
     sessionCount: history.length,
     setDayFinished(dayIndex, finished) {
       setFinishedByDay((current) => current.map((value, index) => index === dayIndex ? finished : value));
     },
-    setExerciseCompleted(dayIndex, exerciseIndex, completed) {
-      setCompletedByDay((current) => current.map((dayProgress, index) => (
-        index === dayIndex
-          ? dayProgress.map((value, itemIndex) => itemIndex === exerciseIndex ? completed : value)
-          : dayProgress
-      )));
-    },
+    setExerciseCompleted: setExerciseCompletion,
     trackedLiftCount: appState
       ? Object.keys(appState.workoutState.liftHistory).length
       : 5,
+    updateSetEntry,
     week,
-  }), [appState, completedByDay, currentDayIndex, exercisesByDay, finishedByDay, history, historyError, historyPhase, isLive, liveData?.dateLabels, retryHistory, saveDayExercises, week]);
+    workoutSyncError: syncError,
+  }), [appState, completedByDay, currentDayIndex, exercisesByDay, finishDay, finishedByDay, history, historyError, historyPhase, isLive, liveData?.dateLabels, retryHistory, saveDayExercises, setEntriesByDay, setExerciseCompletion, syncError, updateSetEntry, week]);
 
   return <WorkoutDataContext.Provider value={value}>{children}</WorkoutDataContext.Provider>;
 }

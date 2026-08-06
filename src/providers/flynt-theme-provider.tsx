@@ -21,7 +21,9 @@ export function FlyntThemeProvider({ children }: PropsWithChildren) {
   const previewPreference: ThemePreference = __DEV__ && process.env.EXPO_PUBLIC_FLYNT_PREVIEW === 'ready' ? 'dark' : 'system';
   const accountKey = appState?.profile.email ?? 'signed-out';
   const [localPreference, setLocalPreference] = useState<{ accountKey: string; value: ThemePreference } | null>(null);
-  const usesOnboardingAppearance = phase === 'ready' && (!hasSession || destination === 'consultation');
+  const usesOnboardingAppearance = phase !== 'ready'
+    || !hasSession
+    || destination === 'consultation';
   const preference = usesOnboardingAppearance
     ? signedOutColorMode
     : localPreference?.accountKey === accountKey

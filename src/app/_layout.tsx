@@ -64,7 +64,7 @@ function RootNavigator() {
 
   return (
     <ThemeProvider value={navigationTheme}>
-      <StatusBar style={!bootReady || mode === 'light' ? 'dark' : 'light'} />
+      <StatusBar style={mode === 'light' ? 'dark' : 'light'} />
       <Stack
         screenOptions={{
           contentStyle: { backgroundColor: theme.canvas },

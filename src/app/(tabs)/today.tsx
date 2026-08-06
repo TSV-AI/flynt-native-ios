@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
@@ -15,7 +15,7 @@ import { useWorkoutData } from '@/providers/workout-data-provider';
 
 export default function TodayScreen() {
   const params = useLocalSearchParams<{ day?: string }>();
-  const { completedByDay, currentDayIndex, dateLabels, exercisesByDay, finishedByDay, saveDayExercises, setDayFinished, setExerciseCompleted, week } = useWorkoutData();
+  const { completedByDay, currentDayIndex, dateLabels, exercisesByDay, finishDay, finishedByDay, saveDayExercises, setDayFinished, setEntriesByDay, setExerciseCompleted, updateSetEntry, week, workoutSyncError } = useWorkoutData();
   const parsedDay = Number(params.day ?? currentDayIndex);
   const routedDay = Number.isFinite(parsedDay)
     ? Math.min(Math.max(parsedDay, 0), week.length - 1)
@@ -42,6 +42,10 @@ export default function TodayScreen() {
   const completedSets = useMemo(() => completed.reduce((sum, value) => sum + value, 0), [completed]);
   const totalSets = exercises.reduce((sum, exercise) => sum + exercise.total, 0);
   const progress = totalSets ? completedSets / totalSets : 0;
+
+  useEffect(() => {
+    if (workoutSyncError) Alert.alert('Workout change not saved', workoutSyncError);
+  }, [workoutSyncError]);
 
   function chooseDay(index: number) {
     if (index === selectedDay) return;
@@ -129,12 +133,20 @@ export default function TodayScreen() {
     }
   }
 
-  function finishWorkout() {
+  async function finishWorkout() {
     if (!totalSets || completedSets !== totalSets || finishedByDay[selectedDay]) return;
-    void deliberateAction();
+    setWorkoutSaveState('saving');
     stopRestTimer();
     setSelectedExercise(-1);
-    setDayFinished(selectedDay, true);
+    try {
+      await finishDay(selectedDay);
+      setWorkoutSaveState('saved');
+      await deliberateAction();
+    } catch {
+      setWorkoutSaveState('idle');
+      void failed();
+      Alert.alert('Workout was not finished', 'Your completed sets are still on this screen. Check your connection and try again.');
+    }
   }
 
   return (
@@ -165,7 +177,7 @@ export default function TodayScreen() {
         }}
         onExerciseSheetDismissed={() => undefined}
         onEditWorkout={() => void startWorkoutEditing()}
-        onFinishWorkout={finishWorkout}
+        onFinishWorkout={() => void finishWorkout()}
         onMoveExercises={moveExercises}
         onOpenSettings={() => router.push('/settings')}
         onReplaceExercise={(index) => {
@@ -177,9 +189,11 @@ export default function TodayScreen() {
         onSaveWorkout={() => void saveWorkoutEditing()}
         onSelectExercise={setSelectedExercise}
         onToggleSet={toggleSet}
+        onUpdateSet={(exerciseIndex, setIndex, patch, immediate) => updateSetEntry(selectedDay, exerciseIndex, setIndex, patch, immediate)}
         progress={progress}
         selectedDay={selectedDay}
         selectedExercise={selectedExercise}
+        setEntries={setEntriesByDay[selectedDay] ?? []}
         spotifyBar={spotifyDisplay === 'Bar' ? <SpotifyLauncher onPress={() => setSpotifyPlayerOpen(true)} variant="bar" /> : undefined}
         spotifyPill={spotifyDisplay === 'Pill' ? <SpotifyLauncher onPress={() => setSpotifyPlayerOpen(true)} variant="pill" /> : undefined}
         spotifySheet={<SpotifyPlayerContent onClose={() => setSpotifyPlayerOpen(false)} />}

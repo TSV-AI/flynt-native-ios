@@ -44,6 +44,7 @@ export default function TrainerScreen() {
     retry,
     send,
     sending,
+    sessionMessages,
     sentMessages,
     setComposerHeight,
     setMessage,
@@ -53,15 +54,15 @@ export default function TrainerScreen() {
   const currentDayIndex = Math.min(6, Math.max(0, new Date().getDay() === 0 ? 6 : new Date().getDay() - 1));
   const today = appState?.program?.[currentDayIndex];
   const proposals = useMemo(
-    () => programChangeReviews(appState?.conversation?.messages ?? []).slice(-3),
-    [appState?.conversation?.messages],
+    () => programChangeReviews(sessionMessages).slice(-3),
+    [sessionMessages],
   );
   const fallbackTitle = today
     ? firstName ? `${firstName}, ${today.title} is ready.` : `${today.title} is ready.`
     : firstName ? `${firstName}, your Trainer is ready.` : 'Your Trainer is ready.';
   const fallbackBody = today?.focus || 'Ask about today, your plan, or an adjustment you need.';
   const messages = useMemo<TrainerChatMessage[]>(() => {
-    const persisted = (appState?.conversation?.messages ?? [])
+    const persisted = sessionMessages
       .flatMap((message) => {
         if (message.role !== 'user' && message.role !== 'assistant') return [];
         const text = textFromTrainerMessage(message);
@@ -102,7 +103,7 @@ export default function TrainerScreen() {
       text: `**${fallbackTitle}**\n\n${fallbackBody}`,
       user: flyntTrainer,
     }];
-  }, [appState?.conversation?.messages, fallbackBody, fallbackTitle, proposals, sentMessages]);
+  }, [fallbackBody, fallbackTitle, proposals, sentMessages, sessionMessages]);
 
   const renderMessage = useCallback(({ currentMessage }: MessageProps<TrainerChatMessage>) => {
     if (currentMessage.kind === 'welcome') {

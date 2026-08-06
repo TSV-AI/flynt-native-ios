@@ -154,6 +154,7 @@ test('Trainer uses the maintained native chat shell and native Markdown response
   const tabsSource = await readFile(new URL('../app/(tabs)/_layout.tsx', import.meta.url), 'utf8');
   const chatSource = await readFile(new URL('../components/flynt-chat-thread.tsx', import.meta.url), 'utf8');
   const composerSource = await readFile(new URL('../components/trainer-composer-accessory.tsx', import.meta.url), 'utf8');
+  const conversationProvider = await readFile(new URL('../providers/trainer-conversation-provider.tsx', import.meta.url), 'utf8');
   const markdownSource = await readFile(new URL('../components/trainer-markdown-message.tsx', import.meta.url), 'utf8');
   assert.match(chatSource, /@kesha-antonov\/react-native-chat/);
   assert.match(chatSource, /<Chat<TMessage>/);
@@ -166,6 +167,9 @@ test('Trainer uses the maintained native chat shell and native Markdown response
   assert.match(screenSource, /<AppScreen contentExtendsUnderTopbar/);
   assert.match(screenSource, /topInset=\{appTopbarHeight\}/);
   assert.match(screenSource, /kind: 'welcome'/);
+  assert.match(screenSource, /const persisted = sessionMessages/);
+  assert.match(conversationProvider, /const \[sessionBoundary\] = useState/);
+  assert.match(conversationProvider, /requestMessages\(sessionMessages, text\)/);
   assert.match(markdownSource, /<EnrichedMarkdownText/);
   assert.match(markdownSource, /flavor="github"/);
   assert.match(markdownSource, /bulletColor/);
@@ -210,6 +214,15 @@ test('shared tab pages match Today with an open leading top bar', async () => {
   assert.match(today, /workoutSaveState === 'saving'/);
   const todayScreen = await readFile(new URL('../app/(tabs)/today.tsx', import.meta.url), 'utf8');
   assert.match(todayScreen, /motion\.duration\.deliberate - \(Date\.now\(\) - startedAt\)/);
+  assert.match(todayScreen, /await finishDay\(selectedDay\)/);
+  const workoutProvider = await readFile(new URL('../providers/workout-data-provider.tsx', import.meta.url), 'utf8');
+  const api = await readFile(new URL('./api-client.ts', import.meta.url), 'utf8');
+  assert.match(workoutProvider, /await recordWorkoutSession\(\{/);
+  assert.match(workoutProvider, /persistLatestWorkoutState\(immediate \? 0 : 500\)/);
+  assert.match(workoutProvider, /NativeAppState\.addEventListener\('change'/);
+  assert.match(today, /onTextChange=\{onWeightChange\}/);
+  assert.match(today, /onTextChange=\{onRepsChange\}/);
+  assert.match(api, /requestJson\('\/api\/workouts', savedWorkoutSessionSchema/);
   const nativeSymbol = await readFile(new URL('../components/native-symbol.tsx', import.meta.url), 'utf8');
   assert.match(nativeSymbol, /effect: 'drawOn'/);
   assert.match(nativeSymbol, /repeat: 'nonRepeating'/);
@@ -252,7 +265,7 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   const themeProvider = await readFile(new URL('../providers/flynt-theme-provider.tsx', import.meta.url), 'utf8');
 
   assert.match(theme, /signedOutColorMode: ColorMode = 'dark'/);
-  assert.match(themeProvider, /!hasSession \|\| destination === 'consultation'/);
+  assert.match(themeProvider, /!hasSession\s*\|\| destination === 'consultation'/);
   assert.match(themeProvider, /usesOnboardingAppearance[\s\S]*signedOutColorMode/);
 
   assert.doesNotMatch(introduction, /styles\.skip|skipCopy/);
@@ -320,12 +333,14 @@ test('signed-out onboarding preserves the approved PWA story and unified account
 test('session resolution stays behind the native launch screen', async () => {
   const rootLayout = await readFile(new URL('../app/_layout.tsx', import.meta.url), 'utf8');
   const boot = await readFile(new URL('../app/boot.tsx', import.meta.url), 'utf8');
+  const themeProvider = await readFile(new URL('../providers/flynt-theme-provider.tsx', import.meta.url), 'utf8');
 
   assert.match(rootLayout, /SplashScreen\.preventAutoHideAsync\(\)/);
   assert.match(rootLayout, /phase !== 'loading'[\s\S]*SplashScreen\.hideAsync\(\)/);
   assert.match(boot, /if \(isLoading\) return null/);
   assert.doesNotMatch(boot, /Loading your training|Checking your account and latest program state/);
   assert.match(boot, /screen-authoritative-boot-error/);
+  assert.match(themeProvider, /phase !== 'ready'[\s\S]*signedOutColorMode/);
 });
 
 test('program building reports real progress and asks for notifications in context', async () => {

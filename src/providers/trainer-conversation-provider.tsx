@@ -1,7 +1,7 @@
 import { createContext, type PropsWithChildren, useCallback, useContext, useMemo, useState } from 'react';
 
 import type { ProgramChange } from '@/contracts/app-state';
-import { messagesWithToolApproval, requestMessages } from '@/features/trainer-messages';
+import { messagesWithToolApproval, requestMessages, type TrainerMessage } from '@/features/trainer-messages';
 import { queueProgramChange, sendTrainerMessage } from '@/lib/api-client';
 import { deliberateAction, failed, saved, selection } from '@/lib/haptics';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
@@ -18,6 +18,7 @@ type TrainerConversationValue = {
   retry: () => void;
   respondingToolCallId: string | null;
   respondToChange: (toolCallId: string, approved: boolean, change: ProgramChange) => void;
+  sessionMessages: TrainerMessage[];
   setComposerHeight: (height: number) => void;
   sentMessages: string[];
   setMessage: (message: string) => void;
@@ -34,6 +35,14 @@ export function TrainerConversationProvider({ children }: PropsWithChildren) {
   const [sending, setSending] = useState(false);
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const [respondingToolCallId, setRespondingToolCallId] = useState<string | null>(null);
+  const conversation = appState?.conversation ?? null;
+  const [sessionBoundary] = useState(() => ({
+    conversationId: conversation?.id ?? null,
+    messageIds: new Set(conversation?.messages.map((item) => item.id) ?? []),
+  }));
+  const sessionMessages = useMemo(() => conversation?.id === sessionBoundary.conversationId
+    ? conversation.messages.filter((item) => !sessionBoundary.messageIds.has(item.id))
+    : [], [conversation, sessionBoundary]);
 
   const submit = useCallback(async (text: string, addOptimistic: boolean) => {
     if (!appState?.conversation || sending) return;
@@ -47,7 +56,7 @@ export function TrainerConversationProvider({ children }: PropsWithChildren) {
       const currentDayIndex = Math.min(6, Math.max(0, new Date().getDay() === 0 ? 6 : new Date().getDay() - 1));
       await sendTrainerMessage({
         conversationId: appState.conversation.id,
-        messages: requestMessages(appState.conversation.messages, text),
+        messages: requestMessages(sessionMessages, text),
         selectedDayIndex: currentDayIndex,
       });
       await refresh();
@@ -60,7 +69,7 @@ export function TrainerConversationProvider({ children }: PropsWithChildren) {
     } finally {
       setSending(false);
     }
-  }, [appState, refresh, sending]);
+  }, [appState, refresh, sending, sessionMessages]);
 
   const value = useMemo<TrainerConversationValue>(() => ({
     canRetry: failedMessage !== null,
@@ -98,7 +107,7 @@ export function TrainerConversationProvider({ children }: PropsWithChildren) {
         await sendTrainerMessage({
           conversationId: appState.conversation.id,
           messages: messagesWithToolApproval(
-            appState.conversation.messages,
+            sessionMessages,
             toolCallId,
             approved,
             approved ? 'The athlete approved this program change.' : 'The athlete declined this program change.',
@@ -116,10 +125,11 @@ export function TrainerConversationProvider({ children }: PropsWithChildren) {
       }
     },
     sending,
+    sessionMessages,
     setComposerHeight,
     sentMessages,
     setMessage,
-  }), [appState, composerHeight, error, failedMessage, message, refresh, respondingToolCallId, sending, sentMessages, submit]);
+  }), [appState, composerHeight, error, failedMessage, message, refresh, respondingToolCallId, sending, sentMessages, sessionMessages, submit]);
 
   return (
     <TrainerConversationContext.Provider value={value}>

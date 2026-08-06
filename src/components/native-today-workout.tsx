@@ -79,6 +79,7 @@ import { getExerciseArtwork } from '@/features/exercise-artwork';
 import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
 import { useModalPresentation } from '@/providers/modal-presentation-provider';
 import { useRestTimer } from '@/providers/rest-timer-provider';
+import type { WorkoutSetEntry } from '@/providers/workout-data-provider';
 
 type NativeTodayWorkoutProps = {
   completed: number[];
@@ -103,9 +104,11 @@ type NativeTodayWorkoutProps = {
   onSpotifySheetDismissed: () => void;
   onSelectExercise: (index: number) => void;
   onToggleSet: (exerciseIndex: number, setIndex: number) => void;
+  onUpdateSet: (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>, immediate?: boolean) => void;
   progress: number;
   selectedDay: number;
   selectedExercise: number;
+  setEntries: WorkoutSetEntry[][];
   spotifyBar?: ReactElement;
   spotifyPill?: ReactElement;
   spotifySheet: ReactElement;
@@ -123,9 +126,13 @@ type NativeSetRowProps = {
   index: number;
   inputColor: string;
   onToggle: () => void;
+  onRepsChange: (value: string, immediate?: boolean) => void;
+  onWeightChange: (value: string, immediate?: boolean) => void;
   outlineColor: string;
   prescribedReps: string;
+  reps: string;
   theme: Theme;
+  weight: string;
 };
 
 const dayShape = shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: 'continuous' });
@@ -199,13 +206,14 @@ function ExerciseArtwork({
   );
 }
 
-function NativeSetRow({ checked, exerciseName, index, inputColor, onToggle, outlineColor, prescribedReps, theme }: NativeSetRowProps) {
-  const weight = useNativeState('');
-  const reps = useNativeState(prescribedReps);
+function NativeSetRow({ checked, exerciseName, index, inputColor, onRepsChange, onToggle, onWeightChange, outlineColor, prescribedReps, reps: initialReps, theme, weight: initialWeight }: NativeSetRowProps) {
+  const weight = useNativeState(initialWeight);
+  const reps = useNativeState(initialReps || prescribedReps);
   const adjustReps = (change: number) => {
     const currentReps = Number.parseInt(reps.get(), 10);
     const nextReps = Math.min(99, Math.max(1, (Number.isFinite(currentReps) ? currentReps : 1) + change));
     reps.set(String(nextReps));
+    onRepsChange(String(nextReps));
   };
   const fieldModifiers = [
     frame({ width: 88, height: 44 }),
@@ -228,6 +236,10 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onToggle, outl
         ]}
       >
         <TextField
+          onFocusChange={(focused) => {
+            if (!focused) onWeightChange(weight.get(), true);
+          }}
+          onTextChange={onWeightChange}
           placeholder="–"
           text={weight}
           modifiers={[
@@ -255,6 +267,10 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onToggle, outl
             <SwiftUIImage color={theme.muted} size={13} systemName="minus" />
           </Button>
           <TextField
+            onFocusChange={(focused) => {
+              if (!focused) onRepsChange(reps.get(), true);
+            }}
+            onTextChange={onRepsChange}
             placeholder="–"
             text={reps}
             modifiers={[
@@ -389,7 +405,9 @@ function ExerciseSheetContent({
   onClose,
   onOpenStats,
   onToggleSet,
+  onUpdateSet,
   outline,
+  setEntries,
   theme,
 }: {
   advanceLabel: string;
@@ -404,7 +422,9 @@ function ExerciseSheetContent({
   onClose: () => void;
   onOpenStats: () => void;
   onToggleSet: (exerciseIndex: number, setIndex: number) => void;
+  onUpdateSet: (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>, immediate?: boolean) => void;
   outline: string;
+  setEntries: WorkoutSetEntry[];
   theme: Theme;
 }) {
   const { expand: expandRest, timer } = useRestTimer();
@@ -539,9 +559,13 @@ function ExerciseSheetContent({
               index={setIndex}
               inputColor={input}
               onToggle={() => onToggleSet(exerciseIndex, setIndex)}
+              onRepsChange={(reps, immediate) => onUpdateSet(exerciseIndex, setIndex, { reps }, immediate)}
+              onWeightChange={(weight, immediate) => onUpdateSet(exerciseIndex, setIndex, { weight }, immediate)}
               outlineColor={outline}
               prescribedReps={prescribedReps}
+              reps={setEntries[setIndex]?.reps ?? prescribedReps}
               theme={theme}
+              weight={setEntries[setIndex]?.weight ?? ''}
             />
           ))}
         </VStack>
@@ -709,9 +733,11 @@ export function NativeTodayWorkout({
   onSpotifySheetDismissed,
   onSelectExercise,
   onToggleSet,
+  onUpdateSet,
   progress,
   selectedDay,
   selectedExercise,
+  setEntries,
   spotifyBar,
   spotifyPill,
   spotifySheet,
@@ -743,6 +769,7 @@ export function NativeTodayWorkout({
   const sheetDetent = flyntSheetDetent();
   const outline = mode === 'light' ? 'rgba(216,214,207,0.72)' : 'rgba(255,255,255,0.10)';
   const sheetPresented = selectedExercise >= 0 && selectedExercise < exercises.length;
+  const finishingWorkout = !editingWorkout && workoutSaveState === 'saving';
   const exercise = sheetPresented ? exercises[selectedExercise] : null;
   const nextExerciseIndex = sheetPresented
     ? [
@@ -1032,17 +1059,17 @@ export function NativeTodayWorkout({
                     buttonStyle('borderedProminent'),
                     buttonBorderShape('capsule'),
                     tint(theme.ink),
-                    disabled(finished || completedSets !== totalSets),
-                    accessibilityLabel(finished ? 'Workout complete' : 'Finish workout'),
+                    disabled(finishingWorkout || finished || completedSets !== totalSets),
+                    accessibilityLabel(finishingWorkout ? 'Saving workout' : finished ? 'Workout complete' : 'Finish workout'),
                     accessibilityHint(completedSets === totalSets
                       ? 'Marks this workout complete'
                       : 'Complete every set to enable this action'),
                   ]}
                 >
                   <HStack spacing={8} modifiers={[frame({ minHeight: 56, maxWidth: 1000 })]}>
-                    {finished ? <SwiftUIImage color={theme.primaryText} size={15} systemName="checkmark" /> : null}
+                    {finishingWorkout ? <ProgressView modifiers={[tint(theme.primaryText)]} /> : finished ? <SwiftUIImage color={theme.primaryText} size={15} systemName="checkmark" /> : null}
                     <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.primaryText)]}>
-                      {finished ? 'Workout complete' : 'Finish workout'}
+                      {finishingWorkout ? 'Saving workout' : finished ? 'Workout complete' : 'Finish workout'}
                     </NativeText>
                   </HStack>
                 </Button>
@@ -1115,7 +1142,9 @@ export function NativeTodayWorkout({
                         onClose={() => onSelectExercise(-1)}
                         onOpenStats={() => setSheetPage('stats')}
                         onToggleSet={onToggleSet}
+                        onUpdateSet={onUpdateSet}
                         outline={outline}
+                        setEntries={setEntries[selectedExercise] ?? []}
                         theme={theme}
                       />
                     </TabView.Tab>
