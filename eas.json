@@ -23,5 +23,12 @@
       "node": "24.14.0",
       "autoIncrement": true
     }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6798768159"
+      }
+    }
   }
 }

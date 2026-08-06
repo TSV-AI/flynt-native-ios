@@ -250,6 +250,17 @@ Current physical iPhone verification: Not started
   remote build number is `1`; no new build number has been reserved because a
   production build has not been started. The generated primary App Store icon
   was also verified as an opaque 1024 by 1024 image.
+- Verified in EAS Build on 2026-08-06: production Store build `1.0.0 (3)`
+  completed from commit `2b4e6a8`, build ID
+  `6207ef86-9399-49ef-ab79-43d41fcdbb55`. EAS production now contains the four
+  required public runtime values. Apple distribution signing, separate active
+  provisioning profiles for `com.threesixtyvue.flynt` and its widget, and an
+  APNs key are configured remotely. App Store Connect app `6798768159`, an
+  internal Team TestFlight group, and a least-privilege App Manager submission
+  key were created. Submission `fc433bb7-8d98-49c3-b4f9-be59d8799939` was
+  scheduled and remains queued for an EAS Apple submitter; Apple processing and
+  TestFlight installation are not yet verified. App Store Connect used the
+  temporary record name `FLYNT (ee62f1)` because `FLYNT` was unavailable.
 - Source-verified but not live-verified: Trainer messages post through the
   authenticated `/api/trainer` boundary and refresh the server-owned
   conversation. A validated program-change proposal requires explicit athlete
