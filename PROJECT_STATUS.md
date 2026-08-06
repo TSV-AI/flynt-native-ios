@@ -262,7 +262,9 @@ Current physical iPhone verification: Not started
   TestFlight installation are not yet verified. The initially generated App
   Store Connect record name `FLYNT (ee62f1)` was changed and save-verified as
   `FLYNT Training`, matching the product's `flynt.training` domain. The installed
-  app display name remains `FLYNT`.
+  app display name remains `FLYNT`. The English (U.S.) App Store subtitle was
+  save-verified as `Personalized strength training`. App Store Connect still
+  showed no TestFlight builds while the EAS submission remained queued.
 - Source-verified but not live-verified: Trainer messages post through the
   authenticated `/api/trainer` boundary and refresh the server-owned
   conversation. A validated program-change proposal requires explicit athlete
