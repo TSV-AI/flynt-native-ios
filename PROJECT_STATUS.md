@@ -158,6 +158,18 @@ Current physical iPhone verification: Not started
   moving recovery and regular email tasks higher as one unit without changing
   the provider Sign in or Create account landing layouts. Submitted code entry
   uses the same source path but was not submitted or rerun.
+- Release smoke verification on 2026-08-06: commit `32e56cc` passed eight auth,
+  11 authoritative boot, two lifecycle navigation, and 14 native feature tests,
+  plus TypeScript, ESLint, and copy validation. A clean Debug workspace build
+  installed and launched on iPhone 17e / iOS 26.5 Simulator. The dark Sign in,
+  focused email entry, Trouble signing in recovery, Create account consent, and
+  Terms & Safety sheet rendered and exposed their expected accessible actions.
+  No provider request, email delivery, OTP verification, authenticated session,
+  consultation mutation, workout mutation, or production data write occurred.
+  Expo Doctor completed 16 of 20 offline checks; its online Expo config and
+  React Native Directory checks could not resolve `exp.host`, and it retained
+  the known local-module ignore warning plus the installed
+  `react-native-keyboard-controller` 1.22.2 versus expected 1.21.9 mismatch.
 - Verified locally on 2026-08-05: whole-project TypeScript, focused ESLint,
   nine native feature contracts, lifecycle navigation, copy style, and
   whitespace validation passed after the signed-out light-default boundary was
