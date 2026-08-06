@@ -7,6 +7,7 @@ import {
   Host,
   Image as SwiftUIImage,
   List,
+  Menu,
   ProgressView,
   RNHostView,
   ScrollView,
@@ -28,19 +29,22 @@ import {
   background,
   buttonBorderShape,
   buttonStyle,
-  clipped,
+  controlSize,
   disabled,
   environment,
   fixedSize,
   font,
   foregroundStyle,
   frame,
+  ignoreSafeArea,
   kerning,
   keyboardType,
+  labelStyle,
   listRowBackground,
   listRowInsets,
   listRowSeparator,
   listStyle,
+  lineLimit,
   monospacedDigit,
   multilineTextAlignment,
   opacity,
@@ -63,7 +67,8 @@ import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'r
 import { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassSymbolButton, GlassTextButton, NativeSymbol } from '@/components/native-symbol';
+import { AppScreenTopbar, appTopbarHeight } from '@/components/app-surface';
+import { GlassTextButton, NativeSymbol } from '@/components/native-symbol';
 import { NativeWorkoutEditorList } from '@/components/native-workout-editor-list';
 import { RestTimerAccessorySurface } from '@/components/rest-timer-accessory';
 import { motion } from '@/constants/motion';
@@ -109,6 +114,7 @@ type NativeTodayWorkoutProps = {
   totalSets: number;
   completedSets: number;
   week: PreviewDay[];
+  workoutSaveState: 'idle' | 'saving' | 'saved';
 };
 
 type NativeSetRowProps = {
@@ -713,6 +719,7 @@ export function NativeTodayWorkout({
   theme,
   totalSets,
   week,
+  workoutSaveState,
 }: NativeTodayWorkoutProps) {
   const { height, width } = useWindowDimensions();
   const safeAreaInsets = useSafeAreaInsets();
@@ -724,7 +731,9 @@ export function NativeTodayWorkout({
   const editListHeight = Math.max(420, height - safeAreaInsets.top - 142);
   const daySelectorWidth = contentWidth - 8;
   const dayColumnWidth = daySelectorWidth / 7;
-  const canvas = appSurfaces[mode].primaryBackground;
+  const workoutHeaderGap = spacing.xl;
+  const editHeaderContentGap = 36;
+  const canvas = appSurfaces[mode].todayBackground;
   const input = appSurfaces[mode].exerciseSurface;
   const sheetItemBackground = '#222222';
   const exerciseEntryBackground = 'rgba(34,34,34,0.90)';
@@ -741,6 +750,33 @@ export function NativeTodayWorkout({
       ...exercises.slice(0, selectedExercise).map((_, index) => index),
     ].find((index) => completed[index] < exercises[index].total)
     : undefined;
+  const workoutMenu = (
+    <Host colorScheme={mode} seedColor={theme.ink} style={styles.topbarControlHost}>
+      <Menu
+        label="Workout actions"
+        systemImage="ellipsis"
+        modifiers={[
+          buttonStyle('glass'),
+          buttonBorderShape('circle'),
+          controlSize('large'),
+          labelStyle('iconOnly'),
+          frame({ width: 44, height: 44 }),
+          accessibilityLabel('Workout actions'),
+        ]}
+      >
+        <Button
+          label="Edit Workout"
+          onPress={onEditWorkout}
+          systemImage="square.and.pencil"
+        />
+        <Button
+          label="Settings"
+          onPress={onOpenSettings}
+          systemImage="gearshape"
+        />
+      </Menu>
+    </Host>
+  );
 
   useEffect(() => {
     if (!sheetPresented) return;
@@ -767,119 +803,123 @@ export function NativeTodayWorkout({
             listStyle('plain'),
             scrollContentBackground('hidden'),
             background(canvas),
+            ignoreSafeArea({ regions: 'container', edges: 'top' }),
             ...(!reduceMotion ? [animation(Animation.easeInOut({ duration: motion.duration.standard / 1000 }), editingWorkout)] : []),
           ]}>
             <VStack
               spacing={0}
               modifiers={[
                 ...commonRow,
-                frame({ height: editingWorkout ? 76 : 138 }),
-                clipped(),
-                opacity(editingWorkout ? 0 : 1),
-                accessibilityHidden(editingWorkout),
-                disabled(editingWorkout),
-                ...(!reduceMotion ? [animation(Animation.easeInOut({ duration: motion.duration.standard / 1000 }), editingWorkout)] : []),
+                frame({ height: safeAreaInsets.top + appTopbarHeight + (editingWorkout ? editHeaderContentGap : 0) }),
+                accessibilityHidden(),
               ]}
             >
-              <ZStack
-                alignment="center"
-                modifiers={[
-                  frame({ width: contentWidth, height: 44 }),
-                  padding({ vertical: 8 }),
-                ]}
-              >
-                {spotifyPill ? <RNHostView matchContents>{spotifyPill}</RNHostView> : null}
-                <HStack modifiers={[frame({ width: contentWidth, height: 44 })]}>
-                  <Spacer />
-                  <RNHostView matchContents>
-                    <GlassSymbolButton
-                      accessibilityLabel="Open menu and settings"
-                      color={theme.ink}
-                      colorScheme={mode}
-                      name="ellipsis"
-                      onPress={onOpenSettings}
-                    />
-                  </RNHostView>
-                </HStack>
-              </ZStack>
-              <ZStack
-                modifiers={[
-                  frame({ width: daySelectorWidth, height: 64 }),
-                  padding({ top: 14 }),
-                ]}
-              >
-                <VStack
-                  modifiers={[
-                    frame({ width: 62, height: 64 }),
-                    background(theme.primaryFill, dayShape),
-                    strokeBorder({ color: outline, style: { lineWidth: 0.5 }, shape: 'roundedRectangle', cornerRadius: 18 }),
-                    offset({ x: (selectedDay - 3) * dayColumnWidth }),
-                    ...(!reduceMotion ? [animation(Animation.interpolatingSpring(motion.spring.responsive), selectedDay)] : []),
-                  ]}
-                >
-                  <Spacer />
-                </VStack>
-                <HStack spacing={0} modifiers={[frame({ width: daySelectorWidth, height: 64 })]}>
-                  {week.map((item, index) => {
-                    const selected = index === selectedDay;
-                    return (
-                      <Button
-                        key={`${item.shortDay}-${item.date}`}
-                        onPress={() => onChooseDay(index)}
-                        modifiers={[
-                          buttonStyle('plain'),
-                          frame({ width: dayColumnWidth, height: 64 }),
-                          disabled(editingWorkout),
-                          accessibilityLabel(`${item.shortDay} ${item.date}, ${item.title}`),
-                          accessibilityHint("Shows this day's workout"),
-                          ...(selected ? [accessibilityAddTraits(['isSelected'])] : []),
-                        ]}
-                      >
-                        <VStack spacing={7} modifiers={[frame({ width: dayColumnWidth, height: 64 })]}>
-                          <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), foregroundStyle(selected ? theme.primaryText : theme.muted)]}>
-                            {item.shortDay.slice(0, 1)}
-                          </NativeText>
-                          <NativeText modifiers={[font({ textStyle: 'caption', weight: 'semibold' }), foregroundStyle(selected ? theme.primaryText : theme.muted), monospacedDigit()]}>
-                            {item.date}
-                          </NativeText>
-                        </VStack>
-                      </Button>
-                    );
-                  })}
-                </HStack>
-              </ZStack>
+              <Spacer />
             </VStack>
 
             {!editingWorkout ? (
-              <VStack alignment="leading" spacing={9} modifiers={[...commonRow, padding({ top: spacing.lg, horizontal: 4, bottom: spacing.md })]}>
-                <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), kerning(1.45), foregroundStyle(theme.muted)]}>
-                  {dateLabel}
-                </NativeText>
-                <HStack spacing={spacing.sm} modifiers={[frame({ maxWidth: 1000 })]}>
-                  <NativeText modifiers={[font({ textStyle: 'largeTitle', weight: 'semibold' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>
-                    {day.title}
-                  </NativeText>
-                  <Spacer />
-                  <Button
-                    onPress={onEditWorkout}
+              <VStack alignment="leading" spacing={0} modifiers={[...commonRow, padding({ top: spacing.lg, horizontal: 4 })]}>
+                <ZStack
+                  alignment="bottomLeading"
+                  modifiers={[frame({ width: daySelectorWidth, alignment: 'bottomLeading' })]}
+                >
+                  <VStack alignment="leading" spacing={9} modifiers={[opacity(0), accessibilityHidden()]}>
+                    <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), kerning(1.45)]}>
+                      {dateLabel}
+                    </NativeText>
+                    <NativeText
+                      modifiers={[
+                        font({ textStyle: 'largeTitle', weight: 'semibold' }),
+                      ]}
+                    >
+                      {'Ag\nAg'}
+                    </NativeText>
+                    <NativeText modifiers={[font({ textStyle: 'subheadline' })]}>
+                      {'Ag\nAg'}
+                    </NativeText>
+                  </VStack>
+                  <VStack alignment="leading" spacing={9}>
+                    <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), kerning(1.45), foregroundStyle(theme.muted)]}>
+                      {dateLabel}
+                    </NativeText>
+                    <NativeText
+                      modifiers={[
+                        font({ textStyle: 'largeTitle', weight: 'semibold' }),
+                        foregroundStyle(theme.ink),
+                        lineLimit(2),
+                      ]}
+                    >
+                      {day.title}
+                    </NativeText>
+                    <NativeText
+                      modifiers={[
+                        font({ textStyle: 'subheadline' }),
+                        foregroundStyle(theme.muted),
+                        lineLimit(2),
+                      ]}
+                    >
+                      {day.focus}
+                    </NativeText>
+                  </VStack>
+                </ZStack>
+                <ZStack
+                  modifiers={[
+                    frame({ width: daySelectorWidth, height: 64 }),
+                    padding({ top: workoutHeaderGap }),
+                  ]}
+                >
+                  <VStack
                     modifiers={[
-                      buttonStyle('plain'),
-                      frame({ minWidth: 44, minHeight: 44 }),
-                      accessibilityLabel(`Edit ${day.title}`),
-                      accessibilityHint('Makes this workout list editable'),
+                      frame({ width: 62, height: 64 }),
+                      background(theme.primaryFill, dayShape),
+                      strokeBorder({ color: outline, style: { lineWidth: 0.5 }, shape: 'roundedRectangle', cornerRadius: 18 }),
+                      offset({ x: (selectedDay - 3) * dayColumnWidth }),
+                      ...(!reduceMotion ? [animation(Animation.interpolatingSpring(motion.spring.responsive), selectedDay)] : []),
                     ]}
                   >
-                    <SwiftUIImage color={theme.ink} size={18} systemName="square.and.pencil" />
-                  </Button>
-                </HStack>
-                <NativeText modifiers={[font({ textStyle: 'subheadline' }), foregroundStyle(theme.muted)]}>
-                  {day.focus}
-                </NativeText>
+                    <Spacer />
+                  </VStack>
+                  <HStack spacing={0} modifiers={[frame({ width: daySelectorWidth, height: 64 })]}>
+                    {week.map((item, index) => {
+                      const selected = index === selectedDay;
+                      return (
+                        <Button
+                          key={`${item.shortDay}-${item.date}`}
+                          onPress={() => onChooseDay(index)}
+                          modifiers={[
+                            buttonStyle('plain'),
+                            frame({ width: dayColumnWidth, height: 64 }),
+                            disabled(editingWorkout),
+                            accessibilityLabel(`${item.shortDay} ${item.date}, ${item.title}`),
+                            accessibilityHint("Shows this day's workout"),
+                            ...(selected ? [accessibilityAddTraits(['isSelected'])] : []),
+                          ]}
+                        >
+                          <VStack spacing={7} modifiers={[frame({ width: dayColumnWidth, height: 64 })]}>
+                            <NativeText modifiers={[font({ textStyle: 'caption2', weight: 'bold' }), foregroundStyle(selected ? theme.primaryText : theme.muted)]}>
+                              {item.shortDay.slice(0, 1)}
+                            </NativeText>
+                            <NativeText modifiers={[font({ textStyle: 'caption', weight: 'semibold' }), foregroundStyle(selected ? theme.primaryText : theme.muted), monospacedDigit()]}>
+                              {item.date}
+                            </NativeText>
+                          </VStack>
+                        </Button>
+                      );
+                    })}
+                  </HStack>
+                </ZStack>
               </VStack>
             ) : null}
 
             {!editingWorkout && totalSets ? (
-              <HStack spacing={spacing.sm} modifiers={[...commonRow, frame({ width: contentWidth - 8 }), padding({ top: 24, horizontal: 4, bottom: 16 })]}>
+              <HStack
+                spacing={spacing.sm}
+                modifiers={[
+                  ...commonRow,
+                  frame({ width: contentWidth - 8 }),
+                  padding({ top: workoutHeaderGap, horizontal: 4, bottom: workoutHeaderGap }),
+                ]}
+              >
                 <ProgressView
                   value={progress}
                   modifiers={[
@@ -1094,40 +1134,38 @@ export function NativeTodayWorkout({
           </BottomSheet>
         </ZStack>
       </Host>
-      {editingWorkout ? (
-        <View
-          pointerEvents="box-none"
-          style={[styles.editActionBar, { top: safeAreaInsets.top + 8 }]}
-        >
+      <AppScreenTopbar
+        centerAccessory={!editingWorkout ? spotifyPill : undefined}
+        contentExtendsUnderTopbar
+        edgeScrim={appSurfaces[mode].todayEdgeScrim}
+        headerAccessory={editingWorkout ? (
+          <GlassTextButton
+            accessibilityLabel={workoutSaveState === 'saving' ? 'Saving workout edits' : workoutSaveState === 'saved' ? 'Workout edits saved' : 'Save workout edits'}
+            color={theme.ink}
+            colorScheme={mode}
+            disabled={workoutSaveState !== 'idle'}
+            label="Save"
+            onPress={onSaveWorkout}
+            state={workoutSaveState === 'saving' ? 'loading' : workoutSaveState === 'saved' ? 'success' : 'idle'}
+          />
+        ) : workoutMenu}
+        leadingAccessory={editingWorkout ? (
           <GlassTextButton
             accessibilityLabel="Cancel workout edits"
             color={theme.ink}
             colorScheme={mode}
+            disabled={workoutSaveState === 'saving'}
             label="Cancel"
             onPress={onCancelWorkout}
           />
-          <GlassTextButton
-            accessibilityLabel="Save workout edits"
-            color={theme.ink}
-            colorScheme={mode}
-            label="Save"
-            onPress={onSaveWorkout}
-          />
-        </View>
-      ) : null}
+        ) : undefined}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  editActionBar: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    zIndex: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  topbarControlHost: { width: 44, height: 44 },
   exerciseRow: {
     minHeight: 88,
     paddingVertical: 14,

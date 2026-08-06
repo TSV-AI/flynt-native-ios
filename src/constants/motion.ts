@@ -4,6 +4,8 @@ export const motion = {
     standard: 240,
     deliberate: 360,
     continuousProgress: 1100,
+    statusShimmerSweep: 1500,
+    statusShimmerPause: 250,
   },
   spring: {
     responsive: {

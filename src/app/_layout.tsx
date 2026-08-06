@@ -3,6 +3,7 @@ import '@/global.css';
 
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
+import * as SplashScreen from 'expo-splash-screen';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
@@ -27,6 +28,8 @@ Notifications.setNotificationHandler({
   }),
 });
 
+void SplashScreen.preventAutoHideAsync();
+
 function RootNavigator() {
   const { mode, theme } = useFlyntTheme();
   const { destination, hasSession, phase } = useLifecycleNavigation();
@@ -44,6 +47,10 @@ function RootNavigator() {
   }, [hasSession, restTimer]);
 
   useEffect(() => {
+    if (phase !== 'loading') void SplashScreen.hideAsync();
+  }, [phase]);
+
+  useEffect(() => {
     if (!bootReady || destination !== 'ready' || !linkingUrl) return;
     const parsed = Linking.parse(linkingUrl);
     const route = [parsed.hostname, parsed.path]
@@ -57,7 +64,7 @@ function RootNavigator() {
 
   return (
     <ThemeProvider value={navigationTheme}>
-      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={!bootReady || mode === 'light' ? 'dark' : 'light'} />
       <Stack
         screenOptions={{
           contentStyle: { backgroundColor: theme.canvas },

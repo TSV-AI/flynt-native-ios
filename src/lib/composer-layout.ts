@@ -1,5 +1,5 @@
 export const composerMinimumHeight = 44;
-export const trainerComposerMaximumHeight = 92;
+export const trainerComposerMaximumHeight = 132;
 export const consultationComposerMaximumHeight = 128;
 
 export function boundedComposerHeight(height: number, maximumHeight: number) {

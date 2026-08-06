@@ -1,11 +1,14 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
+import { Alert } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { NativeTodayWorkout } from '@/components/native-today-workout';
 import { WorkoutEditorSheet } from '@/components/workout-editor-sheet';
 import { SpotifyLauncher, SpotifyPlayerContent } from '@/components/spotify-workout-player';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
-import { deliberateAction, directManipulation, selection, warning } from '@/lib/haptics';
+import { motion } from '@/constants/motion';
+import { deliberateAction, directManipulation, failed, selection, warning } from '@/lib/haptics';
 import { useRestTimer } from '@/providers/rest-timer-provider';
 import { useSettingsPreferences } from '@/providers/settings-preferences-provider';
 import { useWorkoutData } from '@/providers/workout-data-provider';
@@ -27,7 +30,9 @@ export default function TodayScreen() {
   const [replacingExerciseIndex, setReplacingExerciseIndex] = useState<number | null>(null);
   const [workoutEditorOpen, setWorkoutEditorOpen] = useState(false);
   const [workoutEditorRevision, setWorkoutEditorRevision] = useState(0);
+  const [workoutSaveState, setWorkoutSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const { mode, theme } = useFlyntTheme();
+  const reduceMotion = useReducedMotion();
   const { start: startRestTimer, stop: stopRestTimer } = useRestTimer();
   const { restLength, restTimers, spotifyDisplay } = useSettingsPreferences();
   const day = week[selectedDay];
@@ -48,19 +53,37 @@ export default function TodayScreen() {
   async function startWorkoutEditing() {
     setSelectedExercise(-1);
     setEditDraft(exercises.map((exercise) => ({ ...exercise })));
+    setWorkoutSaveState('idle');
     setEditingWorkout(true);
     await selection();
   }
 
   async function saveWorkoutEditing() {
-    await saveDayExercises(selectedDay, editDraft);
-    setEditingWorkout(false);
-    await deliberateAction();
+    if (workoutSaveState === 'saving') return;
+    setWorkoutSaveState('saving');
+    const startedAt = Date.now();
+    try {
+      await saveDayExercises(selectedDay, editDraft);
+      const progressTimeRemaining = Math.max(0, motion.duration.deliberate - (Date.now() - startedAt));
+      if (progressTimeRemaining > 0 && !reduceMotion) {
+        await new Promise<void>((resolve) => setTimeout(resolve, progressTimeRemaining));
+      }
+      setWorkoutSaveState('saved');
+      await deliberateAction();
+      await new Promise<void>((resolve) => setTimeout(resolve, reduceMotion ? 0 : motion.duration.deliberate));
+      setEditingWorkout(false);
+      setWorkoutSaveState('idle');
+    } catch {
+      setWorkoutSaveState('idle');
+      void failed();
+      Alert.alert('Workout changes were not saved', 'Check your connection and try again.');
+    }
   }
 
   async function cancelWorkoutEditing() {
     setEditDraft(exercises.map((exercise) => ({ ...exercise })));
     setWorkoutEditorOpen(false);
+    setWorkoutSaveState('idle');
     setEditingWorkout(false);
     await selection();
   }
@@ -165,6 +188,7 @@ export default function TodayScreen() {
         theme={theme}
         totalSets={totalSets}
         week={week}
+        workoutSaveState={workoutSaveState}
       />
       <WorkoutEditorSheet
         key={`${selectedDay}:${workoutEditorRevision}`}

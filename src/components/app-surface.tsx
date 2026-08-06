@@ -22,6 +22,15 @@ type AppScreenProps = PropsWithChildren<{
   contentExtendsUnderTopbar?: boolean;
 }>;
 
+type AppScreenTopbarProps = Pick<
+  AppScreenProps,
+  'contentExtendsUnderTopbar' | 'headerAccessory' | 'showsBackButton' | 'topbarTitle'
+> & {
+  centerAccessory?: ReactNode;
+  edgeScrim?: string;
+  leadingAccessory?: ReactNode;
+};
+
 export const appTopbarHeight = 58;
 
 export function AppScreenHero({ eyebrow, intro, title }: Pick<AppScreenProps, 'eyebrow' | 'intro' | 'title'>) {
@@ -36,12 +45,68 @@ export function AppScreenHero({ eyebrow, intro, title }: Pick<AppScreenProps, 'e
   );
 }
 
-export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle, showsBackButton = false, children, testID, backgroundColor, footer, modalActive = false, scrollable = true, contentExtendsUnderTopbar = false }: AppScreenProps) {
+export function AppScreenTopbar({
+  centerAccessory,
+  contentExtendsUnderTopbar = false,
+  edgeScrim,
+  headerAccessory,
+  leadingAccessory,
+  showsBackButton = false,
+  topbarTitle,
+}: AppScreenTopbarProps) {
   const { mode, theme } = useFlyntTheme();
   const insets = useSafeAreaInsets();
+
   function openSettings() {
     router.push('/settings');
   }
+
+  return (
+    <>
+      <View style={[styles.topbar, contentExtendsUnderTopbar && styles.topbarOverlay, contentExtendsUnderTopbar && { top: insets.top }]}>
+        {showsBackButton ? (
+          <>
+            <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
+              <NativeSymbol color={theme.ink} name="chevron.left" size={18} />
+            </Pressable>
+            <Text style={[styles.topbarTitle, { color: theme.ink }]}>{topbarTitle}</Text>
+            <View style={styles.backButton} />
+          </>
+        ) : (
+          <>
+            {leadingAccessory ?? <View style={styles.topbarPlaceholder} />}
+            {centerAccessory ? <View pointerEvents="box-none" style={styles.topbarCenter}>{centerAccessory}</View> : null}
+            {headerAccessory ?? (
+              <GlassSymbolButton
+                accessibilityLabel="Open menu and settings"
+                color={theme.ink}
+                colorScheme={mode}
+                name="ellipsis"
+                onPress={openSettings}
+              />
+            )}
+          </>
+        )}
+      </View>
+      {contentExtendsUnderTopbar ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.statusBarScrim,
+            {
+              height: insets.top + spacing.sm,
+              experimental_backgroundImage: `linear-gradient(180deg, ${edgeScrim ?? appSurfaces[mode].edgeScrim} 0%, ${edgeScrim ?? appSurfaces[mode].edgeScrim} 34%, transparent 100%)`,
+            },
+          ]}
+        />
+      ) : null}
+    </>
+  );
+}
+
+export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle, showsBackButton = false, children, testID, backgroundColor, footer, modalActive = false, scrollable = true, contentExtendsUnderTopbar = false }: AppScreenProps) {
+  const { mode } = useFlyntTheme();
+  const insets = useSafeAreaInsets();
   return (
     <View style={[styles.screen, { backgroundColor: backgroundColor ?? appSurfaces[mode].primaryBackground }]} testID={testID}>
       <SafeAreaView
@@ -50,43 +115,22 @@ export function AppScreen({ eyebrow, title, intro, headerAccessory, topbarTitle,
         style={styles.safeArea}
         edges={contentExtendsUnderTopbar ? [] : ['top']}
       >
-        <View style={[styles.topbar, contentExtendsUnderTopbar && styles.topbarOverlay, contentExtendsUnderTopbar && { top: insets.top }]}>
-          {showsBackButton ? (
-            <>
-              <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-                <NativeSymbol color={theme.ink} name="chevron.left" size={18} />
-              </Pressable>
-              <Text style={[styles.topbarTitle, { color: theme.ink }]}>{topbarTitle}</Text>
-              <View style={styles.backButton} />
-            </>
-          ) : (
-            <>
-              <View style={styles.topbarPlaceholder} />
-              {headerAccessory ?? (
-                <GlassSymbolButton
-                  accessibilityLabel="Open menu and settings"
-                  color={theme.ink}
-                  colorScheme={mode}
-                  name="ellipsis"
-                  onPress={openSettings}
-                />
-              )}
-            </>
-          )}
-        </View>
-        {contentExtendsUnderTopbar ? (
-          <View
-            pointerEvents="none"
-            style={[
-              styles.statusBarScrim,
-              {
-                height: insets.top + spacing.sm,
-                experimental_backgroundImage: `linear-gradient(180deg, ${appSurfaces[mode].edgeScrim} 0%, ${appSurfaces[mode].edgeScrim} 34%, transparent 100%)`,
-              },
-            ]}
-          />
-        ) : null}
-        {scrollable ? <ScrollView automaticallyAdjustContentInsets contentContainerStyle={styles.content} keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
+        <AppScreenTopbar
+          contentExtendsUnderTopbar={contentExtendsUnderTopbar}
+          headerAccessory={headerAccessory}
+          showsBackButton={showsBackButton}
+          topbarTitle={topbarTitle}
+        />
+        {scrollable ? <ScrollView
+          automaticallyAdjustContentInsets={!contentExtendsUnderTopbar}
+          contentContainerStyle={[
+            styles.content,
+            contentExtendsUnderTopbar && { paddingTop: insets.top + appTopbarHeight },
+          ]}
+          contentInsetAdjustmentBehavior={contentExtendsUnderTopbar ? 'never' : 'automatic'}
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+        >
           <AppScreenHero eyebrow={eyebrow} intro={intro} title={title} />
           {children}
           <View style={styles.bottomSpace} />
@@ -133,6 +177,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   topbar: { height: appTopbarHeight, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   topbarOverlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3 },
+  topbarCenter: { position: 'absolute', left: 72, right: 72, alignItems: 'center', justifyContent: 'center' },
   statusBarScrim: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2 },
   topbarPlaceholder: { width: 44, height: 44 },
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

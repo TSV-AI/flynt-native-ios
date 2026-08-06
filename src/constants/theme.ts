@@ -7,7 +7,7 @@ export const palette = {
   warmCard: '#E9E8E3',
   warmLine: '#D8D6CF',
   warmMuted: '#686761',
-  darkCanvas: '#1E1E1D',
+  darkCanvas: '#141414',
   darkCard: '#171716',
   darkRaised: '#242423',
   darkLine: '#353532',
@@ -53,17 +53,21 @@ export const colors = {
 export const appSurfaces = {
   light: {
     primaryBackground: palette.warmWhite,
+    todayBackground: palette.warmWhite,
     itemBackground: palette.todayCanvas,
-    exerciseSurface: '#DEDDDA',
+    exerciseSurface: '#D4D3D0',
     edgeScrim: 'rgba(247,246,242,0.92)',
+    todayEdgeScrim: 'rgba(247,246,242,0.92)',
     composerEdgeScrim: 'rgba(247,246,242,0.58)',
   },
   dark: {
-    primaryBackground: '#111111',
+    primaryBackground: palette.darkCanvas,
+    todayBackground: palette.darkCanvas,
     itemBackground: '#222222',
     exerciseSurface: '#222222',
-    edgeScrim: 'rgba(17,17,17,0.92)',
-    composerEdgeScrim: 'rgba(17,17,17,0.52)',
+    edgeScrim: 'rgba(20,20,20,0.92)',
+    todayEdgeScrim: 'rgba(20,20,20,0.92)',
+    composerEdgeScrim: 'rgba(20,20,20,0.52)',
   },
 } as const;
 

@@ -50,7 +50,7 @@ export type NativeWorkoutEditorListProps = ViewProps & {
 
 function DotGrid({ color }: { color: string }) {
   return (
-    <View pointerEvents="none" style={styles.dotGrid}>
+    <View pointerEvents="none" style={[styles.dotGrid, styles.dotGridMuted]}>
       {Array.from({ length: 6 }, (_, index) => (
         <View key={index} style={[styles.dot, { backgroundColor: color }]} />
       ))}
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingLeft: 4,
+    paddingLeft: 10,
   },
   artwork: {
     width: 80,
@@ -344,6 +344,7 @@ const styles = StyleSheet.create({
   summary: { fontSize: 15, lineHeight: 20 },
   handle: { width: 44, height: 72, alignItems: 'center', justifyContent: 'center' },
   dotGrid: { width: 24, height: 34, flexDirection: 'row', flexWrap: 'wrap', gap: 4, alignContent: 'center', justifyContent: 'center' },
+  dotGridMuted: { opacity: 0.65 },
   dot: { width: 7, height: 7, borderRadius: 3.5 },
   actions: { width: 156, height: 82, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly' },
   actionButton: { width: 70, minHeight: 76, alignItems: 'center', justifyContent: 'center', gap: 3 },

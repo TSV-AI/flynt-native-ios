@@ -1,9 +1,25 @@
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Reanimated, {
+  cancelAnimation,
+  Easing,
+  Extrapolation,
+  FadeIn,
+  interpolate,
+  type SharedValue,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
 import { AppScreen } from '@/components/app-surface';
+import { motion } from '@/constants/motion';
 import { radius, spacing, type } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { fetchProgramStatus } from '@/lib/api-client';
@@ -17,16 +33,125 @@ const progressRingCenter = progressRingSize / 2;
 const progressRingRadius = 84;
 const progressRingStroke = 9;
 const progressRingCircumference = 2 * Math.PI * progressRingRadius;
+const progressCopyWidth = 330;
+const shimmerTrailLength = 4;
 
-const phaseCopy: Record<string, string> = {
-  queued: 'Getting started',
-  generating_program: 'Designing your training week',
-  resolving_exercises: 'Matching exercises',
-  building_guides: 'Movement guides',
-  validating: 'Checking each session',
-  publishing: 'Preparing your first week',
-  complete: 'Ready',
+const phaseCopy: Record<string, { title: string; detail?: string }> = {
+  queued: {
+    title: 'Reviewing your goals and limitations',
+    detail: 'Preparing your training profile',
+  },
+  generating_program: {
+    title: 'Structuring your training week',
+    detail: 'Balancing training and recovery',
+  },
+  resolving_exercises: {
+    title: 'Selecting exercises for you',
+    detail: 'Matching your experience and equipment',
+  },
+  building_guides: {
+    title: 'Programming each movement',
+  },
+  validating: {
+    title: 'Checking every session',
+    detail: 'Reviewing volume, intensity, and recovery',
+  },
+  publishing: {
+    title: 'Preparing your first week',
+    detail: 'Finalizing your complete plan',
+  },
+  complete: {
+    title: 'Your program is ready',
+    detail: 'Ready to train',
+  },
 };
+
+function ShimmerGlyph({
+  color,
+  glyph,
+  glyphCount,
+  index,
+  shimmer,
+}: {
+  color: string;
+  glyph: string;
+  glyphCount: number;
+  index: number;
+  shimmer: SharedValue<number>;
+}) {
+  const animatedStyle = useAnimatedStyle(() => {
+    const position = (shimmer.value * (glyphCount + (shimmerTrailLength * 2))) - shimmerTrailLength;
+    const distance = Math.abs(index - position);
+    return {
+      opacity: interpolate(distance, [0, shimmerTrailLength], [1, 0.3], Extrapolation.CLAMP),
+    };
+  });
+
+  return (
+    <Reanimated.Text accessible={false} style={[{ color }, animatedStyle]}>
+      {glyph}
+    </Reanimated.Text>
+  );
+}
+
+function ShimmeringStatusText({
+  active,
+  color,
+  label,
+}: {
+  active: boolean;
+  color: string;
+  label: string;
+}) {
+  const reduceMotion = useReducedMotion();
+  const shimmer = useSharedValue(0);
+
+  useEffect(() => {
+    if (!active || reduceMotion) {
+      cancelAnimation(shimmer);
+      shimmer.value = 0;
+      return;
+    }
+
+    shimmer.value = withRepeat(
+      withSequence(
+        withTiming(1, {
+          duration: motion.duration.statusShimmerSweep,
+          easing: Easing.linear,
+        }),
+        withDelay(motion.duration.statusShimmerPause, withTiming(0, { duration: 0 })),
+      ),
+      -1,
+    );
+    return () => cancelAnimation(shimmer);
+  }, [active, reduceMotion, shimmer]);
+
+  const glyphs = Array.from(label);
+
+  return (
+    <Reanimated.View
+      entering={reduceMotion ? undefined : FadeIn.duration(motion.duration.standard)}
+      style={styles.statusTitle}
+    >
+      {active && !reduceMotion ? (
+        <Text accessibilityLabel={label} accessibilityRole="header" style={styles.title}>
+          {glyphs.map((glyph, index) => (
+            <ShimmerGlyph
+              color={color}
+              glyph={glyph}
+              glyphCount={glyphs.length}
+              index={index}
+              key={`${index}-${glyph}`}
+              shimmer={shimmer}
+            />
+          ))}
+        </Text>
+      ) : (
+        <Text accessibilityRole="header" style={[styles.title, { color }]}>{label}</Text>
+      )}
+    </Reanimated.View>
+  );
+}
 
 function notificationsAllowed(status: Notifications.NotificationPermissionsStatus) {
   return status.granted ||
@@ -80,8 +205,6 @@ export default function ProgramBuildingScreen() {
   const isBuildPreview = __DEV__ && process.env.EXPO_PUBLIC_FLYNT_PREVIEW === 'program_building';
   const [phase, setPhase] = useState(isBuildPreview ? 'building_guides' : appState?.build?.phase ?? 'queued');
   const [progress, setProgress] = useState(isBuildPreview ? 64 : 4);
-  const [completed, setCompleted] = useState<number | null>(isBuildPreview ? 7 : null);
-  const [total, setTotal] = useState<number | null>(isBuildPreview ? 11 : null);
   const [notificationState, setNotificationState] = useState<NotificationState>('idle');
   const notificationRequested = useRef(false);
   const completionNotificationSent = useRef(false);
@@ -131,8 +254,6 @@ export default function ProgramBuildingScreen() {
         if (!active) return;
         setPhase(status.build?.phase ?? (status.ready ? 'complete' : 'queued'));
         setProgress(Math.round(status.progress.percent));
-        setCompleted(status.progress.completed);
-        setTotal(status.progress.total);
         if (status.ready) {
           await announceCompletion();
           if (active) await refresh();
@@ -158,7 +279,7 @@ export default function ProgramBuildingScreen() {
   const notificationLabel = notificationState === 'requesting'
     ? 'Turning on notifications…'
     : notificationState === 'ready'
-      ? 'We’ll notify you when it’s ready'
+      ? 'We’ll notify you when it’s ready!'
       : notificationState === 'denied'
         ? 'Notifications are off in Settings'
         : notificationState === 'error'
@@ -166,16 +287,20 @@ export default function ProgramBuildingScreen() {
           : 'Notify me when it’s ready';
 
   const currentPhase = phaseCopy[phase] ?? phaseCopy.building_guides;
-  const phaseDetail = phase === 'building_guides' && total !== null && completed !== null
-    ? `${currentPhase} · ${completed} of ${total}`
-    : currentPhase;
 
   return (
     <AppScreen scrollable={false} testID="screen-program-building">
       <View style={styles.content}>
         <View style={styles.copy}>
-          <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>Building your program</Text>
-          <Text style={[styles.phase, { color: theme.muted }]}>{phaseDetail}</Text>
+          <ShimmeringStatusText
+            active={phase !== 'complete'}
+            color={theme.ink}
+            key={phase}
+            label={currentPhase.title}
+          />
+          {currentPhase.detail ? (
+            <Text style={[styles.phase, { color: theme.muted }]}>{currentPhase.detail}</Text>
+          ) : null}
         </View>
 
         <View
@@ -187,25 +312,28 @@ export default function ProgramBuildingScreen() {
           <ProgramProgressRing progress={progress} tint={theme.ink} track={theme.line} />
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          disabled={notificationState === 'requesting' || notificationState === 'ready' || notificationState === 'denied'}
-          onPress={() => void notifyWhenReady()}
-          style={({ pressed }) => [
-            styles.notifyButton,
-            {
-              backgroundColor: notificationState === 'ready' ? theme.card : theme.primaryFill,
-              opacity: pressed ? 0.78 : 1,
-            },
-          ]}
-        >
-          <Text style={[
-            styles.notifyLabel,
-            { color: notificationState === 'ready' ? theme.ink : theme.primaryText },
-          ]}>
-            {notificationLabel}
-          </Text>
-        </Pressable>
+        {notificationState === 'ready' ? (
+          <View accessibilityLiveRegion="polite" style={styles.notifyStatus}>
+            <Text style={[styles.notifyLabel, { color: theme.ink }]}>{notificationLabel}</Text>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            disabled={notificationState === 'requesting' || notificationState === 'denied'}
+            onPress={() => void notifyWhenReady()}
+            style={({ pressed }) => [
+              styles.notifyButton,
+              {
+                backgroundColor: theme.primaryFill,
+                opacity: pressed ? 0.78 : 1,
+              },
+            ]}
+          >
+            <Text style={[styles.notifyLabel, { color: theme.primaryText }]}>
+              {notificationLabel}
+            </Text>
+          </Pressable>
+        )}
       </View>
     </AppScreen>
   );
@@ -229,13 +357,22 @@ const styles = StyleSheet.create({
   },
   progressRing: { width: progressRingSize, height: progressRingSize, alignItems: 'center', justifyContent: 'center' },
   progressValue: { position: 'absolute', fontSize: 23, lineHeight: 28, fontWeight: '400', fontVariant: ['tabular-nums'] },
-  copy: { alignItems: 'center', maxWidth: 330 },
-  title: { ...type.body, fontSize: 16, lineHeight: 21, textAlign: 'center' },
+  copy: { alignItems: 'center', maxWidth: progressCopyWidth },
+  statusTitle: { width: progressCopyWidth, alignItems: 'center' },
+  title: { ...type.body, width: progressCopyWidth, fontSize: 16, lineHeight: 21, textAlign: 'center' },
   phase: { fontSize: 12, lineHeight: 17, marginTop: spacing.xxs, textAlign: 'center' },
   notifyButton: {
     minHeight: 52,
     minWidth: 280,
     borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 104,
+    paddingHorizontal: spacing.lg,
+  },
+  notifyStatus: {
+    minHeight: 52,
+    minWidth: 280,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 104,

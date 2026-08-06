@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { IMessage, MessageProps } from '@kesha-antonov/react-native-chat';
 
 import { AppScreen, AppScreenHero, appSurfaceStyles, appTopbarHeight } from '@/components/app-surface';
@@ -10,10 +10,11 @@ import {
   flyntAthlete,
   flyntTrainer,
 } from '@/components/flynt-chat-thread';
-import { TrainerChatInputToolbar } from '@/components/trainer-composer-accessory';
+import { FlyntChatInputToolbar } from '@/components/trainer-composer-accessory';
 import { appSurfaces, radius, spacing } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { programChangeOperationDescription, programChangeReviews, textFromTrainerMessage } from '@/features/trainer-messages';
+import { trainerComposerMaximumHeight } from '@/lib/composer-layout';
 import { useTrainerConversation } from '@/providers/trainer-conversation-provider';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 
@@ -31,9 +32,23 @@ type TrainerChatMessage = IMessage & {
 export default function TrainerScreen() {
   const { mode, theme } = useFlyntTheme();
   const { appState } = useLifecycleNavigation();
-  const { canRetry, choosePrompt, composerHeight, dismissError, error, respondingToolCallId, respondToChange, retry, sending, sentMessages } = useTrainerConversation();
+  const {
+    canRetry,
+    choosePrompt,
+    composerHeight,
+    dismissError,
+    error,
+    message,
+    respondingToolCallId,
+    respondToChange,
+    retry,
+    send,
+    sending,
+    sentMessages,
+    setComposerHeight,
+    setMessage,
+  } = useTrainerConversation();
   const itemBackground = appSurfaces[mode].itemBackground;
-  const supportsNativeTabAccessory = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26;
   const firstName = appState?.profile.fullName.trim().split(/\s+/)[0] || null;
   const currentDayIndex = Math.min(6, Math.max(0, new Date().getDay() === 0 ? 6 : new Date().getDay() - 1));
   const today = appState?.program?.[currentDayIndex];
@@ -148,11 +163,22 @@ export default function TrainerScreen() {
       <AppScreen contentExtendsUnderTopbar scrollable={false} testID="screen-trainer">
         <FlyntChatThread<TrainerChatMessage>
           extendsUnderStatusBar
-          hasExternalComposer={supportsNativeTabAccessory}
           header={<AppScreenHero eyebrow="YOUR COACH" intro="Ask about today, your plan, or an adjustment you need." title="Trainer" />}
           messages={messages}
           renderChatFooter={renderError}
-          renderInputToolbar={() => supportsNativeTabAccessory ? null : <TrainerChatInputToolbar />}
+          renderInputToolbar={() => (
+            <FlyntChatInputToolbar
+              accessibilityLabel="Message Trainer"
+              composerHeight={composerHeight}
+              disabled={sending}
+              maximumHeight={trainerComposerMaximumHeight}
+              message={message}
+              onChangeMessage={setMessage}
+              onComposerHeightChange={setComposerHeight}
+              onSend={send}
+              placeholder="Ask Trainer"
+            />
+          )}
           renderMessage={renderMessage}
           scrollRevision={composerHeight}
           sending={sending}

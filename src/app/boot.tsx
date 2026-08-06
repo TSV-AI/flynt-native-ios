@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { appSurfaces, radius, spacing, type } from '@/constants/theme';
@@ -22,6 +22,8 @@ export default function BootScreen() {
   const { bootError, phase, retry, signOut } = useLifecycleNavigation();
   const isLoading = phase === 'loading';
 
+  if (isLoading) return null;
+
   async function openSettings() {
     router.push('/settings');
   }
@@ -32,43 +34,34 @@ export default function BootScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: appSurfaces[mode].primaryBackground }]} testID="screen-authoritative-boot">
+    <View style={[styles.screen, { backgroundColor: appSurfaces[mode].primaryBackground }]} testID="screen-authoritative-boot-error">
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.copy}>
           <Text style={[styles.eyebrow, { color: theme.muted }]}>FLYNT</Text>
-          <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>
-            {isLoading ? 'Loading your training.' : 'Your training did not load.'}
-          </Text>
-          <Text style={[styles.body, { color: theme.muted }]}>
-            {isLoading
-              ? 'Checking your account and latest program state.'
-              : failureCopy[bootError?.kind ?? 'unknown']}
-          </Text>
-          {isLoading ? <ActivityIndicator color={theme.ink} size="small" style={styles.spinner} /> : null}
+          <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>Your training did not load.</Text>
+          <Text style={[styles.body, { color: theme.muted }]}>{failureCopy[bootError?.kind ?? 'unknown']}</Text>
         </View>
 
-        {!isLoading ? (
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                retry();
-              }}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                { backgroundColor: theme.primaryFill, opacity: pressed ? 0.82 : 1 },
-              ]}
-            >
-              <Text style={[styles.primaryButtonText, { color: theme.primaryText }]}>Try again</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={openSettings} style={styles.textButton}>
-              <Text style={[styles.textButtonCopy, { color: theme.ink }]}>Settings</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={leaveAccount} style={styles.textButton}>
-              <Text style={[styles.textButtonCopy, { color: theme.danger }]}>Sign out</Text>
-            </Pressable>
-          </View>
-        ) : null}
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              retry();
+            }}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: theme.primaryFill, opacity: pressed ? 0.82 : 1 },
+            ]}
+          >
+            <Text style={[styles.primaryButtonText, { color: theme.primaryText }]}>Try again</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={openSettings} style={styles.textButton}>
+            <Text style={[styles.textButtonCopy, { color: theme.ink }]}>Settings</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={leaveAccount} style={styles.textButton}>
+            <Text style={[styles.textButtonCopy, { color: theme.danger }]}>Sign out</Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -81,7 +74,6 @@ const styles = StyleSheet.create({
   eyebrow: { ...type.label },
   title: { ...type.title, maxWidth: 350 },
   body: { ...type.body, maxWidth: 360 },
-  spinner: { alignSelf: 'flex-start', marginTop: spacing.xs },
   actions: { gap: spacing.xs },
   primaryButton: {
     minHeight: 56,

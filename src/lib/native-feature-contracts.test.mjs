@@ -175,19 +175,52 @@ test('Trainer uses the maintained native chat shell and native Markdown response
   assert.match(consultationSource, /topInset=\{appTopbarHeight\}/);
   assert.match(consultationSource, /<FlyntAssistantMessage markdown=\{currentMessage\.text\}/);
   assert.match(composerSource, /onContentSizeChange/);
+  assert.match(composerSource, /boundedComposerHeight\(event\.nativeEvent\.contentSize\.height, maximumHeight\)/);
+  assert.match(composerSource, /sendTarget: \{ position: 'absolute'/);
+  assert.match(screenSource, /renderInputToolbar=\{\(\) => \([\s\S]*<FlyntChatInputToolbar/);
+  assert.match(screenSource, /maximumHeight=\{trainerComposerMaximumHeight\}/);
+  const composerLayout = await readFile(new URL('./composer-layout.ts', import.meta.url), 'utf8');
+  assert.match(composerLayout, /trainerComposerMaximumHeight = 132/);
   assert.match(consultationSource, /consultationComposerMaximumHeight/);
   assert.match(consultationSource, /consultationIsReadyForReview/);
   assert.match(consultationSource, /userTurns <= 5 \|\| readyForReview/);
   assert.doesNotMatch(screenSource, /<FlatList/);
   assert.doesNotMatch(screenSource, /scrollToEnd/);
   assert.doesNotMatch(screenSource, /coachBubble/);
-  assert.match(tabsSource, /<NativeTabs\.BottomAccessory>[\s\S]*<TrainerComposerSurface \/>/);
-  assert.doesNotMatch(tabsSource, /<NativeTabs\.BottomAccessory>[\s\S]*<TrainerChatInputToolbar \/>/);
+  assert.doesNotMatch(tabsSource, /TrainerComposerSurface/);
+  assert.match(tabsSource, /!isTrainer && timer && timer\.seconds > 0 && !isExpanded/);
+  assert.match(tabsSource, /nativeContainerStyle: tabContentStyle/);
+  assert.equal((tabsSource.match(/contentStyle=\{tabContentStyle\}/g) ?? []).length, 4);
 });
 
 test('shared tab pages match Today with an open leading top bar', async () => {
   const source = await readFile(new URL('../components/app-surface.tsx', import.meta.url), 'utf8');
+  const plan = await readFile(new URL('../app/(tabs)/plan.tsx', import.meta.url), 'utf8');
+  const today = await readFile(new URL('../components/native-today-workout.tsx', import.meta.url), 'utf8');
+  const theme = await readFile(new URL('../constants/theme.ts', import.meta.url), 'utf8');
+
   assert.match(source, /topbarPlaceholder/);
+  assert.match(source, /export function AppScreenTopbar/);
+  assert.match(plan, /<AppScreen contentExtendsUnderTopbar/);
+  assert.match(today, /<AppScreenTopbar/);
+  assert.match(today, /buttonStyle\('glass'\)/);
+  assert.match(today, /controlSize\('large'\)/);
+  assert.match(today, /labelStyle\('iconOnly'\)/);
+  assert.doesNotMatch(today, /topbarMenuDecoration|glassEffect\(/);
+  assert.match(today, /workoutSaveState === 'saving'/);
+  const todayScreen = await readFile(new URL('../app/(tabs)/today.tsx', import.meta.url), 'utf8');
+  assert.match(todayScreen, /motion\.duration\.deliberate - \(Date\.now\(\) - startedAt\)/);
+  const nativeSymbol = await readFile(new URL('../components/native-symbol.tsx', import.meta.url), 'utf8');
+  assert.match(nativeSymbol, /effect: 'drawOn'/);
+  assert.match(nativeSymbol, /repeat: 'nonRepeating'/);
+  assert.match(today, /ignoreSafeArea\(\{ regions: 'container', edges: 'top' \}\)/);
+  assert.match(theme, /darkCanvas: '#141414'/);
+  assert.match(theme, /todayBackground: palette\.darkCanvas/);
+  assert.match(theme, /edgeScrim: 'rgba\(20,20,20,0\.92\)'/);
+  assert.match(theme, /todayEdgeScrim: 'rgba\(20,20,20,0\.92\)'/);
+  assert.doesNotMatch(plan, /backgroundColor: itemBackground|borderBottomWidth/);
+  assert.match(plan, /day\.shortDay\.slice\(0, 1\)/);
+  assert.match(plan, /fontSize: 17, lineHeight: 22, fontWeight: '600'/);
   assert.doesNotMatch(source, /flynt-mark/);
 });
 
@@ -267,6 +300,18 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   const firstRun = await readFile(new URL('./first-run.ts', import.meta.url), 'utf8');
   assert.match(firstRun, /new File\(Paths\.document/);
   assert.doesNotMatch(firstRun, /SecureStore/);
+  assert.match(account, /if \(authMode === 'create' && !recoveryMode\) \{\s*await refresh\(\);\s*return;/);
+});
+
+test('session resolution stays behind the native launch screen', async () => {
+  const rootLayout = await readFile(new URL('../app/_layout.tsx', import.meta.url), 'utf8');
+  const boot = await readFile(new URL('../app/boot.tsx', import.meta.url), 'utf8');
+
+  assert.match(rootLayout, /SplashScreen\.preventAutoHideAsync\(\)/);
+  assert.match(rootLayout, /phase !== 'loading'[\s\S]*SplashScreen\.hideAsync\(\)/);
+  assert.match(boot, /if \(isLoading\) return null/);
+  assert.doesNotMatch(boot, /Loading your training|Checking your account and latest program state/);
+  assert.match(boot, /screen-authoritative-boot-error/);
 });
 
 test('program building reports real progress and asks for notifications in context', async () => {
@@ -280,9 +325,21 @@ test('program building reports real progress and asks for notifications in conte
   assert.match(screen, /strokeDashoffset=\{progressOffset\}/);
   assert.match(screen, /strokeWidth=\{progressRingStroke\}/);
   assert.match(screen, /<Circle cx=\{markerX\} cy=\{markerY\}/);
+  assert.match(screen, /Reviewing your goals and limitations/);
+  assert.match(screen, /Structuring your training week/);
+  assert.match(screen, /Selecting exercises for you/);
+  assert.match(screen, /Programming each movement/);
+  assert.match(screen, /Balancing training and recovery/);
+  assert.match(screen, /Checking every session/);
+  assert.match(screen, /ShimmerGlyph/);
+  assert.match(screen, /interpolate\(distance/);
+  assert.match(screen, /useReducedMotion/);
   assert.doesNotMatch(screen, /Built around you/);
   assert.match(screen, /Notifications\.requestPermissionsAsync/);
   assert.match(screen, /Notify me when it’s ready/);
+  assert.match(screen, /We’ll notify you when it’s ready!/);
+  assert.doesNotMatch(screen, /of \$\{total\} movement guides/);
+  assert.match(screen, /notificationState === 'ready' \? \(\s*<View accessibilityLiveRegion="polite"/);
   assert.doesNotMatch(screen, /LifecyclePlaceholder/);
   assert.match(api, /requestJson\('\/api\/program\/status'/);
   assert.match(rootLayout, /Notifications\.setNotificationHandler/);
@@ -294,7 +351,7 @@ test('exercise media and entry controls share the approved semantic surface', as
   const today = await readFile(new URL('../components/native-today-workout.tsx', import.meta.url), 'utf8');
   const editor = await readFile(new URL('../components/workout-editor-sheet.tsx', import.meta.url), 'utf8');
 
-  assert.match(theme, /exerciseSurface: '#DEDDDA'/);
+  assert.match(theme, /exerciseSurface: '#D4D3D0'/);
   assert.match(today, /appSurfaces\[mode\]\.exerciseSurface/);
   assert.match(today, /sheetInput = mode === 'dark' \? '#282828' : appSurfaces\.light\.exerciseSurface/);
   assert.match(today, /mediaBackground = mode === 'dark' \? exerciseEntryBackground : appSurfaces\.light\.exerciseSurface/);

@@ -100,8 +100,8 @@ export function FlyntChatThread<TMessage extends IMessage>({
   }, [hasExternalComposer, mode, renderInputToolbar, scrollRevision]);
 
   const composerClearance = typeof scrollRevision === 'number'
-    ? scrollRevision + spacing.hero
-    : spacing.hero + 44;
+    ? scrollRevision + spacing.hero + spacing.xxl
+    : spacing.hero + spacing.xxl + 44;
   const listEndClearance = hasExternalComposer ? spacing.hero : composerClearance;
   const listTopInset = topInset + (extendsUnderStatusBar ? insets.top : 0);
 
@@ -154,7 +154,7 @@ export function FlyntUserMessage({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  messagesContainer: { flex: 1 },
+  messagesContainer: { flex: 1, marginHorizontal: 12 },
   conversationContent: {
     flexGrow: 1,
     gap: spacing.lg,

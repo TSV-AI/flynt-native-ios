@@ -97,7 +97,7 @@ function authErrorCopy(
 
 export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
   const { mode: colorMode, theme } = useFlyntTheme();
-  const { retry } = useLifecycleNavigation();
+  const { refresh, retry } = useLifecycleNavigation();
   const [authMode, setAuthMode] = useState<EmailAuthMode>(mode);
   const [email, setEmail] = useState('');
   const [emailOpen, setEmailOpen] = useState(false);
@@ -168,6 +168,10 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
       }
     }
     await saved();
+    if (authMode === 'create' && !recoveryMode) {
+      await refresh();
+      return;
+    }
     retry();
     router.replace('/boot');
   }
