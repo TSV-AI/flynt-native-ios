@@ -90,9 +90,9 @@ export function FlyntSheetCard({ children, mode: requestedMode, style }: PropsWi
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  header: { minHeight: 82, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: 18, paddingTop: spacing.xs },
+  header: { minHeight: 94, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: 18, paddingTop: spacing.md, paddingBottom: spacing.xs },
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -8 },
-  headerCopy: { flex: 1, minWidth: 0 },
+  headerCopy: { flex: 1, minWidth: 0, paddingBottom: spacing.xxs },
   eyebrow: { marginBottom: 5, fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.3 },
   title: { fontSize: 28, lineHeight: 33, fontWeight: '600', letterSpacing: -0.9 },
   scrollContent: { flexGrow: 1, width: '100%' },

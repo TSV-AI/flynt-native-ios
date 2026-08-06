@@ -1876,6 +1876,46 @@ rewriting the workout application.
 
 ## Friend-ready native release gates
 
+## 2026-08-06 TestFlight feedback pass
+
+- Implemented a native wheel load selector for workout set logging and the
+  workout editor target load. Workout set load changes are committed once when
+  the person confirms or closes the selector, avoiding a request for every
+  wheel movement.
+- Increased workout rep decrement and increment targets to 52 by 52 points.
+- Preserved exercise sheet content through native dismissal to harden the
+  intermittent close crash reported from TestFlight. The crash was not
+  reproduced locally, so physical-device confirmation remains required.
+- Added stable Trainer and consultation composer outlines before the first
+  message.
+- Consultation now explains the free-form conversation model, presents choices
+  as typical responses, and sends a tapped response immediately. The client no
+  longer renders a competing question above server-authored conversation text.
+- Reduced consultation composer clearance and aligned review checkmarks with
+  the first line of each item.
+- Added visible in-button progress for Apple and Google account entry.
+- Added Spotify App Remote foreground reconnect scheduling to avoid the race
+  between the inactive disconnect callback and the active callback. This is
+  implemented and simulator-compiled, but Spotify behavior still requires a
+  physical iPhone with the Spotify app.
+- Program build progress now refreshes immediately when the app returns to the
+  foreground. TestFlight notification delivery was confirmed by the tester and
+  is not tracked as a defect.
+- Verified locally: TypeScript, focused ESLint, feature contracts, auth tests,
+  boot tests, navigation tests, copy rules, whitespace checks, and an iPhone 17e
+  Simulator native build and launch. Simulator interaction confirmed immediate
+  consultation choice submission and the revised dark consultation layout.
+- Still required for this pass: physical TestFlight checks for Spotify
+  continuity, provider progress during real Apple and Google authentication,
+  repeated exercise-sheet dismissal, workout load persistence, light
+  appearance, Dynamic Type, VoiceOver order, Reduce Motion, and Reduce
+  Transparency.
+- Design evidence: official Apple Human Interface Guidelines pages for Buttons,
+  Text Fields, Sheets, Progress Indicators, Layout, and Accessibility were
+  consulted. The native wheel and shared-sheet implementation follows
+  `docs/APPLE_HIG_BASELINE.md` and `docs/INTERACTION_SYSTEM.md`. Choice wording
+  and composer spacing are FLYNT product decisions.
+
 ### P0 | Must pass before any friend receives the native app
 
 - [ ] A fresh install can create an account, accept current legal terms, complete consultation, review the captured information, and start one program build.

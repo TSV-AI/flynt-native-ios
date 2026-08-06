@@ -276,7 +276,13 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
           <View style={[styles.actions, (emailOpen || recoveryMode || sentTo) && styles.focusedEmailActions]}>
             {!recoveryMode && !emailOpen && !sentTo ? (
               isAppleAvailable ? (
-                <View pointerEvents={providerDisabled ? 'none' : 'auto'} style={{ opacity: providerDisabled ? 0.48 : 1 }}>
+                <View
+                  accessibilityLabel={pending === 'apple' ? 'Signing in with Apple' : undefined}
+                  accessibilityLiveRegion={pending === 'apple' ? 'polite' : 'none'}
+                  accessibilityRole={pending === 'apple' ? 'progressbar' : undefined}
+                  pointerEvents={providerDisabled ? 'none' : 'auto'}
+                  style={[styles.appleButtonFrame, { opacity: providerDisabled && pending !== 'apple' ? 0.48 : 1 }]}
+                >
                   <AppleAuthentication.AppleAuthenticationButton
                     buttonStyle={colorMode === 'dark'
                       ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
@@ -286,6 +292,11 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
                     onPress={() => void runProvider('apple')}
                     style={styles.appleButton}
                   />
+                  {pending === 'apple' ? (
+                    <View pointerEvents="none" style={[styles.appleProgress, { backgroundColor: theme.primaryFill }]}>
+                      <ActivityIndicator color={theme.primaryText} />
+                    </View>
+                  ) : null}
                 </View>
               ) : null
             ) : null}
@@ -293,6 +304,7 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
             {!recoveryMode && !emailOpen && !sentTo ? (
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{ busy: pending === 'google', disabled: providerDisabled }}
                 disabled={providerDisabled}
                 onPress={() => void runProvider('google')}
                 style={({ pressed }) => [
@@ -600,7 +612,9 @@ const styles = StyleSheet.create({
   accountCopy: { alignSelf: 'center', maxWidth: 310, marginTop: spacing.lg, textAlign: 'center', fontSize: 15, lineHeight: 22 },
   actions: { gap: 11, marginTop: 'auto', paddingTop: spacing.xl, paddingBottom: 42 },
   focusedEmailActions: { paddingBottom: 96 },
+  appleButtonFrame: { position: 'relative', width: '100%', height: 58, borderRadius: 18, overflow: 'hidden' },
   appleButton: { width: '100%', height: 58 },
+  appleProgress: { position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' },
   providerButton: { position: 'relative', minHeight: 58, borderCurve: 'continuous', borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   providerButtonCopy: { ...type.button, fontSize: 15 },
   googleButtonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

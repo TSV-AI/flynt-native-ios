@@ -101,7 +101,7 @@ export function FlyntChatComposerSurface({
 }
 
 export function FlyntChatInputToolbar(props: Parameters<typeof FlyntChatComposerSurface>[0]) {
-  const { mode } = useFlyntTheme();
+  const { mode, theme } = useFlyntTheme();
   const reduceTransparency = useReduceTransparency();
   const composer = <FlyntChatComposerSurface {...props} />;
   const lift = mode === 'light' ? styles.lightToolbarLift : null;
@@ -110,7 +110,7 @@ export function FlyntChatInputToolbar(props: Parameters<typeof FlyntChatComposer
     return (
       <View style={styles.toolbarFrame}>
         <View style={lift}>
-          <GlassView colorScheme={mode} glassEffectStyle="regular" isInteractive style={styles.glassHost}>
+          <GlassView colorScheme={mode} glassEffectStyle="regular" isInteractive style={[styles.glassHost, { borderColor: theme.line }]}>
             {composer}
           </GlassView>
         </View>
@@ -121,7 +121,7 @@ export function FlyntChatInputToolbar(props: Parameters<typeof FlyntChatComposer
   return (
     <View style={styles.toolbarFrame}>
       <View style={lift}>
-        <View style={[styles.glassHost, { backgroundColor: mode === 'dark' ? '#222222' : '#F2F2F1' }]}>
+        <View style={[styles.glassHost, { backgroundColor: mode === 'dark' ? '#222222' : '#F2F2F1', borderColor: theme.line }]}>
           {composer}
         </View>
       </View>
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
   },
-  glassHost: { borderRadius: 22, overflow: 'hidden' },
+  glassHost: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   input: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, fontSize: 16, lineHeight: 21, paddingHorizontal: spacing.xxs, paddingVertical: 11 },
   sendTarget: { position: 'absolute', right: 8, bottom: 0, width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
   sendVisual: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18 },

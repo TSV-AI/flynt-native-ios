@@ -8,6 +8,7 @@ import {
   Image as SwiftUIImage,
   List,
   Menu,
+  Picker,
   ProgressView,
   RNHostView,
   ScrollView,
@@ -50,6 +51,7 @@ import {
   opacity,
   offset,
   padding,
+  pickerStyle,
   presentationBackground,
   presentationBackgroundInteraction,
   presentationDetents,
@@ -59,6 +61,7 @@ import {
   shapes,
   strokeBorder,
   tabViewStyle,
+  tag,
   textFieldStyle,
   tint,
 } from '@expo/ui/swift-ui/modifiers';
@@ -77,6 +80,7 @@ import { appSurfaces, spacing, type ColorMode, type Theme } from '@/constants/th
 import type { PreviewDay, PreviewExercise } from '@/features/app-preview-data';
 import { getExerciseArtwork } from '@/features/exercise-artwork';
 import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
+import { formatLoad, loadPickerOptions, normalizedLoad } from '@/lib/load-picker';
 import { useModalPresentation } from '@/providers/modal-presentation-provider';
 import { useRestTimer } from '@/providers/rest-timer-provider';
 import type { WorkoutSetEntry } from '@/providers/workout-data-provider';
@@ -127,7 +131,7 @@ type NativeSetRowProps = {
   inputColor: string;
   onToggle: () => void;
   onRepsChange: (value: string, immediate?: boolean) => void;
-  onWeightChange: (value: string, immediate?: boolean) => void;
+  onChooseLoad: () => void;
   outlineColor: string;
   prescribedReps: string;
   reps: string;
@@ -206,8 +210,7 @@ function ExerciseArtwork({
   );
 }
 
-function NativeSetRow({ checked, exerciseName, index, inputColor, onRepsChange, onToggle, onWeightChange, outlineColor, prescribedReps, reps: initialReps, theme, weight: initialWeight }: NativeSetRowProps) {
-  const weight = useNativeState(initialWeight);
+function NativeSetRow({ checked, exerciseName, index, inputColor, onChooseLoad, onRepsChange, onToggle, outlineColor, prescribedReps, reps: initialReps, theme, weight: initialWeight }: NativeSetRowProps) {
   const reps = useNativeState(initialReps || prescribedReps);
   const adjustReps = (change: number) => {
     const currentReps = Number.parseInt(reps.get(), 10);
@@ -215,18 +218,6 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onRepsChange, 
     reps.set(String(nextReps));
     onRepsChange(String(nextReps));
   };
-  const fieldModifiers = [
-    frame({ width: 88, height: 44 }),
-    textFieldStyle('plain' as const),
-    keyboardType('decimal-pad' as const),
-    multilineTextAlignment('center' as const),
-    foregroundStyle(theme.ink),
-    font({ textStyle: 'body', weight: 'semibold' }),
-    monospacedDigit(),
-    background(inputColor, shapes.capsule()),
-    strokeBorder({ color: outlineColor, style: { lineWidth: 0.5 }, shape: 'capsule' }),
-  ];
-
   return (
     <VStack modifiers={[padding({ vertical: spacing.xxs })]}>
       <HStack
@@ -235,23 +226,26 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onRepsChange, 
           frame({ minHeight: 56, maxWidth: 1000 }),
         ]}
       >
-        <TextField
-          onFocusChange={(focused) => {
-            if (!focused) onWeightChange(weight.get(), true);
-          }}
-          onTextChange={onWeightChange}
-          placeholder="–"
-          text={weight}
+        <Button
+          onPress={onChooseLoad}
           modifiers={[
-            ...fieldModifiers,
-            accessibilityLabel(`${exerciseName} set ${index + 1} load in pounds`),
+            buttonStyle('plain'),
+            frame({ width: 88, height: 44 }),
+            background(inputColor, shapes.capsule()),
+            strokeBorder({ color: outlineColor, style: { lineWidth: 0.5 }, shape: 'capsule' }),
+            accessibilityLabel(`${exerciseName} set ${index + 1} load, ${initialWeight || 'not set'}`),
+            accessibilityHint('Opens the load selector'),
           ]}
-        />
+        >
+          <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.ink), monospacedDigit()]}>
+            {initialWeight || '–'}
+          </NativeText>
+        </Button>
         <Spacer minLength={12} />
         <HStack
           spacing={0}
           modifiers={[
-            frame({ width: 132, height: 44 }),
+            frame({ width: 148, height: 52 }),
             background(inputColor, shapes.capsule()),
             strokeBorder({ color: outlineColor, style: { lineWidth: 0.5 }, shape: 'capsule' }),
           ]}
@@ -260,7 +254,7 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onRepsChange, 
             onPress={() => adjustReps(-1)}
             modifiers={[
               buttonStyle('plain'),
-              frame({ width: 44, height: 44 }),
+              frame({ width: 52, height: 52 }),
               accessibilityLabel(`Decrease ${exerciseName} set ${index + 1} reps`),
             ]}
           >
@@ -274,7 +268,7 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onRepsChange, 
             placeholder="–"
             text={reps}
             modifiers={[
-              frame({ width: 44, height: 44 }),
+              frame({ width: 44, height: 52 }),
               textFieldStyle('plain'),
               keyboardType('ascii-capable-number-pad'),
               multilineTextAlignment('center'),
@@ -288,7 +282,7 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onRepsChange, 
             onPress={() => adjustReps(1)}
             modifiers={[
               buttonStyle('plain'),
-              frame({ width: 44, height: 44 }),
+              frame({ width: 52, height: 52 }),
               accessibilityLabel(`Increase ${exerciseName} set ${index + 1} reps`),
             ]}
           >
@@ -403,6 +397,7 @@ function ExerciseSheetContent({
   mediaWidth,
   onAdvance,
   onClose,
+  onChooseLoad,
   onOpenStats,
   onToggleSet,
   onUpdateSet,
@@ -420,6 +415,7 @@ function ExerciseSheetContent({
   mediaWidth: number;
   onAdvance: () => void;
   onClose: () => void;
+  onChooseLoad: (setIndex: number) => void;
   onOpenStats: () => void;
   onToggleSet: (exerciseIndex: number, setIndex: number) => void;
   onUpdateSet: (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>, immediate?: boolean) => void;
@@ -452,7 +448,7 @@ function ExerciseSheetContent({
           modifiers={[
             padding({
               horizontal: spacing.lg,
-              top: spacing.lg,
+              top: spacing.xl,
               bottom: activeRest ? spacing.hero + spacing.xl : spacing.xl,
             }),
           ]}
@@ -481,7 +477,7 @@ function ExerciseSheetContent({
           <VStack
             alignment="leading"
             spacing={spacing.md}
-            modifiers={[padding({ top: spacing.lg, bottom: spacing.lg })]}
+            modifiers={[padding({ top: spacing.xl, bottom: spacing.lg })]}
           >
             {artwork ? (
               <ExerciseArtwork
@@ -558,9 +554,9 @@ function ExerciseSheetContent({
               exerciseName={exercise.name}
               index={setIndex}
               inputColor={input}
+              onChooseLoad={() => onChooseLoad(setIndex)}
               onToggle={() => onToggleSet(exerciseIndex, setIndex)}
               onRepsChange={(reps, immediate) => onUpdateSet(exerciseIndex, setIndex, { reps }, immediate)}
-              onWeightChange={(weight, immediate) => onUpdateSet(exerciseIndex, setIndex, { weight }, immediate)}
               outlineColor={outline}
               prescribedReps={prescribedReps}
               reps={setEntries[setIndex]?.reps ?? prescribedReps}
@@ -613,6 +609,92 @@ function ExerciseSheetContent({
         </VStack>
       ) : null}
     </ZStack>
+  );
+}
+
+function LoadPickerPage({
+  exercise,
+  onBack,
+  onClose,
+  onSelect,
+  selectedLoad,
+  setIndex,
+  theme,
+}: {
+  exercise: PreviewExercise;
+  onBack: () => void;
+  onClose: () => void;
+  onSelect: (value: string) => void;
+  selectedLoad: string;
+  setIndex: number;
+  theme: Theme;
+}) {
+  const selectedValue = normalizedLoad(selectedLoad);
+  const loadOptions = loadPickerOptions(selectedLoad);
+
+  return (
+    <VStack
+      alignment="leading"
+      spacing={spacing.lg}
+      modifiers={[padding({ horizontal: spacing.lg, top: spacing.xl, bottom: spacing.xl })]}
+    >
+      <HStack alignment="top" spacing={12}>
+        <Button
+          onPress={onBack}
+          modifiers={[
+            buttonStyle('glass'),
+            buttonBorderShape('circle'),
+            frame({ width: 44, height: 44 }),
+            accessibilityLabel('Back to exercise'),
+          ]}
+        >
+          <SwiftUIImage color={theme.ink} size={17} systemName="chevron.left" />
+        </Button>
+        <VStack alignment="leading" spacing={6} modifiers={[frame({ maxWidth: 1000 })]}>
+          <NativeText modifiers={[font({ textStyle: 'title2', weight: 'semibold' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>
+            Choose load
+          </NativeText>
+          <NativeText modifiers={[font({ textStyle: 'footnote' }), foregroundStyle(theme.muted), fixedSize({ vertical: true })]}>
+            {exercise.name}, set {setIndex + 1}
+          </NativeText>
+        </VStack>
+        <Button
+          onPress={onClose}
+          modifiers={[
+            buttonStyle('glass'),
+            buttonBorderShape('circle'),
+            frame({ width: 44, height: 44 }),
+            accessibilityLabel('Close exercise'),
+          ]}
+        >
+          <SwiftUIImage color={theme.ink} size={17} systemName="xmark" />
+        </Button>
+      </HStack>
+      <Picker
+        label="Load in pounds"
+        modifiers={[pickerStyle('wheel'), frame({ maxWidth: 1000, height: 260 })]}
+        onSelectionChange={(value) => onSelect(String(value))}
+        selection={String(selectedValue)}
+      >
+        {loadOptions.map((value) => (
+          <NativeText key={value} modifiers={[tag(String(value))]}>{`${formatLoad(value)} lb`}</NativeText>
+        ))}
+      </Picker>
+      <Button
+        onPress={onBack}
+        modifiers={[
+          buttonStyle('borderedProminent'),
+          buttonBorderShape('capsule'),
+          frame({ minHeight: 52, maxWidth: 1000 }),
+          tint(theme.ink),
+          accessibilityLabel('Done choosing load'),
+        ]}
+      >
+        <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.primaryText)]}>
+          Done
+        </NativeText>
+      </Button>
+    </VStack>
   );
 }
 
@@ -752,7 +834,10 @@ export function NativeTodayWorkout({
   const reduceMotion = useReducedMotion();
   const reduceTransparency = useReduceTransparency();
   const { setModalPresented } = useModalPresentation();
-  const [sheetPage, setSheetPage] = useState<'exercise' | 'stats'>('exercise');
+  const [sheetPage, setSheetPage] = useState<'exercise' | 'load' | 'stats'>('exercise');
+  const [loadSetIndex, setLoadSetIndex] = useState(0);
+  const [loadDraft, setLoadDraft] = useState('');
+  const [visibleExerciseIndex, setVisibleExerciseIndex] = useState(-1);
   const contentWidth = width - 32;
   const editListHeight = Math.max(420, height - safeAreaInsets.top - 142);
   const daySelectorWidth = contentWidth - 8;
@@ -770,7 +855,10 @@ export function NativeTodayWorkout({
   const outline = mode === 'light' ? 'rgba(216,214,207,0.72)' : 'rgba(255,255,255,0.10)';
   const sheetPresented = selectedExercise >= 0 && selectedExercise < exercises.length;
   const finishingWorkout = !editingWorkout && workoutSaveState === 'saving';
-  const exercise = sheetPresented ? exercises[selectedExercise] : null;
+  const sheetExerciseIndex = sheetPresented ? selectedExercise : visibleExerciseIndex;
+  const exercise = sheetExerciseIndex >= 0 && sheetExerciseIndex < exercises.length
+    ? exercises[sheetExerciseIndex]
+    : null;
   const nextExerciseIndex = sheetPresented
     ? [
       ...exercises.slice(selectedExercise + 1).map((_, offset) => selectedExercise + 1 + offset),
@@ -813,7 +901,17 @@ export function NativeTodayWorkout({
 
   function selectExercise(index: number) {
     setSheetPage('exercise');
+    setVisibleExerciseIndex(index);
     onSelectExercise(index);
+  }
+
+  function finishChoosingLoad(closeSheet = false) {
+    onUpdateSet(sheetExerciseIndex, loadSetIndex, { weight: loadDraft }, true);
+    if (closeSheet) {
+      onSelectExercise(-1);
+      return;
+    }
+    setSheetPage('exercise');
   }
 
   const commonRow = [
@@ -1103,7 +1201,10 @@ export function NativeTodayWorkout({
           <BottomSheet
             isPresented={sheetPresented}
             modifiers={[environment('colorScheme', mode)]}
-            onDismiss={onExerciseSheetDismissed}
+            onDismiss={() => {
+              setSheetPage('exercise');
+              onExerciseSheetDismissed();
+            }}
             onIsPresentedChange={(presented) => {
               if (!presented) onSelectExercise(-1);
             }}
@@ -1125,9 +1226,9 @@ export function NativeTodayWorkout({
                     <TabView.Tab value="exercise">
                       <ExerciseSheetContent
                         advanceLabel={nextExerciseIndex === undefined ? 'Back to workout' : 'Next exercise'}
-                        completed={completed[selectedExercise]}
+                        completed={completed[sheetExerciseIndex] ?? 0}
                         exercise={exercise}
-                        exerciseIndex={selectedExercise}
+                        exerciseIndex={sheetExerciseIndex}
                         input={sheetInput}
                         isLarge
                         mediaBackground={mediaBackground}
@@ -1140,11 +1241,27 @@ export function NativeTodayWorkout({
                           selectExercise(nextExerciseIndex);
                         }}
                         onClose={() => onSelectExercise(-1)}
+                        onChooseLoad={(setIndex) => {
+                          setLoadSetIndex(setIndex);
+                          setLoadDraft(setEntries[sheetExerciseIndex]?.[setIndex]?.weight ?? '');
+                          setSheetPage('load');
+                        }}
                         onOpenStats={() => setSheetPage('stats')}
                         onToggleSet={onToggleSet}
                         onUpdateSet={onUpdateSet}
                         outline={outline}
-                        setEntries={setEntries[selectedExercise] ?? []}
+                        setEntries={setEntries[sheetExerciseIndex] ?? []}
+                        theme={theme}
+                      />
+                    </TabView.Tab>
+                    <TabView.Tab value="load">
+                      <LoadPickerPage
+                        exercise={exercise}
+                        onBack={() => finishChoosingLoad()}
+                        onClose={() => finishChoosingLoad(true)}
+                        onSelect={setLoadDraft}
+                        selectedLoad={loadDraft}
+                        setIndex={loadSetIndex}
                         theme={theme}
                       />
                     </TabView.Tab>

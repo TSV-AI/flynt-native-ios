@@ -16,6 +16,8 @@ final class FlyntSpotifyService: NSObject, SPTAppRemoteDelegate, SPTAppRemotePla
   private var latestPlayerState: (any SPTAppRemotePlayerState)?
   private var status = "unconfigured"
   private var errorMessage: String?
+  private var shouldMaintainConnection = false
+  private var reconnectWorkItem: DispatchWorkItem?
 
   private override init() {
     super.init()
@@ -46,11 +48,16 @@ final class FlyntSpotifyService: NSObject, SPTAppRemoteDelegate, SPTAppRemotePla
     let configuration = SPTConfiguration(clientID: cleanClientId, redirectURL: redirectURL)
     let remote = SPTAppRemote(configuration: configuration, logLevel: .error)
     remote.delegate = self
-    remote.connectionParameters.accessToken = readToken()
+    let storedToken = readToken()
+    remote.connectionParameters.accessToken = storedToken
     appRemote = remote
-    status = canOpenSpotify ? "disconnected" : "unavailable"
+    shouldMaintainConnection = storedToken != nil
+    status = canOpenSpotify ? (shouldMaintainConnection ? "connecting" : "disconnected") : "unavailable"
     errorMessage = nil
     publishState()
+    if shouldMaintainConnection {
+      scheduleReconnect()
+    }
   }
 
   func authorize(completion: @escaping (Bool) -> Void) {
@@ -60,6 +67,7 @@ final class FlyntSpotifyService: NSObject, SPTAppRemoteDelegate, SPTAppRemotePla
       return
     }
     status = "authorizing"
+    shouldMaintainConnection = true
     errorMessage = nil
     publishState()
     appRemote.authorizeAndPlayURI("") { [weak self] installed in
@@ -88,6 +96,7 @@ final class FlyntSpotifyService: NSObject, SPTAppRemoteDelegate, SPTAppRemotePla
       authorize { _ in }
       return
     }
+    shouldMaintainConnection = true
     status = "connecting"
     errorMessage = nil
     publishState()
@@ -95,6 +104,9 @@ final class FlyntSpotifyService: NSObject, SPTAppRemoteDelegate, SPTAppRemotePla
   }
 
   func disconnect() {
+    shouldMaintainConnection = false
+    reconnectWorkItem?.cancel()
+    reconnectWorkItem = nil
     appRemote?.disconnect()
     latestPlayerState = nil
     artworkColorHex = nil
@@ -126,8 +138,7 @@ final class FlyntSpotifyService: NSObject, SPTAppRemoteDelegate, SPTAppRemotePla
   }
 
   func applicationDidBecomeActive() {
-    guard let appRemote, !appRemote.isConnected, appRemote.connectionParameters.accessToken != nil else { return }
-    connect()
+    scheduleReconnect()
   }
 
   func applicationWillResignActive() {
@@ -172,6 +183,8 @@ final class FlyntSpotifyService: NSObject, SPTAppRemoteDelegate, SPTAppRemotePla
   }
 
   func appRemoteDidEstablishConnection(_ appRemote: SPTAppRemote) {
+    reconnectWorkItem?.cancel()
+    reconnectWorkItem = nil
     status = "connected"
     errorMessage = nil
     appRemote.playerAPI?.delegate = self
@@ -191,13 +204,31 @@ final class FlyntSpotifyService: NSObject, SPTAppRemoteDelegate, SPTAppRemotePla
   }
 
   func appRemote(_ appRemote: SPTAppRemote, didDisconnectWithError error: Error?) {
-    latestPlayerState = nil
-    artworkColorHex = nil
-    artworkPaletteHex = []
-    artworkDataUri = nil
-    status = error == nil ? "disconnected" : "error"
-    errorMessage = error?.localizedDescription
+    if shouldMaintainConnection && UIApplication.shared.applicationState == .active {
+      status = "connecting"
+      errorMessage = nil
+      scheduleReconnect()
+    } else {
+      status = error == nil ? "disconnected" : "error"
+      errorMessage = error?.localizedDescription
+    }
     publishState()
+  }
+
+  private func scheduleReconnect() {
+    guard shouldMaintainConnection,
+          canOpenSpotify,
+          appRemote?.connectionParameters.accessToken != nil else { return }
+    reconnectWorkItem?.cancel()
+    let workItem = DispatchWorkItem { [weak self] in
+      guard let self,
+            self.shouldMaintainConnection,
+            UIApplication.shared.applicationState == .active,
+            self.appRemote?.isConnected != true else { return }
+      self.connect()
+    }
+    reconnectWorkItem = workItem
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: workItem)
   }
 
   func playerStateDidChange(_ playerState: any SPTAppRemotePlayerState) {

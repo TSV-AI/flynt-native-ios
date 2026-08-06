@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import Reanimated, {
   cancelAnimation,
   Easing,
@@ -269,10 +269,18 @@ export default function ProgramBuildingScreen() {
       if (active) timeout = setTimeout(() => void poll(), 5000);
     };
 
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active' || !active) return;
+      if (timeout) clearTimeout(timeout);
+      timeout = undefined;
+      void poll();
+    });
+
     void poll();
     return () => {
       active = false;
       if (timeout) clearTimeout(timeout);
+      appStateSubscription.remove();
     };
   }, [announceCompletion, isBuildPreview, refresh]);
 

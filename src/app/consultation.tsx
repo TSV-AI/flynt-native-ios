@@ -342,7 +342,7 @@ export default function ConsultationScreen() {
       _id: 'consultation-welcome',
       createdAt: new Date(0),
       kind: 'assistant' as const,
-      text: 'Tell me what you want from training. I’ll keep the conversation focused and make corrections easy.',
+      text: 'I’ll ask one question at a time. Tap a typical response to send it right away, or write or dictate anything that fits you better.',
       user: flyntTrainer,
     }];
     const lastTimestamp = conversationMessages.length
@@ -401,14 +401,15 @@ export default function ConsultationScreen() {
     if (currentMessage.kind === 'prompt' && currentMessage.prompt) {
       return (
         <ConsultationPromptCard
-          onSelect={setMessage}
+          disabled={sending}
+          onSelect={(value) => void sendText(value)}
           prompt={currentMessage.prompt}
           theme={theme}
         />
       );
     }
     return <FlyntAssistantMessage markdown={currentMessage.text} />;
-  }, [buildProgram, declineReview, sending, termsAccepted, theme]);
+  }, [buildProgram, declineReview, sendText, sending, termsAccepted, theme]);
 
   const renderError = useCallback(() => error ? (
     <View accessibilityRole="alert" style={[styles.errorCard, { borderColor: theme.danger }]}>
@@ -451,6 +452,7 @@ export default function ConsultationScreen() {
           testID="screen-consultation"
         >
           <FlyntChatThread<ConsultationChatMessage>
+            composerClearance={spacing.xl}
             extendsUnderStatusBar
             header={<AppScreenHero eyebrow="YOUR COACH" intro="Ask about your goals, schedule, experience, and anything your plan should respect." title="Trainer" />}
             messages={chatMessages}
@@ -501,7 +503,7 @@ function SetupFlow({ draft, error, onFinish, onUpdate, theme }: { draft: SetupDr
   return <><ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.setupContent} keyboardDismissMode="interactive">
     <View style={styles.progressHeader}><Text style={[styles.eyebrow, { color: theme.muted }]}>MEET YOUR TRAINER</Text><Text style={[styles.progressCount, { color: theme.muted }]}>{step + 1} / 4</Text></View>
     <View style={[styles.progressTrack, { backgroundColor: theme.line }]}><View style={[styles.progressFill, { backgroundColor: theme.ink, width: `${((step + 1) / 4) * 100}%` }]} /></View>
-    {step === 0 ? <View style={styles.welcome}><View accessibilityLabel="FLYNT" style={styles.welcomeMarkFrame}><Image accessibilityIgnoresInvertColors source={mode === 'dark' ? require('@/assets/images/flynt-mark-light.png') : require('@/assets/images/flynt-mark-ink.png')} style={styles.welcomeMark} /></View><Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>A few basics, then we’ll talk.</Text><Text style={[styles.body, { color: theme.muted }]}>Start with the easy details. After that, FLYNT will ask a few useful questions and adapt the conversation to you.</Text><Pressable accessibilityRole="button" onPress={() => onUpdate({ step: 1 })} style={[styles.primaryButton, { backgroundColor: theme.primaryFill }]}><Text style={[styles.primaryCopy, { color: theme.primaryText }]}>Get started</Text></Pressable><Text style={[styles.caption, { color: theme.muted }]}>You can type, tap, or use keyboard dictation once the conversation begins.</Text></View> : null}
+    {step === 0 ? <View style={styles.welcome}><View accessibilityLabel="FLYNT" style={styles.welcomeMarkFrame}><Image accessibilityIgnoresInvertColors source={mode === 'dark' ? require('@/assets/images/flynt-mark-light.png') : require('@/assets/images/flynt-mark-ink.png')} style={styles.welcomeMark} /></View><Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>A few basics, then we’ll talk.</Text><Text style={[styles.body, { color: theme.muted }]}>Start with the easy details. After that, FLYNT asks one question at a time. Tap a typical response to send it immediately, or write or dictate anything that fits you better.</Text><Pressable accessibilityRole="button" onPress={() => onUpdate({ step: 1 })} style={[styles.primaryButton, { backgroundColor: theme.primaryFill }]}><Text style={[styles.primaryCopy, { color: theme.primaryText }]}>Get started</Text></Pressable></View> : null}
     {step === 1 ? <View style={styles.setupStack}><Text style={[styles.eyebrow, { color: theme.muted }]}>THE BASICS</Text><Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>First, a little about you.</Text><SetupField autoComplete="name" label="What should FLYNT call you?" onChange={(name) => onUpdate({ name })} theme={theme} value={draft.name} /><SetupMetricField label="Age" onPress={() => setMetricPicker('age')} theme={theme} value={`${boundedInteger(draft.age, 30, 13, 120)} years`} /><SetupMetricField accessibilityValue={`${heightParts(draft.height).feet} feet ${heightParts(draft.height).inches} inches`} label="Height" onPress={() => setMetricPicker('height')} theme={theme} value={formatHeight(draft.height)} /><SetupMetricField label="Weight" onPress={() => setMetricPicker('weight')} theme={theme} value={`${boundedInteger(draft.weight, 175, 50, 1000)} lb`} /></View> : null}
     {step === 2 ? <OptionStep detail="This changes the language, examples, and depth of the conversation." eyebrow="HOW FLYNT SHOULD TALK WITH YOU" onSelect={(experience) => onUpdate({ experience })} options={experienceOptions} selected={draft.experience} theme={theme} title="How familiar does training feel?" /> : null}
     {step === 3 ? <OptionStep detail="This sets the starting point. You can still change any workout later." eyebrow="HOW YOU WANT TO TRAIN" onSelect={(trainingIntent) => onUpdate({ trainingIntent })} options={intentOptions} selected={draft.trainingIntent} theme={theme} title="What role should FLYNT play?" /> : null}
@@ -539,7 +541,8 @@ function OptionStep<Value extends string>({ detail, eyebrow, onSelect, options, 
   return <View style={styles.setupStack}><Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text><Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text><Text style={[styles.body, { color: theme.muted }]}>{detail}</Text>{options.map(([value, label, description]) => <Pressable accessibilityLabel={`${label}. ${description}`} accessibilityRole="button" accessibilityState={{ selected: selected === value }} key={value} onPress={() => { void selection(); onSelect(value); }} style={({ pressed }) => [styles.option, { backgroundColor: theme.raised, borderColor: selected === value ? theme.ink : theme.line }, pressed && styles.pressed]}><View style={styles.optionCopy}><Text style={[styles.optionTitle, { color: theme.ink }]}>{label}</Text><Text style={[styles.optionDetail, { color: theme.muted }]}>{description}</Text></View><View style={[styles.selectionIndicator, { backgroundColor: selected === value ? theme.primaryFill : 'transparent', borderColor: selected === value ? theme.primaryFill : theme.line }]}>{selected === value ? <NativeSymbol color={theme.primaryText} name="checkmark" size={14} /> : null}</View></Pressable>)}</View>;
 }
 
-function ConsultationPromptCard({ onSelect, prompt, theme }: {
+function ConsultationPromptCard({ disabled, onSelect, prompt, theme }: {
+  disabled: boolean;
   onSelect: (message: string) => void;
   prompt: ReturnType<typeof promptForTurn>;
   theme: ReturnType<typeof useFlyntTheme>['theme'];
@@ -548,13 +551,13 @@ function ConsultationPromptCard({ onSelect, prompt, theme }: {
   const isReviewPrompt = prompt.choices.length === 1 && prompt.choices[0]?.[0] === 'Show my review';
   return (
     <View style={[styles.promptCard, { backgroundColor: appSurfaces[mode].itemBackground }]}>
-      <Text style={[styles.eyebrow, { color: theme.muted }]}>{prompt.eyebrow}</Text>
-      <Text style={[styles.promptTitle, { color: theme.ink }]}>{prompt.title}</Text>
-      <Text style={[styles.body, { color: theme.muted }]}>{prompt.detail}</Text>
+      <Text style={[styles.eyebrow, { color: theme.muted }]}>TYPICAL RESPONSES</Text>
+      <Text style={[styles.promptHelper, { color: theme.muted }]}>Tap to send, or use the message field for a different answer.</Text>
       <View style={styles.choices}>
         {prompt.choices.map(([label, value]) => (
           <Pressable
             accessibilityRole="button"
+            disabled={disabled}
             key={label}
             onPress={() => {
               void selection();
@@ -566,7 +569,7 @@ function ConsultationPromptCard({ onSelect, prompt, theme }: {
                 backgroundColor: isReviewPrompt ? theme.primaryFill : 'transparent',
                 borderColor: isReviewPrompt ? theme.primaryFill : theme.line,
               },
-              pressed && styles.pressed,
+              (pressed || disabled) && styles.pressed,
             ]}
           >
             <Text style={[styles.choiceCopy, { color: isReviewPrompt ? theme.primaryText : theme.ink }]}>{label}</Text>
@@ -598,8 +601,8 @@ const styles = StyleSheet.create({
   setupActions: { minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg }, setupContinue: { minWidth: 132, minHeight: 50, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   primaryButton: { minHeight: 56, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg }, primaryCopy: { ...type.button }, textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm }, textButtonCopy: { fontSize: 15, lineHeight: 20, fontWeight: '600' }, pressed: { opacity: 0.7 }, error: { fontSize: 14, lineHeight: 20 },
   unavailable: { flex: 1, justifyContent: 'center', gap: spacing.lg, padding: spacing.lg },
-  promptCard: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, marginTop: spacing.sm }, promptTitle: { fontSize: 22, lineHeight: 27, fontWeight: '600' }, choices: { gap: spacing.xs }, choice: { minHeight: 48, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, justifyContent: 'center', paddingHorizontal: spacing.md }, choiceCopy: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  promptCard: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, marginTop: spacing.sm }, promptHelper: { fontSize: 14, lineHeight: 20 }, choices: { gap: spacing.xs }, choice: { minHeight: 48, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, justifyContent: 'center', paddingHorizontal: spacing.md }, choiceCopy: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
   errorCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, padding: spacing.md }, errorActions: { flexDirection: 'row', justifyContent: 'flex-end' },
-  reviewCard: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.md }, reviewSummary: { fontSize: 17, lineHeight: 25, fontWeight: '400' }, priority: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, priorityIcon: { width: 20, height: 24, alignItems: 'center', justifyContent: 'center' }, priorityCopy: { flex: 1 }, termsRow: { minHeight: 56, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, paddingVertical: spacing.xs }, checkboxTarget: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }, checkbox: { width: 28, height: 28, borderWidth: 1.5, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }, termsCopy: { flex: 1, gap: 4, paddingTop: 4 }, legalLinks: { gap: 2 }, legalLink: { minHeight: 44, justifyContent: 'center' },
+  reviewCard: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.md }, reviewSummary: { fontSize: 17, lineHeight: 25, fontWeight: '400' }, priority: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, priorityIcon: { width: 20, height: 25, paddingTop: 5, alignItems: 'center' }, priorityCopy: { flex: 1 }, termsRow: { minHeight: 56, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, paddingVertical: spacing.xs }, checkboxTarget: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }, checkbox: { width: 28, height: 28, borderWidth: 1.5, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }, termsCopy: { flex: 1, gap: 4, paddingTop: 4 }, legalLinks: { gap: 2 }, legalLink: { minHeight: 44, justifyContent: 'center' },
   legalContent: { gap: spacing.lg }, legalSection: { gap: spacing.xs }, legalTitle: { fontSize: 18, lineHeight: 23, fontWeight: '600' },
 });

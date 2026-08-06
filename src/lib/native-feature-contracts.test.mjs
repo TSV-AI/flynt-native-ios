@@ -11,7 +11,17 @@ import {
 } from '../contracts/app-state.ts';
 import { firstRunSlides } from '../features/first-run-content.ts';
 import { hasCurrentFlyntAccount } from './auth-admission.ts';
+import { formatLoad, loadPickerOptions, normalizedLoad } from './load-picker.ts';
 import { sentenceCaseMarkdownListItems } from './markdown-presentation.ts';
+
+test('load picker preserves current half-pound values and bounded options', () => {
+  const options = loadPickerOptions('132.5');
+  assert.equal(normalizedLoad('132.5'), 132.5);
+  assert.equal(formatLoad(132.5), '132.5');
+  assert.ok(options.includes(132.5));
+  assert.equal(options[0], 0);
+  assert.equal(options.at(-1), 1000);
+});
 
 test('workout overrides preserve the editable production prescription fields', () => {
   const parsed = workoutOverrideExerciseSchema.parse({
@@ -196,6 +206,11 @@ test('Trainer uses the maintained native chat shell and native Markdown response
   assert.match(consultationSource, /consultationComposerMaximumHeight/);
   assert.match(consultationSource, /consultationIsReadyForReview/);
   assert.match(consultationSource, /userTurns <= 5 \|\| readyForReview/);
+  assert.match(consultationSource, /onSelect=\{\(value\) => void sendText\(value\)\}/);
+  assert.match(consultationSource, /composerClearance=\{spacing\.xl\}/);
+  assert.match(consultationSource, /TYPICAL RESPONSES/);
+  assert.doesNotMatch(consultationSource, /onSelect=\{setMessage\}/);
+  assert.match(composerSource, /borderWidth: StyleSheet\.hairlineWidth/);
   assert.doesNotMatch(screenSource, /<FlatList/);
   assert.doesNotMatch(screenSource, /scrollToEnd/);
   assert.doesNotMatch(screenSource, /coachBubble/);
@@ -228,7 +243,12 @@ test('shared tab pages match Today with an open leading top bar', async () => {
   assert.match(workoutProvider, /await recordWorkoutSession\(\{/);
   assert.match(workoutProvider, /persistLatestWorkoutState\(immediate \? 0 : 500\)/);
   assert.match(workoutProvider, /NativeAppState\.addEventListener\('change'/);
-  assert.match(today, /onTextChange=\{onWeightChange\}/);
+  assert.match(today, /function LoadPickerPage/);
+  assert.match(today, /label="Load in pounds"/);
+  assert.match(today, /onChooseLoad=\{\(\) => onChooseLoad\(setIndex\)\}/);
+  assert.match(today, /frame\(\{ width: 52, height: 52 \}\)/);
+  assert.match(today, /const sheetExerciseIndex = sheetPresented \? selectedExercise : visibleExerciseIndex/);
+  assert.doesNotMatch(today, /keyboardType\('decimal-pad'/);
   assert.match(today, /onTextChange=\{onRepsChange\}/);
   assert.match(api, /requestJson\('\/api\/workouts', savedWorkoutSessionSchema/);
   const nativeSymbol = await readFile(new URL('../components/native-symbol.tsx', import.meta.url), 'utf8');
@@ -291,6 +311,9 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   assert.match(introduction, /<StatusBar animated style="light"/);
   assert.match(introduction, />Sign in</);
   assert.match(account, /Continue with Google/);
+  assert.match(account, /pending === 'apple' \? 'Signing in with Apple'/);
+  assert.match(account, /styles\.appleProgress/);
+  assert.match(account, /accessibilityState=\{\{ busy: pending === 'google'/);
   assert.match(account, /AppleAuthenticationButtonType\.CONTINUE/);
   assert.ok(
     account.indexOf('AppleAuthenticationButtonType.CONTINUE') < account.indexOf('Continue with Google'),
@@ -357,6 +380,7 @@ test('program building reports real progress and asks for notifications in conte
   const rootLayout = await readFile(new URL('../app/_layout.tsx', import.meta.url), 'utf8');
 
   assert.match(screen, /fetchProgramStatus\(\)/);
+  assert.match(screen, /AppState\.addEventListener\('change'/);
   assert.match(screen, /import Svg, \{ Circle \} from 'react-native-svg'/);
   assert.match(screen, /progressRingCenter - progressRingRadius/);
   assert.match(screen, /strokeDashoffset=\{progressOffset\}/);
@@ -393,4 +417,17 @@ test('exercise media and entry controls share the approved semantic surface', as
   assert.match(today, /sheetInput = mode === 'dark' \? '#282828' : appSurfaces\.light\.exerciseSurface/);
   assert.match(today, /mediaBackground = mode === 'dark' \? exerciseEntryBackground : appSurfaces\.light\.exerciseSurface/);
   assert.match(editor, /backgroundColor: appSurfaces\[mode\]\.exerciseSurface/);
+  assert.match(editor, /onSelectField\('load'\)/);
+  assert.match(editor, /loadPickerOptions\(exercise\.targetLoad\)/);
+  assert.doesNotMatch(editor, /keyboardType="decimal-pad" label="Target load/);
+});
+
+test('Spotify restores an authorized App Remote connection after foreground transitions', async () => {
+  const spotify = await readFile(new URL('../../modules/flynt-spotify/ios/FlyntSpotifyService.swift', import.meta.url), 'utf8');
+
+  assert.match(spotify, /private var shouldMaintainConnection = false/);
+  assert.match(spotify, /func applicationDidBecomeActive\(\) \{\s*scheduleReconnect\(\)/);
+  assert.match(spotify, /UIApplication\.shared\.applicationState == \.active/);
+  assert.match(spotify, /DispatchQueue\.main\.asyncAfter/);
+  assert.match(spotify, /func disconnect\(\) \{\s*shouldMaintainConnection = false/);
 });

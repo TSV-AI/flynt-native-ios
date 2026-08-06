@@ -10,9 +10,10 @@ import type { ExerciseLibraryEntry } from '@/contracts/app-state';
 import type { PreviewExercise } from '@/features/app-preview-data';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { directManipulation, failed, saved, selection, warning } from '@/lib/haptics';
+import { formatLoad, loadPickerOptions } from '@/lib/load-picker';
 import { fetchExerciseCatalog, resolveApiAssetUrl } from '@/lib/api-client';
 
-type PickerField = 'reps' | 'rest' | 'rpe';
+type PickerField = 'load' | 'reps' | 'rest' | 'rpe';
 type EditorPage = 'exercise' | 'library' | PickerField;
 
 type WorkoutEditorSheetProps = {
@@ -24,11 +25,6 @@ type WorkoutEditorSheetProps = {
   onDismiss: () => void;
   onSave: (exercises: PreviewExercise[]) => Promise<void>;
 };
-
-function numberValue(value: string, minimum: number, maximum: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.max(minimum, Math.min(maximum, parsed)) : minimum;
-}
 
 function editableExercises(exercises: PreviewExercise[]) {
   return exercises.map((exercise, index) => {
@@ -212,10 +208,11 @@ export function WorkoutEditorSheet({ exercises, initialExerciseIndex, initialPag
 
   const title = page === 'exercise' ? selected?.name ?? 'Edit exercise'
       : page === 'library' ? replacingId ? 'Replace exercise' : 'Add an exercise'
-        : page === 'reps' ? 'Reps'
+        : page === 'load' ? 'Target load'
+          : page === 'reps' ? 'Reps'
           : page === 'rest' ? 'Rest'
             : 'RPE target';
-  const pickerPage = page === 'reps' || page === 'rest' || page === 'rpe';
+  const pickerPage = page === 'load' || page === 'reps' || page === 'rest' || page === 'rpe';
   const showsBack = pickerPage || (page === 'library' && Boolean(replacingId) && initialReplacingIndex === undefined);
 
   return (
@@ -312,7 +309,7 @@ function ExercisePage({ advanced, exercise, onAdvanced, onRemove, onReplace, onS
   return <View style={styles.stack}>
     <Stepper label="Sets" onDecrease={() => onUpdate({ total: Math.max(1, exercise.total - 1) })} onIncrease={() => onUpdate({ total: Math.min(20, exercise.total + 1) })} theme={theme} value={exercise.total} />
     <SelectionField label="REPS" onPress={() => onSelectField('reps')} theme={theme} value={exercise.targetReps || 'Not set'} />
-    <Field keyboardType="decimal-pad" label="Target load (lb)" onChangeText={(value) => onUpdate({ targetLoad: value ? numberValue(value, 0, 3000) : undefined })} placeholder="Not set" theme={theme} value={exercise.targetLoad === undefined ? '' : String(exercise.targetLoad)} />
+    <SelectionField label="TARGET LOAD" onPress={() => onSelectField('load')} theme={theme} value={exercise.targetLoad === undefined ? 'Not set' : `${exercise.targetLoad} lb`} />
     <SelectionField label="REST" onPress={() => onSelectField('rest')} theme={theme} value={formatRest(exercise.restSeconds ?? 90)} />
     <Pressable accessibilityRole="button" accessibilityState={{ expanded: advanced }} onPress={onAdvanced} style={({ pressed }) => [styles.disclosure, { borderColor: theme.line }, pressed && styles.pressed]}>
       <View><Text style={[styles.rowTitle, { color: theme.ink }]}>Advanced</Text><Text style={[styles.rowDetail, { color: theme.muted }]}>RPE, tempo, and coaching notes</Text></View>
@@ -337,7 +334,12 @@ function repOptions(current: string | undefined) {
 }
 
 function ValuePickerPage({ exercise, field, mode, onUpdate, theme }: { exercise: PreviewExercise; field: PickerField; mode: ColorMode; onUpdate: (patch: Partial<PreviewExercise>) => void; theme: Theme }) {
-  const options = field === 'reps'
+  const options = field === 'load'
+    ? [
+        { label: 'Not set', value: 'unset' },
+        ...loadPickerOptions(exercise.targetLoad).map((value) => ({ label: `${formatLoad(value)} lb`, value: String(value) })),
+      ]
+    : field === 'reps'
     ? repOptions(exercise.targetReps).map((value) => ({ label: value, value }))
     : field === 'rest'
       ? Array.from({ length: 901 }, (_, seconds) => ({ label: formatRest(seconds), value: String(seconds) }))
@@ -345,19 +347,22 @@ function ValuePickerPage({ exercise, field, mode, onUpdate, theme }: { exercise:
         const value = 1 + index * 0.5;
         return { label: String(value), value: String(value) };
       })];
-  const selectedValue = field === 'reps'
+  const selectedValue = field === 'load'
+    ? exercise.targetLoad === undefined ? 'unset' : String(exercise.targetLoad)
+    : field === 'reps'
     ? exercise.targetReps || options[0].value
     : field === 'rest'
       ? String(exercise.restSeconds ?? 90)
       : exercise.targetRpe === undefined ? 'unset' : String(exercise.targetRpe);
 
   return <View style={styles.pickerPage}>
-    <Text style={[styles.helper, { color: theme.muted }]}>{field === 'reps' ? 'Choose the prescribed rep target.' : field === 'rest' ? 'Choose the exact recovery time.' : 'Choose the target effort for this exercise.'}</Text>
+    <Text style={[styles.helper, { color: theme.muted }]}>{field === 'load' ? 'Choose the prescribed load in pounds.' : field === 'reps' ? 'Choose the prescribed rep target.' : field === 'rest' ? 'Choose the exact recovery time.' : 'Choose the target effort for this exercise.'}</Text>
     <SwiftUIHost colorScheme={mode} style={styles.pickerHost}>
       <SwiftUIPicker
         modifiers={[pickerStyle('wheel')]}
         onSelectionChange={(value) => {
           const next = String(value);
+          if (field === 'load') onUpdate({ targetLoad: next === 'unset' ? undefined : Number(next) });
           if (field === 'reps') onUpdate({ targetReps: next });
           if (field === 'rest') onUpdate({ restSeconds: Number(next) });
           if (field === 'rpe') onUpdate({ targetRpe: next === 'unset' ? undefined : Number(next) });

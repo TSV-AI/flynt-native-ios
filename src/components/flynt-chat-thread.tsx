@@ -18,6 +18,7 @@ export const flyntAthlete = { _id: 'athlete' } as const;
 export const flyntTrainer = { _id: 'trainer' } as const;
 
 type FlyntChatThreadProps<TMessage extends IMessage> = {
+  composerClearance?: number;
   hasExternalComposer?: boolean;
   header?: ReactElement;
   messages: TMessage[];
@@ -32,6 +33,7 @@ type FlyntChatThreadProps<TMessage extends IMessage> = {
 };
 
 export function FlyntChatThread<TMessage extends IMessage>({
+  composerClearance = spacing.hero + spacing.xxl,
   hasExternalComposer = false,
   header,
   messages,
@@ -99,10 +101,9 @@ export function FlyntChatThread<TMessage extends IMessage>({
     );
   }, [hasExternalComposer, mode, renderInputToolbar, scrollRevision]);
 
-  const composerClearance = typeof scrollRevision === 'number'
-    ? scrollRevision + spacing.hero + spacing.xxl
-    : spacing.hero + spacing.xxl + 44;
-  const listEndClearance = hasExternalComposer ? spacing.hero : composerClearance;
+  const listEndClearance = hasExternalComposer
+    ? spacing.hero
+    : (typeof scrollRevision === 'number' ? scrollRevision : 44) + composerClearance;
   const listTopInset = topInset + (extendsUnderStatusBar ? insets.top : 0);
 
   return (

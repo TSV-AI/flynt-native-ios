@@ -1,0 +1,20 @@
+const maximumLoad = 1000;
+const loadStep = 2.5;
+
+export function normalizedLoad(value: string | number | undefined) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.min(maximumLoad, Math.round(parsed * 2) / 2));
+}
+
+export function loadPickerOptions(current: string | number | undefined) {
+  const selected = normalizedLoad(current);
+  return [...new Set([
+    selected,
+    ...Array.from({ length: (maximumLoad / loadStep) + 1 }, (_, index) => index * loadStep),
+  ])].sort((left, right) => left - right);
+}
+
+export function formatLoad(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
