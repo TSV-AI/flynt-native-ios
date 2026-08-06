@@ -566,8 +566,8 @@ function ConsultationPromptCard({ disabled, onSelect, prompt, theme }: {
             style={({ pressed }) => [
               styles.choice,
               {
-                backgroundColor: isReviewPrompt ? theme.primaryFill : 'transparent',
-                borderColor: isReviewPrompt ? theme.primaryFill : theme.line,
+                backgroundColor: isReviewPrompt ? theme.primaryFill : appSurfaces[mode].interactiveBackground,
+                borderColor: isReviewPrompt ? theme.primaryFill : appSurfaces[mode].interactiveBorder,
               },
               (pressed || disabled) && styles.pressed,
             ]}
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
   setupActions: { minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg }, setupContinue: { minWidth: 132, minHeight: 50, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   primaryButton: { minHeight: 56, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg }, primaryCopy: { ...type.button }, textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm }, textButtonCopy: { fontSize: 15, lineHeight: 20, fontWeight: '600' }, pressed: { opacity: 0.7 }, error: { fontSize: 14, lineHeight: 20 },
   unavailable: { flex: 1, justifyContent: 'center', gap: spacing.lg, padding: spacing.lg },
-  promptCard: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, marginTop: spacing.sm }, promptHelper: { fontSize: 14, lineHeight: 20 }, choices: { gap: spacing.xs }, choice: { minHeight: 48, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, justifyContent: 'center', paddingHorizontal: spacing.md }, choiceCopy: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  promptCard: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, marginTop: spacing.sm }, promptHelper: { fontSize: 14, lineHeight: 20 }, choices: { gap: spacing.xs }, choice: { minHeight: 48, borderWidth: 1, borderRadius: radius.md, justifyContent: 'center', paddingHorizontal: spacing.md }, choiceCopy: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
   errorCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, padding: spacing.md }, errorActions: { flexDirection: 'row', justifyContent: 'flex-end' },
   reviewCard: { borderRadius: radius.lg, padding: spacing.md, gap: spacing.md }, reviewSummary: { fontSize: 17, lineHeight: 25, fontWeight: '400' }, priority: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, priorityIcon: { width: 20, height: 25, paddingTop: 5, alignItems: 'center' }, priorityCopy: { flex: 1 }, termsRow: { minHeight: 56, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, paddingVertical: spacing.xs }, checkboxTarget: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }, checkbox: { width: 28, height: 28, borderWidth: 1.5, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }, termsCopy: { flex: 1, gap: 4, paddingTop: 4 }, legalLinks: { gap: 2 }, legalLink: { minHeight: 44, justifyContent: 'center' },
   legalContent: { gap: spacing.lg }, legalSection: { gap: spacing.xs }, legalTitle: { fontSize: 18, lineHeight: 23, fontWeight: '600' },

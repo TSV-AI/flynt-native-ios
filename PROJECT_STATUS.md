@@ -1891,6 +1891,9 @@ rewriting the workout application.
 - Consultation now explains the free-form conversation model, presents choices
   as typical responses, and sends a tapped response immediately. The client no
   longer renders a competing question above server-authored conversation text.
+- Increased typical-response button separation with a semantic raised control
+  surface and soft 1-point border. The revised dark appearance was visually
+  verified in Simulator.
 - Reduced consultation composer clearance and aligned review checkmarks with
   the first line of each item.
 - Added visible in-button progress for Apple and Google account entry.
