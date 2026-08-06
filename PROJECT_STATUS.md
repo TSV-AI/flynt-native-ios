@@ -238,6 +238,18 @@ Current physical iPhone verification: Not started
   source was found. The EAS `production` environment currently contains no
   variables, so the API base URL, Supabase URL and publishable key, and Spotify
   client ID must be configured before creating a usable production build.
+- Verified locally on 2026-08-06: commit `8858cb2` passed an iOS Simulator
+  Release-configuration build for the FLYNT app and widget with the bundled
+  production JavaScript. The EAS production source-package inspection is pinned
+  to the same commit, excludes `.env.local`, and contains no detected Supabase
+  secret/service-role key, private key, Google client secret, or Apple API key.
+  This verifies compilation and source packaging, not device signing, App Store
+  Connect acceptance, TestFlight installation, or production-service access.
+- Implemented for production release hygiene on 2026-08-06: EAS production
+  builds now auto-increment the remotely managed iOS build number. The current
+  remote build number is `1`; no new build number has been reserved because a
+  production build has not been started. The generated primary App Store icon
+  was also verified as an opaque 1024 by 1024 image.
 - Source-verified but not live-verified: Trainer messages post through the
   authenticated `/api/trainer` boundary and refresh the server-owned
   conversation. A validated program-change proposal requires explicit athlete
@@ -1043,8 +1055,12 @@ Current physical iPhone verification: Not started
   allowlist and verify `flynt://auth-callback` for retained providers, configure
   the Apple provider and app capability, verify the existing Google provider
   for the native callback, complete account-linking policy, exercise token
-  refresh and account switching, verify live `/api/app-state`, complete signing
-  and Apple Developer enrollment, and verify on a physical iPhone.
+  refresh and account switching, verify live `/api/app-state`, configure the four
+  required public runtime values in the EAS production environment, verify the
+  App Store Connect app record and production signing/capabilities, and verify
+  the resulting archive on a physical iPhone. Expo Doctor's network-backed
+  metadata check remains paused, and a production EAS build has not been run
+  while its runtime environment is incomplete.
 
 ## Native email OTP verification | 2026-08-02
 
