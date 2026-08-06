@@ -259,8 +259,10 @@ Current physical iPhone verification: Not started
   internal Team TestFlight group, and a least-privilege App Manager submission
   key were created. Submission `fc433bb7-8d98-49c3-b4f9-be59d8799939` was
   scheduled and remains queued for an EAS Apple submitter; Apple processing and
-  TestFlight installation are not yet verified. App Store Connect used the
-  temporary record name `FLYNT (ee62f1)` because `FLYNT` was unavailable.
+  TestFlight installation are not yet verified. The initially generated App
+  Store Connect record name `FLYNT (ee62f1)` was changed and save-verified as
+  `FLYNT Training`, matching the product's `flynt.training` domain. The installed
+  app display name remains `FLYNT`.
 - Source-verified but not live-verified: Trainer messages post through the
   authenticated `/api/trainer` boundary and refresh the server-owned
   conversation. A validated program-change proposal requires explicit athlete
