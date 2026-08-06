@@ -15,8 +15,6 @@ import {
   Spacer,
   TabView,
   Text as NativeText,
-  TextField,
-  useNativeState,
   VStack,
   ZStack,
 } from '@expo/ui/swift-ui';
@@ -39,7 +37,6 @@ import {
   frame,
   ignoreSafeArea,
   kerning,
-  keyboardType,
   labelStyle,
   listRowBackground,
   listRowInsets,
@@ -47,7 +44,6 @@ import {
   listStyle,
   lineLimit,
   monospacedDigit,
-  multilineTextAlignment,
   opacity,
   offset,
   padding,
@@ -62,7 +58,6 @@ import {
   strokeBorder,
   tabViewStyle,
   tag,
-  textFieldStyle,
   tint,
 } from '@expo/ui/swift-ui/modifiers';
 import { type ReactElement, useEffect, useState } from 'react';
@@ -80,7 +75,7 @@ import { appSurfaces, spacing, type ColorMode, type Theme } from '@/constants/th
 import type { PreviewDay, PreviewExercise } from '@/features/app-preview-data';
 import { getExerciseArtwork } from '@/features/exercise-artwork';
 import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
-import { formatLoad, loadPickerOptions, normalizedLoad } from '@/lib/load-picker';
+import { formatLoad, loadPickerOptions, normalizedLoad, normalizedReps, repPickerOptions } from '@/lib/load-picker';
 import { useModalPresentation } from '@/providers/modal-presentation-provider';
 import { useRestTimer } from '@/providers/rest-timer-provider';
 import type { WorkoutSetEntry } from '@/providers/workout-data-provider';
@@ -130,8 +125,8 @@ type NativeSetRowProps = {
   index: number;
   inputColor: string;
   onToggle: () => void;
-  onRepsChange: (value: string, immediate?: boolean) => void;
   onChooseLoad: () => void;
+  onChooseReps: () => void;
   outlineColor: string;
   prescribedReps: string;
   reps: string;
@@ -210,14 +205,8 @@ function ExerciseArtwork({
   );
 }
 
-function NativeSetRow({ checked, exerciseName, index, inputColor, onChooseLoad, onRepsChange, onToggle, outlineColor, prescribedReps, reps: initialReps, theme, weight: initialWeight }: NativeSetRowProps) {
-  const reps = useNativeState(initialReps || prescribedReps);
-  const adjustReps = (change: number) => {
-    const currentReps = Number.parseInt(reps.get(), 10);
-    const nextReps = Math.min(99, Math.max(1, (Number.isFinite(currentReps) ? currentReps : 1) + change));
-    reps.set(String(nextReps));
-    onRepsChange(String(nextReps));
-  };
+function NativeSetRow({ checked, exerciseName, index, inputColor, onChooseLoad, onChooseReps, onToggle, outlineColor, prescribedReps, reps: initialReps, theme, weight: initialWeight }: NativeSetRowProps) {
+  const reps = initialReps || prescribedReps;
   return (
     <VStack modifiers={[padding({ vertical: spacing.xxs })]}>
       <HStack
@@ -242,53 +231,21 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onChooseLoad, 
           </NativeText>
         </Button>
         <Spacer minLength={12} />
-        <HStack
-          spacing={0}
+        <Button
+          onPress={onChooseReps}
           modifiers={[
+            buttonStyle('plain'),
             frame({ width: 148, height: 52 }),
             background(inputColor, shapes.capsule()),
             strokeBorder({ color: outlineColor, style: { lineWidth: 0.5 }, shape: 'capsule' }),
+            accessibilityLabel(`${exerciseName} set ${index + 1} reps, ${reps || 'not set'}`),
+            accessibilityHint('Opens the rep selector'),
           ]}
         >
-          <Button
-            onPress={() => adjustReps(-1)}
-            modifiers={[
-              buttonStyle('plain'),
-              frame({ width: 52, height: 52 }),
-              accessibilityLabel(`Decrease ${exerciseName} set ${index + 1} reps`),
-            ]}
-          >
-            <SwiftUIImage color={theme.muted} size={13} systemName="minus" />
-          </Button>
-          <TextField
-            onFocusChange={(focused) => {
-              if (!focused) onRepsChange(reps.get(), true);
-            }}
-            onTextChange={onRepsChange}
-            placeholder="–"
-            text={reps}
-            modifiers={[
-              frame({ width: 44, height: 52 }),
-              textFieldStyle('plain'),
-              keyboardType('ascii-capable-number-pad'),
-              multilineTextAlignment('center'),
-              foregroundStyle(theme.ink),
-              font({ textStyle: 'body', weight: 'semibold' }),
-              monospacedDigit(),
-              accessibilityLabel(`${exerciseName} set ${index + 1} reps`),
-            ]}
-          />
-          <Button
-            onPress={() => adjustReps(1)}
-            modifiers={[
-              buttonStyle('plain'),
-              frame({ width: 52, height: 52 }),
-              accessibilityLabel(`Increase ${exerciseName} set ${index + 1} reps`),
-            ]}
-          >
-            <SwiftUIImage color={theme.muted} size={13} systemName="plus" />
-          </Button>
-        </HStack>
+          <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.ink), monospacedDigit()]}>
+            {reps || '–'}
+          </NativeText>
+        </Button>
         <Spacer minLength={12} />
         <Button
           onPress={onToggle}
@@ -398,6 +355,7 @@ function ExerciseSheetContent({
   onAdvance,
   onClose,
   onChooseLoad,
+  onChooseReps,
   onOpenStats,
   onToggleSet,
   onUpdateSet,
@@ -416,6 +374,7 @@ function ExerciseSheetContent({
   onAdvance: () => void;
   onClose: () => void;
   onChooseLoad: (setIndex: number) => void;
+  onChooseReps: (setIndex: number) => void;
   onOpenStats: () => void;
   onToggleSet: (exerciseIndex: number, setIndex: number) => void;
   onUpdateSet: (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>, immediate?: boolean) => void;
@@ -555,8 +514,8 @@ function ExerciseSheetContent({
               index={setIndex}
               inputColor={input}
               onChooseLoad={() => onChooseLoad(setIndex)}
+              onChooseReps={() => onChooseReps(setIndex)}
               onToggle={() => onToggleSet(exerciseIndex, setIndex)}
-              onRepsChange={(reps, immediate) => onUpdateSet(exerciseIndex, setIndex, { reps }, immediate)}
               outlineColor={outline}
               prescribedReps={prescribedReps}
               reps={setEntries[setIndex]?.reps ?? prescribedReps}
@@ -688,6 +647,91 @@ function LoadPickerPage({
           frame({ minHeight: 52, maxWidth: 1000 }),
           tint(theme.ink),
           accessibilityLabel('Done choosing load'),
+        ]}
+      >
+        <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.primaryText)]}>
+          Done
+        </NativeText>
+      </Button>
+    </VStack>
+  );
+}
+
+function RepPickerPage({
+  exercise,
+  onBack,
+  onClose,
+  onSelect,
+  selectedReps,
+  setIndex,
+  theme,
+}: {
+  exercise: PreviewExercise;
+  onBack: () => void;
+  onClose: () => void;
+  onSelect: (value: string) => void;
+  selectedReps: string;
+  setIndex: number;
+  theme: Theme;
+}) {
+  const selectedValue = normalizedReps(selectedReps);
+
+  return (
+    <VStack
+      alignment="leading"
+      spacing={spacing.lg}
+      modifiers={[padding({ horizontal: spacing.lg, top: spacing.xl, bottom: spacing.xl })]}
+    >
+      <HStack alignment="top" spacing={12}>
+        <Button
+          onPress={onBack}
+          modifiers={[
+            buttonStyle('glass'),
+            buttonBorderShape('circle'),
+            frame({ width: 44, height: 44 }),
+            accessibilityLabel('Back to exercise'),
+          ]}
+        >
+          <SwiftUIImage color={theme.ink} size={17} systemName="chevron.left" />
+        </Button>
+        <VStack alignment="leading" spacing={6} modifiers={[frame({ maxWidth: 1000 })]}>
+          <NativeText modifiers={[font({ textStyle: 'title2', weight: 'semibold' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>
+            Choose reps
+          </NativeText>
+          <NativeText modifiers={[font({ textStyle: 'footnote' }), foregroundStyle(theme.muted), fixedSize({ vertical: true })]}>
+            {exercise.name}, set {setIndex + 1}
+          </NativeText>
+        </VStack>
+        <Button
+          onPress={onClose}
+          modifiers={[
+            buttonStyle('glass'),
+            buttonBorderShape('circle'),
+            frame({ width: 44, height: 44 }),
+            accessibilityLabel('Close exercise'),
+          ]}
+        >
+          <SwiftUIImage color={theme.ink} size={17} systemName="xmark" />
+        </Button>
+      </HStack>
+      <Picker
+        label="Repetitions"
+        modifiers={[pickerStyle('wheel'), frame({ maxWidth: 1000, height: 260 })]}
+        onSelectionChange={(value) => onSelect(String(value))}
+        selection={String(selectedValue)}
+      >
+        {repPickerOptions().map((value) => (
+          <NativeText key={value} modifiers={[tag(String(value))]}>{`${value} reps`}</NativeText>
+        ))}
+      </Picker>
+      <Button
+        onPress={onBack}
+        modifiers={[
+          buttonStyle('borderedProminent'),
+          buttonBorderShape('capsule'),
+          frame({ minHeight: 52, maxWidth: 1000 }),
+          tint(theme.ink),
+          accessibilityLabel('Done choosing reps'),
         ]}
       >
         <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.primaryText)]}>
@@ -834,9 +878,11 @@ export function NativeTodayWorkout({
   const reduceMotion = useReducedMotion();
   const reduceTransparency = useReduceTransparency();
   const { setModalPresented } = useModalPresentation();
-  const [sheetPage, setSheetPage] = useState<'exercise' | 'load' | 'stats'>('exercise');
+  const [sheetPage, setSheetPage] = useState<'exercise' | 'load' | 'reps' | 'stats'>('exercise');
   const [loadSetIndex, setLoadSetIndex] = useState(0);
   const [loadDraft, setLoadDraft] = useState('');
+  const [repSetIndex, setRepSetIndex] = useState(0);
+  const [repDraft, setRepDraft] = useState('');
   const [visibleExerciseIndex, setVisibleExerciseIndex] = useState(-1);
   const contentWidth = width - 32;
   const editListHeight = Math.max(420, height - safeAreaInsets.top - 142);
@@ -907,6 +953,15 @@ export function NativeTodayWorkout({
 
   function finishChoosingLoad(closeSheet = false) {
     onUpdateSet(sheetExerciseIndex, loadSetIndex, { weight: loadDraft }, true);
+    if (closeSheet) {
+      onSelectExercise(-1);
+      return;
+    }
+    setSheetPage('exercise');
+  }
+
+  function finishChoosingReps(closeSheet = false) {
+    onUpdateSet(sheetExerciseIndex, repSetIndex, { reps: repDraft }, true);
     if (closeSheet) {
       onSelectExercise(-1);
       return;
@@ -1246,6 +1301,11 @@ export function NativeTodayWorkout({
                           setLoadDraft(setEntries[sheetExerciseIndex]?.[setIndex]?.weight ?? '');
                           setSheetPage('load');
                         }}
+                        onChooseReps={(setIndex) => {
+                          setRepSetIndex(setIndex);
+                          setRepDraft(setEntries[sheetExerciseIndex]?.[setIndex]?.reps ?? exercise.detail.match(/(\d+(?:[–-]\d+)?)\s+reps?/i)?.[1] ?? '');
+                          setSheetPage('reps');
+                        }}
                         onOpenStats={() => setSheetPage('stats')}
                         onToggleSet={onToggleSet}
                         onUpdateSet={onUpdateSet}
@@ -1262,6 +1322,17 @@ export function NativeTodayWorkout({
                         onSelect={setLoadDraft}
                         selectedLoad={loadDraft}
                         setIndex={loadSetIndex}
+                        theme={theme}
+                      />
+                    </TabView.Tab>
+                    <TabView.Tab value="reps">
+                      <RepPickerPage
+                        exercise={exercise}
+                        onBack={() => finishChoosingReps()}
+                        onClose={() => finishChoosingReps(true)}
+                        onSelect={setRepDraft}
+                        selectedReps={repDraft}
+                        setIndex={repSetIndex}
                         theme={theme}
                       />
                     </TabView.Tab>

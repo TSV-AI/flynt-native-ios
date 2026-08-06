@@ -1882,7 +1882,9 @@ rewriting the workout application.
   workout editor target load. Workout set load changes are committed once when
   the person confirms or closes the selector, avoiding a request for every
   wheel movement.
-- Increased workout rep decrement and increment targets to 52 by 52 points.
+- Replaced workout rep text entry and decrement and increment buttons with a
+  native 1 through 99 wheel selector. Rep changes use the same single-commit
+  confirmation behavior as load changes.
 - Preserved exercise sheet content through native dismissal to harden the
   intermittent close crash reported from TestFlight. The crash was not
   reproduced locally, so physical-device confirmation remains required.

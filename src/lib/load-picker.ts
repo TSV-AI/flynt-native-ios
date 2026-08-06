@@ -18,3 +18,12 @@ export function loadPickerOptions(current: string | number | undefined) {
 export function formatLoad(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
+
+export function normalizedReps(value: string | number | null | undefined) {
+  const parsed = typeof value === 'number' ? value : Number.parseInt(value ?? '', 10);
+  return Math.min(99, Math.max(1, Number.isFinite(parsed) ? Math.round(parsed) : 1));
+}
+
+export function repPickerOptions() {
+  return Array.from({ length: 99 }, (_, index) => index + 1);
+}

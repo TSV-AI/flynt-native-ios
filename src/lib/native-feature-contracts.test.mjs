@@ -11,7 +11,7 @@ import {
 } from '../contracts/app-state.ts';
 import { firstRunSlides } from '../features/first-run-content.ts';
 import { hasCurrentFlyntAccount } from './auth-admission.ts';
-import { formatLoad, loadPickerOptions, normalizedLoad } from './load-picker.ts';
+import { formatLoad, loadPickerOptions, normalizedLoad, normalizedReps, repPickerOptions } from './load-picker.ts';
 import { sentenceCaseMarkdownListItems } from './markdown-presentation.ts';
 
 test('load picker preserves current half-pound values and bounded options', () => {
@@ -21,6 +21,14 @@ test('load picker preserves current half-pound values and bounded options', () =
   assert.ok(options.includes(132.5));
   assert.equal(options[0], 0);
   assert.equal(options.at(-1), 1000);
+});
+
+test('rep picker normalizes prescriptions to a bounded native wheel value', () => {
+  const options = repPickerOptions();
+  assert.equal(normalizedReps('6–8'), 6);
+  assert.equal(normalizedReps(''), 1);
+  assert.equal(options[0], 1);
+  assert.equal(options.at(-1), 99);
 });
 
 test('workout overrides preserve the editable production prescription fields', () => {
@@ -246,10 +254,12 @@ test('shared tab pages match Today with an open leading top bar', async () => {
   assert.match(today, /function LoadPickerPage/);
   assert.match(today, /label="Load in pounds"/);
   assert.match(today, /onChooseLoad=\{\(\) => onChooseLoad\(setIndex\)\}/);
-  assert.match(today, /frame\(\{ width: 52, height: 52 \}\)/);
+  assert.match(today, /function RepPickerPage/);
+  assert.match(today, /label="Repetitions"/);
+  assert.match(today, /onChooseReps=\{\(\) => onChooseReps\(setIndex\)\}/);
   assert.match(today, /const sheetExerciseIndex = sheetPresented \? selectedExercise : visibleExerciseIndex/);
   assert.doesNotMatch(today, /keyboardType\('decimal-pad'/);
-  assert.match(today, /onTextChange=\{onRepsChange\}/);
+  assert.doesNotMatch(today, /onTextChange=\{onRepsChange\}/);
   assert.match(api, /requestJson\('\/api\/workouts', savedWorkoutSessionSchema/);
   const nativeSymbol = await readFile(new URL('../components/native-symbol.tsx', import.meta.url), 'utf8');
   assert.match(nativeSymbol, /effect: 'drawOn'/);
