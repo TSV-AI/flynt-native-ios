@@ -96,7 +96,7 @@ export const normalizedWorkoutSetSchema = z.object({
   actual_reps: z.number().int().min(0).max(1000),
   actual_load: z.coerce.number().min(0).max(3000),
   rpe: z.coerce.number().min(1).max(10).nullable(),
-  pain: z.coerce.number().int().min(0).max(10).nullable(),
+  control: z.enum(['controlled', 'mixed', 'not_controlled']).nullable(),
   complete: z.boolean(),
 });
 

@@ -228,7 +228,7 @@ function normalizeWorkoutHistory(sessions: NormalizedWorkoutSession[]): PreviewW
         load: set.actual_load,
         reps: set.actual_reps,
         ...(set.rpe === null ? {} : { rpe: set.rpe }),
-        ...(set.pain === null ? {} : { pain: set.pain }),
+        ...(set.control === null ? {} : { control: set.control }),
       });
       exerciseMap.set(set.exercise_id, exercise);
     }

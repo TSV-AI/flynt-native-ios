@@ -171,6 +171,7 @@ export type WorkoutSessionWrite = {
     prescribedLoad?: number;
     actualReps: number;
     actualLoad: number;
+    control?: 'controlled' | 'mixed' | 'not_controlled';
     complete: boolean;
   }[];
 };

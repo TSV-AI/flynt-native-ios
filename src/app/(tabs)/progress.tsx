@@ -98,7 +98,7 @@ function WorkoutHistorySheet({ onDismiss, workout }: { onDismiss: () => void; wo
                 <View key={`${exercise.id}-${index}`} style={[styles.setRow, index > 0 && { borderTopColor: theme.line, borderTopWidth: StyleSheet.hairlineWidth }]}>
                   <Text style={[styles.setIndex, { color: theme.muted }]}>Set {index + 1}</Text>
                   <Text style={[styles.setResult, { color: theme.ink }]}>{set.load} lb × {set.reps}</Text>
-                  <Text style={[styles.setMeta, { color: theme.muted }]}>{set.rpe ? `RPE ${set.rpe}` : set.pain ? `Pain ${set.pain}/10` : ''}</Text>
+                  <Text style={[styles.setMeta, { color: theme.muted }]}>{set.rpe ? `RPE ${set.rpe}` : set.control ? set.control.replace('_', ' ') : ''}</Text>
                 </View>
               ))}
             </FlyntSheetCard>

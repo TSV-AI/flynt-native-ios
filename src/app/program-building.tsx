@@ -38,7 +38,7 @@ const shimmerTrailLength = 4;
 
 const phaseCopy: Record<string, { title: string; detail?: string }> = {
   queued: {
-    title: 'Reviewing your goals and limitations',
+    title: 'Reviewing your goals and preferences',
     detail: 'Preparing your training profile',
   },
   generating_program: {

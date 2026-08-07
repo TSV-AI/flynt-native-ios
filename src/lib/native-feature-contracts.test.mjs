@@ -6,6 +6,7 @@ import {
   appStateSchema,
   completedConsultationSchema,
   consultationBasicsSchema,
+  normalizedWorkoutSetSchema,
   programChangeSchema,
   workoutOverrideExerciseSchema,
 } from '../contracts/app-state.ts';
@@ -48,6 +49,21 @@ test('workout overrides preserve the editable production prescription fields', (
   });
   assert.equal(parsed.tempo, '3-1-1');
   assert.equal(parsed.sets, 12);
+});
+
+test('normalized workout history uses movement control instead of routine pain scoring', () => {
+  const parsed = normalizedWorkoutSetSchema.parse({
+    exercise_id: 'goblet-squat',
+    exercise_name: 'Goblet Squat',
+    set_index: 0,
+    actual_reps: 8,
+    actual_load: 60,
+    rpe: 8,
+    control: 'controlled',
+    complete: true,
+  });
+  assert.equal(parsed.control, 'controlled');
+  assert.equal('pain' in parsed, false);
 });
 
 test('consultation basics require both communication and training intent choices', () => {
@@ -423,7 +439,7 @@ test('program building reports real progress and asks for notifications in conte
   assert.match(screen, /strokeDashoffset=\{progressOffset\}/);
   assert.match(screen, /strokeWidth=\{progressRingStroke\}/);
   assert.match(screen, /<Circle cx=\{markerX\} cy=\{markerY\}/);
-  assert.match(screen, /Reviewing your goals and limitations/);
+  assert.match(screen, /Reviewing your goals and preferences/);
   assert.match(screen, /Structuring your training week/);
   assert.match(screen, /Selecting exercises for you/);
   assert.match(screen, /Programming each movement/);

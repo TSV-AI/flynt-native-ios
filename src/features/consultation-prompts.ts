@@ -14,7 +14,7 @@ const outcomePrompt = (name: string): ConsultationPrompt => ({
   choices: [
     ['Feel stronger', 'My main goal is to feel stronger and more capable in everyday life.'],
     ['Build muscle', 'My main goal is to build visible muscle and change how my body looks.'],
-    ['Move and feel better', 'My main goal is to have more energy, move better, and reduce everyday aches.'],
+    ['Move and feel better', 'My main goal is to have more energy and move with more confidence.'],
     ['Train for something', 'My main goal is to prepare for a sport, event, or performance target. I’m preparing for: . Success would look like: .'],
   ],
 });
@@ -93,11 +93,11 @@ export function consultationPromptForTurn(
     ],
   };
   if (turn === 5) return {
-    eyebrow: 'MOVE AND RECOVER SAFELY', title: 'What should the program respect?', detail: 'Cover pain, movement limits, sleep, stress, and recovery.',
+    eyebrow: 'RECOVERY READINESS', title: 'How ready do you usually feel to train?', detail: 'Cover sleep, stress, recovery, and any movements you already prefer to exclude. You do not need to explain why.',
     choices: [
-      ['Good to go, recover well', 'I have no current pain, injuries, medical restrictions, or movement limitations. My sleep is generally consistent, stress is manageable, and I usually recover well.'],
-      ['Recovery varies', 'I have no current pain, injuries, medical restrictions, or movement limitations, but my sleep, stress, or recovery can be inconsistent. The main issue is: .'],
-      ['One thing to mention', 'I have one injury, pain issue, or movement limitation FLYNT should work around: . It affects these movements: . My sleep, stress, and recovery are generally: .'],
+      ['Usually ready', 'My sleep is generally consistent, stress is manageable, and I usually recover well. I have no movements I want excluded.'],
+      ['Readiness varies', 'My sleep, stress, or recovery can be inconsistent. I usually feel: . Movements I want excluded are: none.'],
+      ['Exclude a movement', 'My recovery readiness is generally: . Please exclude or regress these movements without asking me for a medical reason: .'],
     ],
   };
   return {

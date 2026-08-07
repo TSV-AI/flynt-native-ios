@@ -27,7 +27,7 @@ export const firstRunSlides: readonly {
   },
   {
     title: 'A trainer that knows your plan.',
-    body: 'Talk through pain, schedule changes, or a hard session and review every adjustment before it happens.',
+    body: 'Talk through movement changes, schedule changes, or a hard session and review every adjustment before it happens.',
     kind: 'trainer',
   },
   {

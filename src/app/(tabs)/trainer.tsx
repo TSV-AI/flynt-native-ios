@@ -20,7 +20,7 @@ import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provide
 
 const prompts = [
   ['Equipment swap', 'I don’t have the equipment my program calls for. Help me swap it without changing the intent.'],
-  ['Adjust around pain', 'A movement is bothering me. Help me adjust today safely and decide what the plan should avoid.'],
+  ['Adjust a movement', 'I want to hold, regress, or replace a movement today without changing the rest of the plan.'],
   ['Rework my week', 'My schedule or recovery changed. Rework the week so I can still make progress.'],
 ] as const;
 

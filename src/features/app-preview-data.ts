@@ -95,7 +95,7 @@ export type PreviewWorkoutHistory = {
   exercises: {
     id: string;
     name: string;
-    sets: { load: number; reps: number; rpe?: number; pain?: number }[];
+    sets: { load: number; reps: number; rpe?: number; control?: 'controlled' | 'mixed' | 'not_controlled' }[];
   }[];
 };
 
