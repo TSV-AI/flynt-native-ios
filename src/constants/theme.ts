@@ -60,7 +60,8 @@ export const appSurfaces = {
     exerciseSurface: '#D4D3D0',
     edgeScrim: 'rgba(247,246,242,0.92)',
     todayEdgeScrim: 'rgba(247,246,242,0.92)',
-    composerEdgeScrim: 'rgba(247,246,242,0.58)',
+    composerEdgeTransparent: 'rgba(247,246,242,0)',
+    composerEdgeScrim: 'rgba(247,246,242,0.76)',
   },
   dark: {
     primaryBackground: palette.darkCanvas,
@@ -71,7 +72,8 @@ export const appSurfaces = {
     exerciseSurface: '#222222',
     edgeScrim: 'rgba(20,20,20,0.92)',
     todayEdgeScrim: 'rgba(20,20,20,0.92)',
-    composerEdgeScrim: 'rgba(20,20,20,0.52)',
+    composerEdgeTransparent: 'rgba(20,20,20,0)',
+    composerEdgeScrim: 'rgba(20,20,20,0.70)',
   },
 } as const;
 

@@ -83,23 +83,26 @@ export function FlyntChatThread<TMessage extends IMessage>({
   const renderComposer = useCallback(() => {
     const composer = renderInputToolbar?.();
     if (!composer || hasExternalComposer) return composer;
-    const composerContentHeight = typeof scrollRevision === 'number' ? scrollRevision : 44;
     return (
       <SafeAreaView edges={['bottom']} style={styles.composerOverlay}>
         <View
           pointerEvents="none"
           style={[
             styles.composerScrim,
-            {
-              top: composerContentHeight + spacing.md,
-              experimental_backgroundImage: `linear-gradient(0deg, ${appSurfaces[mode].composerEdgeScrim} 0%, transparent 100%)`,
-            },
+            { top: spacing.xs },
           ]}
-        />
+        >
+          <View style={[
+            StyleSheet.absoluteFill,
+            {
+              experimental_backgroundImage: `linear-gradient(180deg, ${appSurfaces[mode].composerEdgeTransparent} 0%, ${appSurfaces[mode].composerEdgeScrim} 72%, ${appSurfaces[mode].primaryBackground} 100%)`,
+            },
+          ]} />
+        </View>
         {composer}
       </SafeAreaView>
     );
-  }, [hasExternalComposer, mode, renderInputToolbar, scrollRevision]);
+  }, [hasExternalComposer, mode, renderInputToolbar]);
 
   const listEndClearance = hasExternalComposer
     ? spacing.hero
@@ -155,7 +158,7 @@ export function FlyntUserMessage({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  messagesContainer: { flex: 1, marginHorizontal: 12 },
+  messagesContainer: { flex: 1, marginHorizontal: 12, zIndex: 0 },
   conversationContent: {
     flexGrow: 1,
     gap: spacing.lg,
@@ -168,7 +171,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 2,
+    zIndex: 2147483647,
+    elevation: 2147483647,
     paddingHorizontal: spacing.sm,
   },
   composerScrim: {

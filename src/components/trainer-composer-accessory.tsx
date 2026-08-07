@@ -110,7 +110,12 @@ export function FlyntChatInputToolbar(props: Parameters<typeof FlyntChatComposer
     return (
       <View style={styles.toolbarFrame}>
         <View style={lift}>
-          <GlassView colorScheme={mode} glassEffectStyle="regular" isInteractive style={[styles.glassHost, { borderColor: theme.line }]}>
+          <GlassView
+            colorScheme={mode}
+            glassEffectStyle="regular"
+            isInteractive
+            style={styles.glassHost}
+          >
             {composer}
           </GlassView>
         </View>
@@ -121,7 +126,7 @@ export function FlyntChatInputToolbar(props: Parameters<typeof FlyntChatComposer
   return (
     <View style={styles.toolbarFrame}>
       <View style={lift}>
-        <View style={[styles.glassHost, { backgroundColor: mode === 'dark' ? '#222222' : '#F2F2F1', borderColor: theme.line }]}>
+        <View style={[styles.glassHost, { backgroundColor: mode === 'dark' ? '#222222' : '#F2F2F1', borderColor: theme.line, borderWidth: StyleSheet.hairlineWidth }]}>
           {composer}
         </View>
       </View>
@@ -131,7 +136,13 @@ export function FlyntChatInputToolbar(props: Parameters<typeof FlyntChatComposer
 
 const styles = StyleSheet.create({
   accessoryFrame: { position: 'relative', flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xxs, paddingLeft: 8, paddingRight: 52 },
-  toolbarFrame: { paddingHorizontal: 2, paddingTop: spacing.xs, paddingBottom: spacing.xs },
+  toolbarFrame: {
+    zIndex: 2147483647,
+    elevation: 2147483647,
+    paddingHorizontal: 2,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
   lightToolbarLift: {
     borderRadius: 22,
     shadowColor: palette.black,
@@ -139,7 +150,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
   },
-  glassHost: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  glassHost: { zIndex: 2147483647, borderRadius: 22, overflow: 'hidden' },
   input: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, fontSize: 16, lineHeight: 21, paddingHorizontal: spacing.xxs, paddingVertical: 11 },
   sendTarget: { position: 'absolute', right: 8, bottom: 0, width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
   sendVisual: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18 },
