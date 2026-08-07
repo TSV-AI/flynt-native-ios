@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, type ReactElement, type ReactNode } from 'react';
+import MaskedView from '@react-native-masked-view/masked-view';
+import { BlurView } from 'expo-blur';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import {
   Chat,
@@ -13,6 +15,7 @@ import { appSurfaceStyles } from '@/components/app-surface';
 import { TrainerMarkdownMessage } from '@/components/trainer-markdown-message';
 import { appSurfaces, radius, spacing } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
+import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
 
 export const flyntAthlete = { _id: 'athlete' } as const;
 export const flyntTrainer = { _id: 'trainer' } as const;
@@ -49,6 +52,7 @@ export function FlyntChatThread<TMessage extends IMessage>({
   const { mode, theme } = useFlyntTheme();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
+  const reduceTransparency = useReduceTransparency();
   const messagesContainerRef = useRef<AnimatedList<TMessage>>(null!);
   const latestMessageId = messages.length ? String(messages[messages.length - 1]._id) : '';
 
@@ -92,6 +96,29 @@ export function FlyntChatThread<TMessage extends IMessage>({
             { top: spacing.xs },
           ]}
         >
+          {!reduceTransparency ? (
+            <MaskedView
+              maskElement={(
+                <View
+                  style={[
+                    StyleSheet.absoluteFill,
+                    {
+                      experimental_backgroundImage: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.72) 72%, black 100%)',
+                    },
+                  ]}
+                />
+              )}
+              pointerEvents="none"
+              style={StyleSheet.absoluteFill}
+            >
+              <BlurView
+                intensity={50}
+                pointerEvents="none"
+                style={StyleSheet.absoluteFill}
+                tint={mode === 'dark' ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
+              />
+            </MaskedView>
+          ) : null}
           <View style={[
             StyleSheet.absoluteFill,
             {
@@ -102,7 +129,7 @@ export function FlyntChatThread<TMessage extends IMessage>({
         {composer}
       </SafeAreaView>
     );
-  }, [hasExternalComposer, mode, renderInputToolbar]);
+  }, [hasExternalComposer, mode, reduceTransparency, renderInputToolbar]);
 
   const listEndClearance = hasExternalComposer
     ? spacing.hero
