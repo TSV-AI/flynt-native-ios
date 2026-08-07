@@ -101,6 +101,67 @@ planning state originally captured below:
   additive workout-set migration. Unrelated exercise-image prompt work remains
   uncommitted and outside this milestone.
 
+### Consultation-to-program wiring map
+
+The following path is connected in current local source:
+
+1. Native Text setup collects name, age, height, weight, experience, and
+   `trainingIntent`. The conversation posts through `POST /api/trainer`.
+2. The backend consultation uses `openai/gpt-5.6-luna`. Its server prompt owns
+   the version `1.0` coverage gate, the nonclinical disclosure boundary, and
+   the `finishConsultation` structured tool. The server, not the client,
+   decides when that tool becomes available.
+3. Native renders the validated `tool-finishConsultation` payload for review.
+   Confirmation posts that payload to `POST /api/consultation/confirm` with an
+   idempotency key based on the conversation ID.
+4. Confirmation validates the schema, stores `consultation_snapshot` and
+   `trainer_report` on the athlete profile, completes the consultation
+   conversation, creates a `program_builds` record, and starts the durable
+   `programBuildWorkflow`.
+5. The workflow reads the stored consultation and trainer report. Initial
+   prescription uses `openai/gpt-5.6-luna` at medium reasoning with the
+   `flynt-ai-prescriber-2026.8` prompt and a structured program schema.
+6. The committed prescriber prompt includes ownership boundaries, seven-day
+   output, ordered Warm Up, Workout, optional Conditioning, optional Recovery,
+   three to five specific warm-ups, recovery-day mobility and zone 2 work,
+   session-duration limits, nonredundancy, movement exclusions, and explicit
+   load, reps, duration, distance, or rounds tracking.
+7. Program validation rejects an invalid day count, session-duration overflow,
+   missing or disordered sections, umbrella exercise labels, invalid rest or
+   recovery days, and metric-target mismatches before publication.
+8. Downstream fulfillment resolves exercise identity, creates missing exercise
+   records and media, validates fulfillment, publishes the program version,
+   schedules weekly progression, and sends the ready notification.
+
+This path is implemented locally but is not in the current TestFlight build or
+confirmed through a production owner journey.
+
+### Current model and prompt bindings
+
+- Text consultation: `openai/gpt-5.6-luna`, low reasoning.
+- Initial program prescription: `openai/gpt-5.6-luna`, medium reasoning.
+- Normal Trainer chat: `openai/gpt-5.4-mini`, low reasoning.
+- Exercise identity resolution: `openai/gpt-5.4-mini`.
+- Exercise registry metadata and guide generation: `openai/gpt-5.4-mini`.
+- Exercise visual preflight prompt and visual QA: `openai/gpt-5.4-mini`.
+- Exercise image rendering: `openai/gpt-image-2`, medium quality, 1536 by 1024.
+
+The Claude-generated program examples and retrofit document are design inputs;
+they are not runtime models or files read by the production workflow. Their
+ordered-section, metric, ownership, and consultation-boundary decisions have
+been translated into committed validators and prompts. The larger combined
+exercise-definition plus visual-slot contract has not been implemented.
+
+The backend worktree currently contains an uncommitted
+`flynt-precise-exercise-v3` visual master-style template and its test. It is
+already on the code path used by local exercise image generation, but it is not
+committed, pushed, deployed, or production-verified. It also does not yet merge
+exercise metadata, guide instructions, relationships, and visual slots into the
+single comprehensive generation call described in the retrofit document.
+
+Semantic exercise-image QA remains disabled in source. The image model has not
+changed, and no legacy exercise-library image backfill is planned.
+
 ### Database
 
 The configured FLYNT Supabase project is `nnfxswxzjqocnlkoqsbl`.
@@ -651,12 +712,17 @@ Do not expose raw model reasoning, diagnostic language, or medical explanations.
 ### Workstream A: consultation contract, backend schema complete
 
 1. Shared handoff schema in backend and native code: complete.
-2. Replace the ElevenLabs demo-plan delivery tool.
-3. Update the agent policy to collect every required field and obey the
-   nonclinical boundary.
-4. Implement summary, correction, confirmation, and one-sitting discard.
-5. Wire confirmation to the existing authoritative build endpoint.
-6. Verify Talk and Text produce equivalent validated handoffs.
+2. Text agent policy, server coverage gate, structured review tool, correction,
+   confirmation, and authoritative build handoff: implemented in local source.
+3. Replace the ElevenLabs demo-plan delivery tool with the version `1.0`
+   consultation handoff.
+4. Add server-owned ElevenLabs field-recording and finish webhooks with the
+   same validation and nonclinical boundary as Text.
+5. Confirm minimum audio retention and transcript handling, then update the
+   privacy disclosure.
+6. Remove the remaining client prose-regex readiness helper. It currently
+   affects suggested-response timing, not backend completion authority.
+7. Verify Talk and Text produce equivalent validated handoffs.
 
 ### Workstream B: persistence
 
@@ -672,13 +738,16 @@ This is the next design session:
 1. Program-prescription model is currently GPT-5.6 Luna.
 2. Final handoff is connected to the prescription prompt.
 3. Ordered Warm Up, Workout, Conditioning, and Recovery generation is
-   implemented in source and awaiting commit.
+   committed in backend commit `54767c2`.
 4. Add metric-aware program exercise prescription and workout logging:
    complete in backend commit `95a46e4` and the current native milestone.
 5. Finalize the remaining program-exercise schema.
 6. Finalize exercise revision capabilities and canonical relations.
-7. Keep the existing image model and choose the exercise-definition model.
-8. Rewrite exercise and image prompts.
+7. Keep `openai/gpt-image-2` for rendering and choose the final comprehensive
+   exercise-definition model.
+8. Implement the combined exercise-definition, guide, relationship, and visual
+   slot contract. The local uncommitted visual v3 master template is only a
+   partial step.
 9. Add schema versioning, migrations, validators, and publication
    gates.
 10. Update the exercise page and weekly review UI for the new fields. The
@@ -709,6 +778,9 @@ This is the next design session:
    unrelated local theme work.
 6. Current consultation and program-pipeline work is not in TestFlight.
 7. Exercise-definition, guide, and image prompt restructuring remains pending.
+8. Semantic exercise-image QA remains disabled.
+9. The local visual v3 master-template change is uncommitted and unverified in
+   a complete exercise-generation run.
 
 ## Acceptance gate for the consultation integration
 
