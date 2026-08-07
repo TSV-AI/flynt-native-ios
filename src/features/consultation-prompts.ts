@@ -65,12 +65,12 @@ export function consultationPromptForTurn(
     ],
   };
   if (turn === 2) return {
-    eyebrow: 'YOUR REAL WEEK', title: 'What does training need to fit around?', detail: 'Include your available days, session length, schedule, and other activity.',
+    eyebrow: 'YOUR REAL WEEK', title: 'What does training need to fit around?', detail: 'Include your available days, session length, schedule, other activity, and whether your day is mostly seated, mixed, or on your feet.',
     choices: [
-      ['2 shorter days', 'I can train 2 days per week for up to 45 minutes. I have no major schedule constraints and no regular sport demands.'],
-      ['3 balanced days', 'I can train 3 days per week for up to 60 minutes. I have no major schedule constraints and no regular sport demands.'],
-      ['4 focused days', 'I can train 4 days per week for up to 60 minutes. I have no major schedule constraints and no regular sport demands.'],
-      ['My week varies', 'My schedule changes week to week. A realistic training week looks like: . My session time limit is: . My sports or other regular activities are: .'],
+      ['2 shorter days', 'I can train 2 days per week for up to 45 minutes. I have no major schedule constraints and no regular sport demands. My daily activity is mostly: seated, mixed, or on my feet.'],
+      ['3 balanced days', 'I can train 3 days per week for up to 60 minutes. I have no major schedule constraints and no regular sport demands. My daily activity is mostly: seated, mixed, or on my feet.'],
+      ['4 focused days', 'I can train 4 days per week for up to 60 minutes. I have no major schedule constraints and no regular sport demands. My daily activity is mostly: seated, mixed, or on my feet.'],
+      ['My week varies', 'My schedule changes week to week. A realistic training week looks like: . My session time limit is: . My sports or other regular activities are: . My daily activity is mostly: seated, mixed, or on my feet.'],
     ],
   };
   if (turn === 3) return {

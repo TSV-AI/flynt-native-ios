@@ -180,20 +180,21 @@ test('post-account consultation matches the PWA setup and securely resumes its d
 
 test('Trainer approvals validate consultation and bounded program-change payloads', () => {
   const consultation = completedConsultationSchema.safeParse({
+    schemaVersion: '1.0',
     trainingIntent: 'coached',
     summary: 'Three balanced training days focused on useful strength.',
     coachingPriorities: ['Build consistency', 'Respect recovery'],
     profile: {
-      name: 'Priya', age: '34', heightFeet: '5', heightInches: '6', weight: '142',
-      experience: 'Some training experience', daysPerWeek: '3', equipment: 'Full gym',
-      goal: 'Feel stronger', limitations: 'No current limitations',
+      name: 'Priya', age: 34, height: { feet: 5, inches: 6 }, weightLb: 142, experience: 'some',
     },
-    answers: {
-      primaryGoals: ['Feel stronger'], focusAreas: ['Full body'], sessionLength: '60 minutes',
-      equipment: ['Full gym'], preferredMovements: 'No movement preference', avoidedMovements: 'No avoided movements',
-      recovery: 'Generally good', trainingHistory: 'On and off', scheduleConstraints: 'Three weekdays',
-      sportsActivity: 'No regular sport activity', mobilityPriorities: 'No current priority', successMeasures: 'Steady load progress',
-    },
+    objectives: { primaryGoals: ['Feel stronger'], focusAreas: ['Full body'], successMeasures: ['Steady load progress'] },
+    schedule: { daysPerWeek: 3, sessionMinutes: 60, availableDays: ['Monday', 'Wednesday', 'Friday'], constraints: [], sportsAndActivity: [] },
+    programOwnership: { mode: 'coached', preserve: [], athleteSuppliedWorkouts: [] },
+    trainingBackground: { consistency: 'on_and_off', dailyActivity: 'mixed', preferredMovements: [], excludedMovements: [] },
+    equipmentProfile: { environment: 'commercial_gym', presumed: [], confirmed: ['Full gym'], unavailable: [], incrementsLb: {} },
+    readiness: { recovery: 'ready', movementControl: 'controlled', intensityPreference: 'moderate' },
+    unknowns: [],
+    confidence: 'high',
   });
   const change = programChangeSchema.safeParse({
     summary: 'Swap the press', rationale: 'Keep the same movement intent with available equipment.',

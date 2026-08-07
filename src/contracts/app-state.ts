@@ -142,6 +142,8 @@ export const exerciseLibraryResponseSchema = z.object({
 });
 
 const conciseText = (maximum: number) => z.string().trim().min(1).max(maximum);
+const optionalConciseList = (maximumItems: number, maximumLength = 160) =>
+  z.array(conciseText(maximumLength)).max(maximumItems).default([]);
 
 export const consultationBasicsSchema = z.object({
   name: conciseText(80),
@@ -153,35 +155,73 @@ export const consultationBasicsSchema = z.object({
 });
 
 export const completedConsultationSchema = z.object({
-  trainingIntent: z.enum(['coached', 'self_directed', 'hybrid']).default('coached'),
+  schemaVersion: z.literal('1.0'),
+  trainingIntent: z.enum(['coached', 'self_directed', 'hybrid']),
   summary: conciseText(700),
   coachingPriorities: z.array(conciseText(160)).min(2).max(6),
   profile: z.object({
     name: conciseText(80),
-    age: conciseText(12),
-    heightFeet: conciseText(12),
-    heightInches: conciseText(12),
-    weight: conciseText(20),
-    experience: conciseText(80),
-    daysPerWeek: conciseText(20),
-    equipment: conciseText(700),
-    goal: conciseText(1600),
-    limitations: conciseText(1600),
-  }),
-  answers: z.object({
+    age: z.number().int().min(13).max(120),
+    height: z.object({
+      feet: z.number().int().min(3).max(8),
+      inches: z.number().int().min(0).max(11),
+    }).strict(),
+    weightLb: z.number().min(75).max(700),
+    experience: z.enum(['new', 'some', 'experienced']),
+  }).strict(),
+  objectives: z.object({
     primaryGoals: z.array(conciseText(120)).min(1).max(8),
-    focusAreas: z.array(conciseText(120)).max(10),
-    sessionLength: conciseText(60),
-    equipment: z.array(conciseText(120)).min(1).max(12),
-    preferredMovements: conciseText(1200),
-    avoidedMovements: conciseText(1200),
-    recovery: conciseText(1600),
-    trainingHistory: conciseText(1600),
-    scheduleConstraints: conciseText(1200),
-    sportsActivity: conciseText(1000),
-    mobilityPriorities: conciseText(1000),
-    successMeasures: conciseText(1000),
-  }),
+    focusAreas: optionalConciseList(10, 120),
+    successMeasures: z.array(conciseText(160)).min(1).max(8),
+  }).strict(),
+  schedule: z.object({
+    daysPerWeek: z.number().int().min(1).max(7),
+    sessionMinutes: z.number().int().min(15).max(180),
+    availableDays: optionalConciseList(7, 20),
+    constraints: optionalConciseList(12),
+    sportsAndActivity: optionalConciseList(12),
+  }).strict(),
+  programOwnership: z.object({
+    mode: z.enum(['coached', 'self_directed', 'hybrid']),
+    preserve: optionalConciseList(30, 240),
+    athleteSuppliedWorkouts: optionalConciseList(20, 1200),
+  }).strict(),
+  trainingBackground: z.object({
+    consistency: z.enum(['new', 'on_and_off', 'consistent', 'detrained']),
+    dailyActivity: z.enum(['seated', 'mixed', 'on_feet']),
+    preferredMovements: optionalConciseList(30, 120),
+    excludedMovements: z.array(z.object({
+      name: conciseText(80).refine(
+        (value) => !/\b(?:because|due to|hurts?|pain(?:ful)?|injur(?:y|ed)|surgery|diagnos(?:is|ed)|rehab|therapy|medication)\b/i.test(value),
+        'Movement exclusions may contain only the movement name.',
+      ),
+      status: z.literal('excluded'),
+      source: z.literal('athlete_preference'),
+      reason: z.null(),
+    }).strict()).max(20).default([]),
+  }).strict(),
+  equipmentProfile: z.object({
+    environment: z.enum(['bodyweight_only', 'home', 'commercial_gym', 'other']),
+    presumed: optionalConciseList(30, 120),
+    confirmed: optionalConciseList(40, 120),
+    unavailable: optionalConciseList(30, 120),
+    incrementsLb: z.record(z.string().trim().min(1).max(80), z.number().positive().max(500)).default({}),
+  }).strict(),
+  readiness: z.object({
+    recovery: z.enum(['ready', 'mixed', 'drained']),
+    movementControl: z.enum(['controlled', 'mixed', 'not_controlled']),
+    intensityPreference: z.enum(['moderate', 'challenging']).default('moderate'),
+  }).strict(),
+  unknowns: optionalConciseList(20),
+  confidence: z.enum(['low', 'medium', 'high']),
+}).strict().superRefine((consultation, context) => {
+  if (consultation.programOwnership.mode !== consultation.trainingIntent) {
+    context.addIssue({
+      code: 'custom',
+      path: ['programOwnership', 'mode'],
+      message: 'Program ownership mode must match training intent.',
+    });
+  }
 });
 
 const programChangeOperationSchema = z.discriminatedUnion('type', [
