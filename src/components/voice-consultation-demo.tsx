@@ -45,8 +45,7 @@ import { parseVoiceDemoPlan, type VoiceDemoPlan, type VoiceDemoPlanDelivery } fr
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { deliberateAction, selection } from '@/lib/haptics';
 import { composerMinimumHeight, consultationComposerMaximumHeight } from '@/lib/composer-layout';
-import { completedConsultationSchema } from '@/contracts/app-state';
-import { elevenLabsFinishConsultationTool } from '@/contracts/elevenlabs-consultation';
+import { elevenLabsFinishConsultationTool, parseElevenLabsConsultationParameters } from '@/contracts/elevenlabs-consultation';
 import { confirmConsultation } from '@/lib/api-client';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 
@@ -109,7 +108,7 @@ export function VoiceConsultationDemo() {
 
   const clientTools = useMemo(() => ({
     [elevenLabsFinishConsultationTool.name]: async (parameters: Record<string, unknown>) => {
-      const consultation = completedConsultationSchema.safeParse(parameters);
+      const consultation = parseElevenLabsConsultationParameters(parameters);
       const conversation = appState?.conversation;
       if (!consultation.success) {
         setDeliveryError('FLYNT could not validate the consultation summary. Ask the agent to correct the handoff and try again.');

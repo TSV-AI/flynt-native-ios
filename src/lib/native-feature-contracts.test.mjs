@@ -159,14 +159,16 @@ test('Talk and Text share the validated production consultation handoff', async 
   const contract = await readFile(new URL('../contracts/elevenlabs-consultation.ts', import.meta.url), 'utf8');
 
   assert.match(source, /\[elevenLabsFinishConsultationTool\.name\]: async/);
-  assert.match(source, /completedConsultationSchema\.safeParse\(parameters\)/);
+  assert.match(source, /parseElevenLabsConsultationParameters\(parameters\)/);
   assert.match(source, /conversation\.kind !== 'consultation'/);
   assert.match(source, /await confirmConsultation\(consultation\.data, conversation\.id\)/);
   assert.match(source, /await refresh\(\)/);
   assert.match(source, /router\.replace\('\/program-building'\)/);
   assert.equal((source.match(/flynt_conversation_id/g) ?? []).length, 2);
   assert.match(contract, /name: 'finish_consultation'/);
+  assert.match(contract, /parameterName: 'consultation_json'/);
   assert.match(contract, /z\.toJSONSchema\(completedConsultationSchema/);
+  assert.match(contract, /JSON\.parse\(encoded\)/);
   assert.match(contract, /explicitly confirms/);
   assert.match(contract, /Do not create or preview the workout program/);
 });

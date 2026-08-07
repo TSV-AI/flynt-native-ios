@@ -64,6 +64,10 @@ planning state originally captured below:
   both modes. It validates the version `1.0` handoff, submits it to the existing
   authenticated consultation confirmation endpoint, refreshes authoritative
   lifecycle state, and opens the existing program-build progress route.
+- ElevenLabs Main is published with the production consultation prompt and
+  `finish_consultation` client tool. The old `deliver_demo_plan` tool is detached
+  from the agent. The existing first message, Claude Opus 4.7 model, Mark voice,
+  interruptibility, and established conversation style remain unchanged.
 
 ## Current product state
 
@@ -85,11 +89,9 @@ planning state originally captured below:
 - Today uses a nested native stack for the workout and exercise routes. The
   exercise page owns active exercise execution; metric and stats sheets do not
   replace or dismiss that page.
-- The shallow `deliver_demo_plan` receiver remains temporarily for compatibility
-  with the currently configured ElevenLabs agent. Native is ready to receive the
-  production versioned handoff through `finish_consultation`, but that tool and
-  the completion instructions still need to be registered on the agent before
-  the legacy receiver can be removed.
+- The shallow `deliver_demo_plan` receiver remains temporarily as dormant client
+  compatibility code while the published Talk and Text journey is verified.
+  The ElevenLabs agent no longer has that tool attached and cannot select it.
 - Local source contains unrelated uncommitted lifecycle, Settings, theme, and
   sheet changes. Those changes must be preserved and reviewed separately.
 
@@ -154,9 +156,9 @@ confirmed through a production owner journey.
 
 ### Current model and prompt bindings
 
-- New Talk and Text consultation: the same configured ElevenLabs agent. The
-  agent's underlying language-model setting is owned by ElevenLabs and has not
-  been read or changed from this repository.
+- New Talk and Text consultation: the same configured ElevenLabs agent using
+  Claude Opus 4.7. The model was verified in the live dashboard and was not
+  changed during the production-handoff update.
 - Previous server-driven text consultation: `openai/gpt-5.6-luna`, low
   reasoning. This is not the new Hey FLYNT Text path.
 - Initial program prescription: `openai/gpt-5.6-luna`, medium reasoning.
@@ -752,11 +754,12 @@ Do not expose raw model reasoning, diagnostic language, or medical explanations.
 2. One native `finish_consultation` receiver for Talk and Text, strict schema
    validation, authenticated confirmation, lifecycle refresh, and build-progress
    navigation: implemented and locally tested.
-3. Register `finish_consultation` and its generated JSON schema on the existing
-   ElevenLabs agent. Append the approved summary, correction, confirmation, and
-   nonclinical completion instructions without changing the working greeting.
-4. Run Talk and Text through the configured tool, then remove the legacy
-   `deliver_demo_plan` compatibility receiver.
+3. Publish `finish_consultation` and the approved production prompt on the
+   existing ElevenLabs agent without changing the working greeting: complete.
+   The dashboard tool sends `consultation_json`; native parses it and validates
+   the exact versioned Zod schema before backend submission.
+4. Run Talk and Text through the configured tool, then remove the dormant
+   `deliver_demo_plan` compatibility receiver from native source.
 5. Confirm minimum audio retention and transcript handling, then update the
    privacy disclosure.
 6. Verify Talk and Text produce equivalent stored handoffs and each starts only
@@ -807,9 +810,8 @@ This is the next design session:
 
 ## Current blockers
 
-1. Native is ready for the production handoff, but the existing ElevenLabs
-   agent has not yet been configured to call `finish_consultation`. No
-   ElevenLabs management credential is available in the current environment.
+1. The published ElevenLabs agent and native receiver have not yet completed a
+   real end-to-end consultation handoff against the backend.
 2. Equipment and movement preferences are not durable independent resources.
 3. Pace and completion-only tracking are not in the current five-metric
    contract.
