@@ -36,7 +36,7 @@ export const previewWeek: PreviewDay[] = [
   { shortDay: 'TUE', date: '28', title: 'Lower Strength', focus: 'Squat mechanics', exerciseCount: 6, duration: '58 min', kind: 'training' },
   { shortDay: 'WED', date: '29', title: 'Recovery', focus: 'Mobility and easy movement', exerciseCount: 0, duration: '20 min', kind: 'recovery' },
   { shortDay: 'THU', date: '30', title: 'Upper Volume', focus: 'Back and shoulders', exerciseCount: 6, duration: '55 min', kind: 'training' },
-  { shortDay: 'FRI', date: '31', title: 'Lower Power', focus: 'Posterior chain', exerciseCount: 5, duration: '50 min', kind: 'training' },
+  { shortDay: 'FRI', date: '31', title: 'Lower Power', focus: 'Posterior chain', exerciseCount: 8, duration: '50 min', kind: 'training' },
   { shortDay: 'SAT', date: '1', title: 'Conditioning', focus: 'Work capacity', exerciseCount: 4, duration: '34 min', kind: 'training' },
   { shortDay: 'SUN', date: '2', title: 'Rest', focus: 'Full recovery', exerciseCount: 0, duration: 'Rest', kind: 'recovery' },
 ];
@@ -67,11 +67,14 @@ export const previewExercisesByDay: PreviewExercise[][] = [
     { name: 'Hammer Curl', detail: '3 sets · 10 reps', completed: 0, total: 3 },
   ],
   [
-    { name: 'Goblet Squat', detail: '4 sets · 8 reps · RPE 8', completed: 3, total: 4 },
-    { name: 'Overhead Squat', detail: '4 sets · 5 reps · RPE 8', completed: 1, total: 4 },
-    { name: 'Single-Leg Romanian Deadlift', detail: '3 sets · 8 reps each', completed: 0, total: 3 },
-    { name: 'Glute Bridge', detail: '3 sets · 12 reps', completed: 0, total: 3 },
-    { name: 'Dumbbell Step-Up', detail: '3 sets · 10 reps each', completed: 0, total: 3 },
+    { name: 'Half-Kneeling Ankle Rock', detail: '1 set · 8 reps each', completed: 0, total: 1, role: 'warmup' },
+    { name: 'Quadruped Hip Rotation', detail: '1 set · 6 reps each', completed: 0, total: 1, role: 'warmup' },
+    { name: 'Bodyweight Squat', detail: '1 set · 10 reps', completed: 0, total: 1, role: 'warmup' },
+    { name: 'Goblet Squat', detail: '4 sets · 8 reps · RPE 8', completed: 3, total: 4, role: 'primary' },
+    { name: 'Overhead Squat', detail: '4 sets · 5 reps · RPE 8', completed: 1, total: 4, role: 'secondary' },
+    { name: 'Single-Leg Romanian Deadlift', detail: '3 sets · 8 reps each', completed: 0, total: 3, role: 'secondary' },
+    { name: 'Glute Bridge', detail: '3 sets · 12 reps', completed: 0, total: 3, role: 'accessory' },
+    { name: 'Dumbbell Step-Up', detail: '3 sets · 10 reps each', completed: 0, total: 3, role: 'accessory' },
   ],
   [
     { name: 'Bike Sprint', detail: '6 rounds · 20 seconds', completed: 0, total: 6 },

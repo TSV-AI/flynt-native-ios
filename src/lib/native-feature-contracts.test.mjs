@@ -66,6 +66,25 @@ test('normalized workout history uses movement control instead of routine pain s
   assert.equal('pain' in parsed, false);
 });
 
+test('Today renders prescribed exercise roles as ordered session sections', async () => {
+  const today = await readFile(new URL('../components/native-today-workout.tsx', import.meta.url), 'utf8');
+  assert.match(today, /exercise\.role === 'warmup'\) return 'WARM UP'/);
+  assert.match(today, /exercise\.role === 'conditioning'\) return 'CONDITIONING'/);
+  assert.match(today, /exercise\.role === 'recovery'\) return 'RECOVERY'/);
+  assert.match(today, /return 'WORKOUT'/);
+  assert.match(today, /section !== previousSection/);
+});
+
+test('Progress workout history gives scrolling to the native sheet container', async () => {
+  const progress = await readFile(new URL('../app/(tabs)/progress.tsx', import.meta.url), 'utf8');
+  const flyntSheet = await readFile(new URL('../components/flynt-sheet.tsx', import.meta.url), 'utf8');
+  const nativeSheet = await readFile(new URL('../components/native-material-sheet.tsx', import.meta.url), 'utf8');
+  assert.match(progress, /<FlyntSheet[\s\S]*nativeScroll[\s\S]*scroll=\{false\}/);
+  assert.match(flyntSheet, /nativeScroll=\{nativeScroll\}/);
+  assert.match(nativeSheet, /<NativeScrollView axes="vertical"/);
+  assert.match(nativeSheet, /<RNHostView matchContents>/);
+});
+
 test('consultation basics require both communication and training intent choices', () => {
   assert.equal(consultationBasicsSchema.safeParse({
     name: 'Priya', age: 34, height: 66, weight: 142, experience: 'some', trainingIntent: 'hybrid',

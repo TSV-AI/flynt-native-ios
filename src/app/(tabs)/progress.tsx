@@ -15,58 +15,60 @@ export default function ProgressScreen() {
   const { history, historyError, historyPhase, retryHistory, sessionCount, trackedLiftCount } = useWorkoutData();
   const [selectedWorkout, setSelectedWorkout] = useState<PreviewWorkoutHistory | null>(null);
   return (
-    <AppScreen modalActive={selectedWorkout !== null} testID="screen-progress" title="Progress">
-      <View style={styles.metrics}>
-        <View style={[styles.metric, { backgroundColor: itemBackground }]}>
-          <Text style={[styles.metricValue, { color: theme.ink }]}>{sessionCount}</Text>
-          <Text style={[styles.metricLabel, { color: theme.muted }]}>Sessions</Text>
+    <>
+      <AppScreen modalActive={selectedWorkout !== null} testID="screen-progress" title="Progress">
+        <View style={styles.metrics}>
+          <View style={[styles.metric, { backgroundColor: itemBackground }]}>
+            <Text style={[styles.metricValue, { color: theme.ink }]}>{sessionCount}</Text>
+            <Text style={[styles.metricLabel, { color: theme.muted }]}>Sessions</Text>
+          </View>
+          <View style={[styles.metric, { backgroundColor: itemBackground }]}>
+            <Text style={[styles.metricValue, { color: theme.ink }]}>{trackedLiftCount}</Text>
+            <Text style={[styles.metricLabel, { color: theme.muted }]}>Tracked lifts</Text>
+          </View>
         </View>
-        <View style={[styles.metric, { backgroundColor: itemBackground }]}>
-          <Text style={[styles.metricValue, { color: theme.ink }]}>{trackedLiftCount}</Text>
-          <Text style={[styles.metricLabel, { color: theme.muted }]}>Tracked lifts</Text>
+        <Text style={[styles.sectionTitle, { color: theme.ink }]}>Recent workouts</Text>
+        <View style={[styles.history, { backgroundColor: itemBackground }]}>
+          {history.map((item, index) => (
+            <Pressable
+              accessibilityHint="Opens completed workout details"
+              accessibilityLabel={`${item.title}, ${item.fullDate}, ${item.completedSets} of ${item.plannedSets} sets completed`}
+              accessibilityRole="button"
+              key={item.id}
+              onPress={() => setSelectedWorkout(item)}
+              style={({ pressed }) => [styles.historyRow, index < history.length - 1 && { borderBottomColor: theme.line, borderBottomWidth: StyleSheet.hairlineWidth }, pressed && styles.pressed]}
+            >
+              <View style={styles.historyCopy}>
+                <Text style={[styles.historyTitle, { color: theme.ink }]}>{item.title}</Text>
+                <Text style={[styles.historyDate, { color: theme.muted }]}>{item.date} · {item.detail}</Text>
+              </View>
+              <View style={styles.historyTrailing}>
+                <Text style={[styles.historyValue, { color: theme.ink }]}>{item.change}</Text>
+                <NativeSymbol color={theme.muted} name="chevron.right" size={13} />
+              </View>
+            </Pressable>
+          ))}
+          {history.length === 0 && historyPhase !== 'loading' ? (
+            <View style={styles.historyEmpty}>
+              <Text style={[styles.historyTitle, { color: theme.ink }]}>No completed workouts yet</Text>
+              <Text style={[styles.historyDate, { color: theme.muted }]}>Finish your first session and its history will appear here.</Text>
+            </View>
+          ) : null}
         </View>
-      </View>
-      <Text style={[styles.sectionTitle, { color: theme.ink }]}>Recent workouts</Text>
-      <View style={[styles.history, { backgroundColor: itemBackground }]}>
-        {history.map((item, index) => (
-          <Pressable
-            accessibilityHint="Opens completed workout details"
-            accessibilityLabel={`${item.title}, ${item.fullDate}, ${item.completedSets} of ${item.plannedSets} sets completed`}
-            accessibilityRole="button"
-            key={item.id}
-            onPress={() => setSelectedWorkout(item)}
-            style={({ pressed }) => [styles.historyRow, index < history.length - 1 && { borderBottomColor: theme.line, borderBottomWidth: StyleSheet.hairlineWidth }, pressed && styles.pressed]}
-          >
-            <View style={styles.historyCopy}>
-              <Text style={[styles.historyTitle, { color: theme.ink }]}>{item.title}</Text>
-              <Text style={[styles.historyDate, { color: theme.muted }]}>{item.date} · {item.detail}</Text>
-            </View>
-            <View style={styles.historyTrailing}>
-              <Text style={[styles.historyValue, { color: theme.ink }]}>{item.change}</Text>
-              <NativeSymbol color={theme.muted} name="chevron.right" size={13} />
-            </View>
-          </Pressable>
-        ))}
-        {history.length === 0 && historyPhase !== 'loading' ? (
-          <View style={styles.historyEmpty}>
-            <Text style={[styles.historyTitle, { color: theme.ink }]}>No completed workouts yet</Text>
-            <Text style={[styles.historyDate, { color: theme.muted }]}>Finish your first session and its history will appear here.</Text>
+        {historyPhase === 'loading' ? <Text style={[styles.syncStatus, { color: theme.muted }]}>Refreshing workout history…</Text> : null}
+        {historyPhase === 'error' ? (
+          <View style={styles.syncError}>
+            <Text style={[styles.syncStatus, { color: theme.muted }]}>{historyError}</Text>
+            <Pressable accessibilityRole="button" onPress={retryHistory} style={styles.retryButton}>
+              <Text style={[styles.retryText, { color: theme.ink }]}>Retry</Text>
+            </Pressable>
           </View>
         ) : null}
-      </View>
-      {historyPhase === 'loading' ? <Text style={[styles.syncStatus, { color: theme.muted }]}>Refreshing workout history…</Text> : null}
-      {historyPhase === 'error' ? (
-        <View style={styles.syncError}>
-          <Text style={[styles.syncStatus, { color: theme.muted }]}>{historyError}</Text>
-          <Pressable accessibilityRole="button" onPress={retryHistory} style={styles.retryButton}>
-            <Text style={[styles.retryText, { color: theme.ink }]}>Retry</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      </AppScreen>
       {selectedWorkout ? (
         <WorkoutHistorySheet onDismiss={() => setSelectedWorkout(null)} workout={selectedWorkout} />
       ) : null}
-    </AppScreen>
+    </>
   );
 }
 
@@ -77,7 +79,9 @@ function WorkoutHistorySheet({ onDismiss, workout }: { onDismiss: () => void; wo
       closeAccessibilityLabel="Close completed workout"
       eyebrow="COMPLETED WORKOUT"
       isPresented
+      nativeScroll
       onDismiss={onDismiss}
+      scroll={false}
       title={workout.title}
     >
       <Text style={[styles.fullDate, { color: theme.muted }]}>{workout.fullDate}</Text>

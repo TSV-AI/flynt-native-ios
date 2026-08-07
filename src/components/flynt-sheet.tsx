@@ -15,6 +15,7 @@ type FlyntSheetProps = PropsWithChildren<{
   footer?: ReactNode;
   isPresented: boolean;
   mode?: ColorMode;
+  nativeScroll?: boolean;
   onBack?: () => void;
   onDismiss: () => void;
   presentationOverride?: FlyntSheetPresentationOverride;
@@ -30,6 +31,7 @@ export function FlyntSheet({
   footer,
   isPresented,
   mode: requestedMode,
+  nativeScroll = false,
   onBack,
   onDismiss,
   presentationOverride,
@@ -45,6 +47,7 @@ export function FlyntSheet({
     <NativeMaterialSheet
       colorScheme={mode}
       isPresented={isPresented}
+      nativeScroll={nativeScroll}
       onDismiss={onDismiss}
       presentationOverride={presentationOverride}
     >

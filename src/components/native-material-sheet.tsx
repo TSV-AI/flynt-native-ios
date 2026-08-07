@@ -1,4 +1,4 @@
-import { BottomSheet, Group, Host, RNHostView } from '@expo/ui/swift-ui';
+import { BottomSheet, Group, Host, RNHostView, ScrollView as NativeScrollView } from '@expo/ui/swift-ui';
 import {
   environment,
   presentationBackground,
@@ -21,11 +21,12 @@ type NativeMaterialSheetProps = {
   children: ReactNode;
   colorScheme: 'light' | 'dark';
   isPresented: boolean;
+  nativeScroll?: boolean;
   onDismiss: () => void;
   presentationOverride?: FlyntSheetPresentationOverride;
 };
 
-export function NativeMaterialSheet({ children, colorScheme, isPresented, onDismiss, presentationOverride }: NativeMaterialSheetProps) {
+export function NativeMaterialSheet({ children, colorScheme, isPresented, nativeScroll = false, onDismiss, presentationOverride }: NativeMaterialSheetProps) {
   const { fontScale, width } = useWindowDimensions();
   const reduceTransparency = useReduceTransparency();
   const { setModalPresented } = useModalPresentation();
@@ -55,9 +56,17 @@ export function NativeMaterialSheet({ children, colorScheme, isPresented, onDism
             environment('colorScheme', colorScheme),
           ]}
         >
-          <RNHostView>
-            <View accessibilityViewIsModal style={styles.content}>{children}</View>
-          </RNHostView>
+          {nativeScroll ? (
+            <NativeScrollView axes="vertical" showsIndicators={false}>
+              <RNHostView matchContents>
+                <View accessibilityViewIsModal style={styles.scrollContent}>{children}</View>
+              </RNHostView>
+            </NativeScrollView>
+          ) : (
+            <RNHostView>
+              <View accessibilityViewIsModal style={styles.content}>{children}</View>
+            </RNHostView>
+          )}
         </Group>
       </BottomSheet>
     </Host>
@@ -67,4 +76,5 @@ export function NativeMaterialSheet({ children, colorScheme, isPresented, onDism
 const styles = StyleSheet.create({
   host: { position: 'absolute' },
   content: { flex: 1 },
+  scrollContent: { width: '100%' },
 });

@@ -119,6 +119,13 @@ type NativeTodayWorkoutProps = {
   workoutSaveState: 'idle' | 'saving' | 'saved';
 };
 
+function workoutSectionLabel(exercise: PreviewExercise) {
+  if (exercise.role === 'warmup') return 'WARM UP';
+  if (exercise.role === 'conditioning') return 'CONDITIONING';
+  if (exercise.role === 'recovery') return 'RECOVERY';
+  return 'WORKOUT';
+}
+
 type NativeSetRowProps = {
   checked: boolean;
   exerciseName: string;
@@ -1183,20 +1190,42 @@ export function NativeTodayWorkout({
                   />
                 </RNHostView>
               </Group>
-            ) : exercises.map((item, index) => (
-              <ExerciseListRow
-                key={item.name}
-                completed={completed[index]}
-                exercise={item}
-                inputColor={input}
-                onPress={() => selectExercise(index)}
-                outlineColor={outline}
-                rowWidth={contentWidth}
-                theme={theme}
-              />
-            )).map((row) => (
-              <Group key={row.key} modifiers={commonRow}>{row}</Group>
-            ))}
+            ) : exercises.map((item, index) => {
+              const section = workoutSectionLabel(item);
+              const previousSection = index > 0
+                ? workoutSectionLabel(exercises[index - 1])
+                : null;
+              return (
+                <VStack
+                  alignment="leading"
+                  key={item.id ?? `${item.name}-${index}`}
+                  spacing={0}
+                  modifiers={commonRow}
+                >
+                  {section !== previousSection ? (
+                    <NativeText
+                      modifiers={[
+                        padding({ top: index === 0 ? spacing.md : spacing.xl, horizontal: 4, bottom: spacing.sm }),
+                        font({ textStyle: 'caption2', weight: 'bold' }),
+                        kerning(1.35),
+                        foregroundStyle(theme.muted),
+                      ]}
+                    >
+                      {section}
+                    </NativeText>
+                  ) : null}
+                  <ExerciseListRow
+                    completed={completed[index]}
+                    exercise={item}
+                    inputColor={input}
+                    onPress={() => selectExercise(index)}
+                    outlineColor={outline}
+                    rowWidth={contentWidth}
+                    theme={theme}
+                  />
+                </VStack>
+              );
+            })}
 
             {!editingWorkout && day.kind !== 'recovery' && exercises.length > 0 ? (
               <VStack
