@@ -41,10 +41,12 @@ planning state originally captured below:
   17 Pro Simulator running iOS 26.5.
 - Completed-workout history sheets on Progress now use a native SwiftUI scroll
   container. Scrolling is verified in the same Simulator.
-- The next isolated milestone is metric-aware exercise prescription and
-  tracking. Strength, bodyweight, duration, distance, cardio, carry, and
-  mobility work must show only the fields that apply instead of empty load or
-  repetition controls.
+- The metric-aware prescription contract is implemented in the backend. New
+  prescriptions must explicitly select meaningful metrics from load, reps,
+  duration, distance, and rounds and provide matching targets. Legacy programs
+  remain readable without a backfill. The next isolated milestone is additive
+  workout logging plus native controls and history formatting for those
+  metrics.
 
 ## Current product state
 
@@ -83,7 +85,8 @@ planning state originally captured below:
   ownership, the versioned handoff, persistence, and legacy read compatibility.
 - Backend commit `54767c2` enforces ordered program sections while preserving
   compatibility with older published programs.
-- The backend branch is three commits ahead of `origin/main`.
+- The backend working tree contains the tested metric-aware prescription
+  contract pending its milestone commit.
 
 ### Database
 
@@ -148,14 +151,18 @@ All local checks ran under Node 22.23.1. The repository requires Node 24.14.0.
 
 ### Backend checks run
 
-- The full recovery suite passes 98 of 98 tests, including the versioned
+- The full recovery suite passes 101 of 101 tests, including the versioned
   consultation contract, nonclinical exclusion enforcement, program
-  prescribing, weekly progression, block review, and media policy.
+  prescribing, metric selection, weekly progression, block review, and media
+  policy.
 - Trainer and consultation acceptance passes 35 of 35 checks.
 - TypeScript passes.
 - ESLint reports zero errors and three pre-existing warnings.
 - Program-section tests verify three to five warm-ups, ordered sections,
   recovery mobility, and zone 2 guidance.
+- Metric-contract tests verify legacy compatibility, required new-prescription
+  tracking, target-to-metric consistency, and prescriber instructions that
+  prohibit irrelevant load or repetition fields.
 
 ### Not yet verified
 
