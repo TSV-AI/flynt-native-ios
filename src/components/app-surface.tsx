@@ -1,10 +1,22 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { router } from 'expo-router';
+import {
+  Group as NativeGroup,
+  RNHostView,
+} from '@expo/ui/swift-ui';
+import {
+  accessibilityLabel,
+  buttonStyle,
+  contentShape,
+  frame,
+  glassEffect,
+  shapes,
+} from '@expo/ui/swift-ui/modifiers';
 import { Pressable, ScrollView, StyleSheet, Text, View, type ColorValue } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appSurfaces, palette, radius, spacing, type } from '@/constants/theme';
-import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
+import { GlassSymbolButton } from '@/components/native-symbol';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 
 type AppScreenProps = PropsWithChildren<{
@@ -32,6 +44,47 @@ type AppScreenTopbarProps = Pick<
 };
 
 export const appTopbarHeight = 58;
+export const appTopbarHorizontalPadding = 20;
+
+export function nativeHeaderGlassButtonModifiers(label: string) {
+  return [
+    buttonStyle('plain'),
+    frame({ width: 44, height: 44 }),
+    contentShape(shapes.circle()),
+    glassEffect({ glass: { variant: 'regular', interactive: true }, shape: 'circle' }),
+    accessibilityLabel(label),
+  ];
+}
+
+export function NativeAppScreenTopbar({
+  color,
+  colorScheme,
+  onBack,
+  title,
+}: {
+  color: string;
+  colorScheme: 'light' | 'dark';
+  onBack: () => void;
+  title: string;
+}) {
+  return (
+    <NativeGroup modifiers={[frame({ height: appTopbarHeight, maxWidth: 1000 })]}>
+      <RNHostView>
+        <View style={styles.nativeHostTopbar}>
+          <GlassSymbolButton
+            accessibilityLabel="Back"
+            color={color}
+            colorScheme={colorScheme}
+            name="chevron.left"
+            onPress={onBack}
+          />
+          <Text numberOfLines={1} style={[styles.nativeHostTopbarTitle, { color }]}>{title}</Text>
+          <View style={styles.topbarPlaceholder} />
+        </View>
+      </RNHostView>
+    </NativeGroup>
+  );
+}
 
 export function AppScreenHero({ eyebrow, intro, title }: Pick<AppScreenProps, 'eyebrow' | 'intro' | 'title'>) {
   const { theme } = useFlyntTheme();
@@ -66,9 +119,13 @@ export function AppScreenTopbar({
       <View style={[styles.topbar, contentExtendsUnderTopbar && styles.topbarOverlay, contentExtendsUnderTopbar && { top: insets.top }]}>
         {showsBackButton ? (
           <>
-            <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-              <NativeSymbol color={theme.ink} name="chevron.left" size={18} />
-            </Pressable>
+            <GlassSymbolButton
+              accessibilityLabel="Back"
+              color={theme.ink}
+              colorScheme={mode}
+              name="chevron.left"
+              onPress={() => router.back()}
+            />
             <Text style={[styles.topbarTitle, { color: theme.ink }]}>{topbarTitle}</Text>
             <View style={styles.backButton} />
           </>
@@ -175,7 +232,9 @@ export const appSurfaceStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   safeArea: { flex: 1 },
-  topbar: { height: appTopbarHeight, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topbar: { height: appTopbarHeight, paddingHorizontal: appTopbarHorizontalPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  nativeHostTopbar: { height: appTopbarHeight, paddingHorizontal: appTopbarHorizontalPadding, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  nativeHostTopbarTitle: { flex: 1, textAlign: 'center', fontSize: 17, lineHeight: 22, fontWeight: '600' },
   topbarOverlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3 },
   topbarCenter: { position: 'absolute', left: 72, right: 72, alignItems: 'center', justifyContent: 'center' },
   statusBarScrim: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2 },

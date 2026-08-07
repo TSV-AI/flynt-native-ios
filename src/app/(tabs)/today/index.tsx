@@ -15,14 +15,13 @@ import { useWorkoutData } from '@/providers/workout-data-provider';
 
 export default function TodayScreen() {
   const params = useLocalSearchParams<{ day?: string }>();
-  const { completedByDay, currentDayIndex, dateLabels, exercisesByDay, finishDay, finishedByDay, saveDayExercises, setDayFinished, setEntriesByDay, setExerciseCompleted, updateSetEntry, week, workoutSyncError } = useWorkoutData();
+  const { completedByDay, currentDayIndex, dateLabels, exercisesByDay, finishDay, finishedByDay, saveDayExercises, week, workoutSyncError } = useWorkoutData();
   const parsedDay = Number(params.day ?? currentDayIndex);
   const routedDay = Number.isFinite(parsedDay)
     ? Math.min(Math.max(parsedDay, 0), week.length - 1)
     : currentDayIndex;
   const [daySelection, setDaySelection] = useState(() => ({ routedDay, selectedDay: routedDay }));
   const selectedDay = daySelection.routedDay === routedDay ? daySelection.selectedDay : routedDay;
-  const [selectedExercise, setSelectedExercise] = useState(-1);
   const [spotifyPlayerOpen, setSpotifyPlayerOpen] = useState(false);
   const [editingWorkout, setEditingWorkout] = useState(false);
   const [editDraft, setEditDraft] = useState(exercisesByDay[routedDay]);
@@ -33,8 +32,8 @@ export default function TodayScreen() {
   const [workoutSaveState, setWorkoutSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const { mode, theme } = useFlyntTheme();
   const reduceMotion = useReducedMotion();
-  const { start: startRestTimer, stop: stopRestTimer } = useRestTimer();
-  const { restLength, restTimers, spotifyDisplay } = useSettingsPreferences();
+  const { stop: stopRestTimer } = useRestTimer();
+  const { spotifyDisplay } = useSettingsPreferences();
   const day = week[selectedDay];
   const exercises = exercisesByDay[selectedDay];
   const displayedExercises = editingWorkout ? editDraft : exercises;
@@ -51,11 +50,9 @@ export default function TodayScreen() {
     if (index === selectedDay) return;
     void selection();
     setDaySelection({ routedDay, selectedDay: index });
-    setSelectedExercise(-1);
   }
 
   async function startWorkoutEditing() {
-    setSelectedExercise(-1);
     setEditDraft(exercises.map((exercise) => ({ ...exercise })));
     setWorkoutSaveState('idle');
     setEditingWorkout(true);
@@ -111,33 +108,10 @@ export default function TodayScreen() {
     void warning();
   }
 
-  function toggleSet(exerciseIndex: number, setIndex: number) {
-    void selection();
-    setDayFinished(selectedDay, false);
-    const exercise = exercises[exerciseIndex];
-    const currentCount = completed[exerciseIndex];
-    const unchecking = setIndex < currentCount;
-    const nextCount = unchecking ? setIndex : Math.min(currentCount + 1, exercise.total);
-
-    setExerciseCompleted(selectedDay, exerciseIndex, nextCount);
-
-    if (unchecking || nextCount >= exercise.total) {
-      stopRestTimer();
-      return;
-    }
-
-    if (restTimers) {
-      const multiplier = restLength === 'Quick' ? 0.8 : restLength === 'Full recovery' ? 1.25 : 1;
-      const total = Math.max(0, Math.round((90 * multiplier) / 15) * 15);
-      startRestTimer(exercise.name, total, { expanded: false, expandOnComplete: false });
-    }
-  }
-
   async function finishWorkout() {
     if (!totalSets || completedSets !== totalSets || finishedByDay[selectedDay]) return;
     setWorkoutSaveState('saving');
     stopRestTimer();
-    setSelectedExercise(-1);
     try {
       await finishDay(selectedDay);
       setWorkoutSaveState('saved');
@@ -175,7 +149,6 @@ export default function TodayScreen() {
           setWorkoutEditorRevision((value) => value + 1);
           setWorkoutEditorOpen(true);
         }}
-        onExerciseSheetDismissed={() => undefined}
         onEditWorkout={() => void startWorkoutEditing()}
         onFinishWorkout={() => void finishWorkout()}
         onMoveExercises={moveExercises}
@@ -187,13 +160,12 @@ export default function TodayScreen() {
           setWorkoutEditorOpen(true);
         }}
         onSaveWorkout={() => void saveWorkoutEditing()}
-        onSelectExercise={setSelectedExercise}
-        onToggleSet={toggleSet}
-        onUpdateSet={(exerciseIndex, setIndex, patch, immediate) => updateSetEntry(selectedDay, exerciseIndex, setIndex, patch, immediate)}
+        onSelectExercise={(exerciseIndex) => router.push({
+          pathname: '/today/exercise',
+          params: { day: selectedDay, exercise: exerciseIndex },
+        })}
         progress={progress}
         selectedDay={selectedDay}
-        selectedExercise={selectedExercise}
-        setEntries={setEntriesByDay[selectedDay] ?? []}
         spotifyBar={spotifyDisplay === 'Bar' ? <SpotifyLauncher onPress={() => setSpotifyPlayerOpen(true)} variant="bar" /> : undefined}
         spotifyPill={spotifyDisplay === 'Pill' ? <SpotifyLauncher onPress={() => setSpotifyPlayerOpen(true)} variant="pill" /> : undefined}
         spotifySheet={<SpotifyPlayerContent onClose={() => setSpotifyPlayerOpen(false)} />}

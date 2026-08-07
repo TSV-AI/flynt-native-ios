@@ -13,7 +13,6 @@ import {
   RNHostView,
   ScrollView,
   Spacer,
-  TabView,
   Text as NativeText,
   VStack,
   ZStack,
@@ -28,7 +27,6 @@ import {
   background,
   buttonBorderShape,
   buttonStyle,
-  controlSize,
   disabled,
   environment,
   fixedSize,
@@ -56,16 +54,15 @@ import {
   scrollContentBackground,
   shapes,
   strokeBorder,
-  tabViewStyle,
   tag,
   tint,
 } from '@expo/ui/swift-ui/modifiers';
-import { type ReactElement, useEffect, useState } from 'react';
+import { type ReactElement, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppScreenTopbar, appTopbarHeight } from '@/components/app-surface';
+import { AppScreenTopbar, NativeAppScreenTopbar, appTopbarHeight, nativeHeaderGlassButtonModifiers } from '@/components/app-surface';
 import { GlassTextButton, NativeSymbol } from '@/components/native-symbol';
 import { NativeWorkoutEditorList } from '@/components/native-workout-editor-list';
 import { RestTimerAccessorySurface } from '@/components/rest-timer-accessory';
@@ -76,7 +73,6 @@ import type { PreviewDay, PreviewExercise } from '@/features/app-preview-data';
 import { getExerciseArtwork } from '@/features/exercise-artwork';
 import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
 import { formatLoad, loadPickerOptions, normalizedLoad, normalizedReps, repPickerOptions } from '@/lib/load-picker';
-import { useModalPresentation } from '@/providers/modal-presentation-provider';
 import { useRestTimer } from '@/providers/rest-timer-provider';
 import type { WorkoutSetEntry } from '@/providers/workout-data-provider';
 
@@ -93,7 +89,6 @@ type NativeTodayWorkoutProps = {
   onChooseDay: (index: number) => void;
   onDeleteExercises: (indices: number[]) => void;
   onEditExercise: (index: number) => void;
-  onExerciseSheetDismissed: () => void;
   onEditWorkout: () => void;
   onFinishWorkout: () => void;
   onMoveExercises: (sourceIndices: number[], destination: number) => void;
@@ -102,12 +97,8 @@ type NativeTodayWorkoutProps = {
   onSaveWorkout: () => void;
   onSpotifySheetDismissed: () => void;
   onSelectExercise: (index: number) => void;
-  onToggleSet: (exerciseIndex: number, setIndex: number) => void;
-  onUpdateSet: (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>, immediate?: boolean) => void;
   progress: number;
   selectedDay: number;
-  selectedExercise: number;
-  setEntries: WorkoutSetEntry[][];
   spotifyBar?: ReactElement;
   spotifyPill?: ReactElement;
   spotifySheet: ReactElement;
@@ -141,7 +132,7 @@ type NativeSetRowProps = {
   tracking: PreviewExercise['tracking'];
 };
 
-type TrackingMetric = NonNullable<PreviewExercise['tracking']>['metrics'][number];
+export type TrackingMetric = NonNullable<PreviewExercise['tracking']>['metrics'][number];
 
 const dayShape = shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: 'continuous' });
 function exerciseSummary(detail: string): string {
@@ -365,7 +356,7 @@ function ExerciseListRow({
   );
 }
 
-function ExerciseSheetContent({
+export function NativeExerciseContent({
   advanceLabel,
   completed,
   exercise,
@@ -378,6 +369,7 @@ function ExerciseSheetContent({
   onClose,
   onChooseMetric,
   onOpenStats,
+  onPrevious,
   onToggleSet,
   onUpdateSet,
   outline,
@@ -396,6 +388,7 @@ function ExerciseSheetContent({
   onClose: () => void;
   onChooseMetric: (setIndex: number, metric: TrackingMetric) => void;
   onOpenStats: () => void;
+  onPrevious?: () => void;
   onToggleSet: (exerciseIndex: number, setIndex: number) => void;
   onUpdateSet: (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>, immediate?: boolean) => void;
   outline: string;
@@ -414,7 +407,6 @@ function ExerciseSheetContent({
       ]
     : exercise.guideSteps;
   const activeRest = timer?.exercise === exercise.name ? timer : null;
-  const isComplete = completed >= exercise.total;
   function openRestTimer() {
     onClose();
     setTimeout(expandRest, motion.duration.standard);
@@ -428,31 +420,11 @@ function ExerciseSheetContent({
           modifiers={[
             padding({
               horizontal: spacing.lg,
-              top: spacing.xl,
+              top: appTopbarHeight + spacing.lg,
               bottom: activeRest ? spacing.hero + spacing.xl : spacing.xl,
             }),
           ]}
         >
-        <HStack alignment="top" spacing={12}>
-          <VStack alignment="leading" spacing={6}>
-            <NativeText modifiers={[font({ textStyle: 'title2', weight: 'semibold' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>
-              {exercise.name}
-            </NativeText>
-          </VStack>
-          <Spacer minLength={8} />
-          <Button
-            onPress={onClose}
-            modifiers={[
-              buttonStyle('glass'),
-              buttonBorderShape('circle'),
-              frame({ width: 44, height: 44 }),
-              accessibilityLabel('Close exercise'),
-            ]}
-          >
-            <SwiftUIImage color={theme.ink} size={17} systemName="xmark" />
-          </Button>
-        </HStack>
-
         {isLarge ? (
           <VStack
             alignment="leading"
@@ -563,22 +535,31 @@ function ExerciseSheetContent({
             </HStack>
           </Button>
           <Spacer minLength={0} />
-          {isComplete ? (
+          {onPrevious ? (
             <Button
-              onPress={onAdvance}
-              modifiers={[
-                buttonStyle('borderedProminent'),
-                buttonBorderShape('capsule'),
-                frame({ minHeight: 44 }),
-                tint(theme.ink),
-                accessibilityLabel(advanceLabel),
-              ]}
+              onPress={onPrevious}
+              modifiers={[buttonStyle('glass'), buttonBorderShape('circle'), frame({ width: 44, height: 44 }), accessibilityLabel('Previous exercise')]}
             >
+              <SwiftUIImage color={theme.ink} size={16} systemName="chevron.left" />
+            </Button>
+          ) : null}
+          <Button
+            onPress={onAdvance}
+            modifiers={[
+              buttonStyle('borderedProminent'),
+              buttonBorderShape('capsule'),
+              frame({ minHeight: 44 }),
+              tint(theme.ink),
+              accessibilityLabel(advanceLabel),
+            ]}
+          >
+            <HStack spacing={6}>
               <NativeText modifiers={[font({ textStyle: 'subheadline', weight: 'semibold' }), foregroundStyle(theme.primaryText)]}>
                 {advanceLabel}
               </NativeText>
-            </Button>
-          ) : null}
+              {advanceLabel === 'Next exercise' ? <SwiftUIImage color={theme.primaryText} size={13} systemName="chevron.right" /> : null}
+            </HStack>
+          </Button>
         </HStack>
         </VStack>
       </ScrollView>
@@ -625,7 +606,7 @@ function metricPickerSelection(metric: TrackingMetric, selectedValue: string, op
   return options.includes(selectedValue) ? selectedValue : options[0];
 }
 
-function MetricPickerPage({
+export function MetricPickerPage({
   exercise,
   metric,
   onCancel,
@@ -680,7 +661,7 @@ function MetricPickerPage({
       </HStack>
       <Picker
         label={metricLabel(metric, exercise.tracking)}
-        modifiers={[pickerStyle('wheel'), frame({ maxWidth: 1000, height: 260 })]}
+        modifiers={[pickerStyle('wheel'), frame({ maxWidth: 1000, height: 216 })]}
         onSelectionChange={(value) => onSelect(String(value))}
         selection={selection}
       >
@@ -692,7 +673,7 @@ function MetricPickerPage({
   );
 }
 
-function ExerciseStatsPage({ exercise, itemBackground, onBack, onClose, theme }: { exercise: PreviewExercise; itemBackground: string; onBack: () => void; onClose: () => void; theme: Theme }) {
+export function ExerciseStatsPage({ exercise, itemBackground, onClose, theme }: { exercise: PreviewExercise; itemBackground: string; onClose: () => void; theme: Theme }) {
   const sessions = [
     { date: 'JUL 03', load: '205 LB', meta: '5 reps · RPE 8' },
     { date: 'JUL 10', load: '210 LB', meta: '5 reps · RPE 8' },
@@ -708,19 +689,16 @@ function ExerciseStatsPage({ exercise, itemBackground, onBack, onClose, theme }:
       >
         <HStack spacing={10}>
           <Button
-            onPress={onBack}
-            modifiers={[buttonStyle('plain'), frame({ width: 44, height: 44 }), accessibilityLabel('Back to exercise')]}
-          >
-            <SwiftUIImage color={theme.ink} size={18} systemName="chevron.left" />
-          </Button>
-          <NativeText modifiers={[font({ textStyle: 'headline' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>{exercise.name}</NativeText>
-          <Spacer />
-          <Button
             onPress={onClose}
-            modifiers={[buttonStyle('glass'), buttonBorderShape('circle'), frame({ width: 44, height: 44 }), accessibilityLabel('Close exercise')]}
+            modifiers={[buttonStyle('glass'), buttonBorderShape('circle'), frame({ width: 44, height: 44 }), accessibilityLabel('Close exercise stats')]}
           >
             <SwiftUIImage color={theme.ink} size={16} systemName="xmark" />
           </Button>
+          <VStack alignment="center" spacing={3} modifiers={[frame({ maxWidth: 1000 })]}>
+            <NativeText modifiers={[font({ textStyle: 'headline' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>Exercise stats</NativeText>
+            <NativeText modifiers={[font({ textStyle: 'footnote' }), foregroundStyle(theme.muted), fixedSize({ vertical: true })]}>{exercise.name}</NativeText>
+          </VStack>
+          <Spacer modifiers={[frame({ width: 44 })]} />
         </HStack>
 
         <VStack alignment="leading" spacing={7} modifiers={[padding({ top: spacing.lg, bottom: spacing.lg })]}>
@@ -785,6 +763,148 @@ function ExerciseStatsPage({ exercise, itemBackground, onBack, onClose, theme }:
   );
 }
 
+type ExercisePageSheet =
+  | { draft: string; metric: TrackingMetric; setIndex: number; type: 'metric' }
+  | { type: 'stats' }
+  | null;
+
+export function NativeExercisePage({
+  completed,
+  exercise,
+  exerciseIndex,
+  mode,
+  nextExerciseIndex,
+  onBack,
+  onNavigateExercise,
+  onToggleSet,
+  onUpdateSet,
+  previousExerciseIndex,
+  setEntries,
+  theme,
+}: {
+  completed: number;
+  exercise: PreviewExercise;
+  exerciseIndex: number;
+  mode: ColorMode;
+  nextExerciseIndex?: number;
+  onBack: () => void;
+  onNavigateExercise: (index: number) => void;
+  onToggleSet: (exerciseIndex: number, setIndex: number) => void;
+  onUpdateSet: (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>, immediate?: boolean) => void;
+  previousExerciseIndex?: number;
+  setEntries: WorkoutSetEntry[];
+  theme: Theme;
+}) {
+  const { width } = useWindowDimensions();
+  const reduceTransparency = useReduceTransparency();
+  const [activeSheet, setActiveSheet] = useState<ExercisePageSheet>(null);
+  const canvas = appSurfaces[mode].todayBackground;
+  const input = mode === 'dark' ? '#282828' : appSurfaces.light.exerciseSurface;
+  const mediaBackground = mode === 'dark' ? 'rgba(34,34,34,0.90)' : appSurfaces.light.exerciseSurface;
+  const outline = mode === 'light' ? 'rgba(216,214,207,0.72)' : 'rgba(255,255,255,0.10)';
+  const sheetBackgroundColor = flyntSheetBackgroundColor(mode, reduceTransparency);
+  const sheetDetent = flyntSheetDetent();
+  const selectedMetric = activeSheet?.type === 'metric' ? activeSheet.metric : 'reps';
+  const metricSetIndex = activeSheet?.type === 'metric' ? activeSheet.setIndex : 0;
+  const metricDraft = activeSheet?.type === 'metric' ? activeSheet.draft : '';
+  const metricEntryField: Record<TrackingMetric, keyof WorkoutSetEntry> = {
+    load: 'weight',
+    reps: 'reps',
+    duration: 'durationSeconds',
+    distance: 'distance',
+    rounds: 'rounds',
+  };
+
+  function openMetric(setIndex: number, metric: TrackingMetric) {
+    const entry = setEntries[setIndex];
+    const values: Record<TrackingMetric, string> = {
+      load: entry?.weight ?? '',
+      reps: entry?.reps ?? exercise.detail.match(/(\d+(?:[–-]\d+)?)\s+reps?/i)?.[1] ?? '',
+      duration: entry?.durationSeconds ?? String(exercise.tracking?.targetDurationSeconds ?? ''),
+      distance: entry?.distance ?? String(exercise.tracking?.targetDistance ?? ''),
+      rounds: entry?.rounds ?? String(exercise.tracking?.targetRounds ?? ''),
+    };
+    setActiveSheet({ draft: values[metric], metric, setIndex, type: 'metric' });
+  }
+
+  return (
+    <View style={[styles.exercisePage, { backgroundColor: canvas }]}>
+      <Host colorScheme={mode} seedColor={theme.ink} style={styles.exercisePageHost}>
+        <ZStack alignment="top" modifiers={[frame({ maxWidth: 1000, maxHeight: 1000 }), background(canvas)]}>
+        <NativeExerciseContent
+          advanceLabel={nextExerciseIndex === undefined ? 'Back to workout' : 'Next exercise'}
+          completed={completed}
+          exercise={exercise}
+          exerciseIndex={exerciseIndex}
+          input={input}
+          isLarge
+          mediaBackground={mediaBackground}
+          mediaWidth={Math.min(width - spacing.xxl, 560)}
+          onAdvance={() => nextExerciseIndex === undefined ? onBack() : onNavigateExercise(nextExerciseIndex)}
+          onClose={onBack}
+          onChooseMetric={openMetric}
+          onOpenStats={() => setActiveSheet({ type: 'stats' })}
+          onPrevious={previousExerciseIndex === undefined ? undefined : () => onNavigateExercise(previousExerciseIndex)}
+          onToggleSet={onToggleSet}
+          onUpdateSet={onUpdateSet}
+          outline={outline}
+          setEntries={setEntries}
+          theme={theme}
+        />
+
+          <BottomSheet
+            fitToContents={activeSheet?.type === 'metric'}
+            isPresented={activeSheet !== null}
+            modifiers={[environment('colorScheme', mode)]}
+            onDismiss={() => setActiveSheet(null)}
+            onIsPresentedChange={(presented) => {
+              if (!presented) setActiveSheet(null);
+            }}
+          >
+            <Group
+              modifiers={[
+                ...(activeSheet?.type === 'metric' ? [] : [presentationDetents([sheetDetent])]),
+                presentationBackgroundInteraction('disabled'),
+                presentationDragIndicator('visible'),
+                presentationBackground(sheetBackgroundColor),
+                environment('colorScheme', mode),
+              ]}
+            >
+              {activeSheet?.type === 'metric' ? (
+                <MetricPickerPage
+                  exercise={exercise}
+                  metric={selectedMetric}
+                  onCancel={() => setActiveSheet(null)}
+                  onDone={(value) => {
+                    onUpdateSet(exerciseIndex, metricSetIndex, {
+                      [metricEntryField[selectedMetric]]: value,
+                    }, true);
+                    setActiveSheet(null);
+                  }}
+                  onSelect={(value) => setActiveSheet((current) => current?.type === 'metric'
+                    ? { ...current, draft: value }
+                    : current)}
+                  selectedValue={metricDraft}
+                  setIndex={metricSetIndex}
+                  theme={theme}
+                />
+              ) : activeSheet?.type === 'stats' ? (
+                <ExerciseStatsPage
+                  exercise={exercise}
+                  itemBackground="#222222"
+                  onClose={() => setActiveSheet(null)}
+                  theme={theme}
+                />
+              ) : <Spacer />}
+            </Group>
+          </BottomSheet>
+          <NativeAppScreenTopbar color={theme.ink} colorScheme={mode} onBack={onBack} title={exercise.name} />
+        </ZStack>
+      </Host>
+    </View>
+  );
+}
+
 export function NativeTodayWorkout({
   completed,
   completedSets,
@@ -799,7 +919,6 @@ export function NativeTodayWorkout({
   onChooseDay,
   onDeleteExercises,
   onEditExercise,
-  onExerciseSheetDismissed,
   onEditWorkout,
   onFinishWorkout,
   onMoveExercises,
@@ -808,12 +927,8 @@ export function NativeTodayWorkout({
   onSaveWorkout,
   onSpotifySheetDismissed,
   onSelectExercise,
-  onToggleSet,
-  onUpdateSet,
   progress,
   selectedDay,
-  selectedExercise,
-  setEntries,
   spotifyBar,
   spotifyPill,
   spotifySheet,
@@ -827,12 +942,6 @@ export function NativeTodayWorkout({
   const safeAreaInsets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const reduceTransparency = useReduceTransparency();
-  const { setModalPresented } = useModalPresentation();
-  const [sheetPage, setSheetPage] = useState<'exercise' | 'metric' | 'stats'>('exercise');
-  const [metricSetIndex, setMetricSetIndex] = useState(0);
-  const [selectedMetric, setSelectedMetric] = useState<TrackingMetric>('reps');
-  const [metricDraft, setMetricDraft] = useState('');
-  const [visibleExerciseIndex, setVisibleExerciseIndex] = useState(-1);
   const contentWidth = width - 32;
   const editListHeight = Math.max(420, height - safeAreaInsets.top - 142);
   const daySelectorWidth = contentWidth - 8;
@@ -841,41 +950,19 @@ export function NativeTodayWorkout({
   const editHeaderContentGap = 36;
   const canvas = appSurfaces[mode].todayBackground;
   const input = appSurfaces[mode].exerciseSurface;
-  const sheetItemBackground = '#222222';
   const exerciseEntryBackground = 'rgba(34,34,34,0.90)';
-  const sheetInput = mode === 'dark' ? '#282828' : appSurfaces.light.exerciseSurface;
-  const mediaBackground = mode === 'dark' ? exerciseEntryBackground : appSurfaces.light.exerciseSurface;
   const sheetBackgroundColor = flyntSheetBackgroundColor(mode, reduceTransparency);
   const sheetDetent = flyntSheetDetent();
-  const activeExerciseSheetDetent = sheetPage === 'metric' ? 'medium' as const : sheetDetent;
-  const exerciseSheetDetents = sheetPage === 'metric'
-    ? ['medium' as const, sheetDetent]
-    : [sheetDetent];
   const outline = mode === 'light' ? 'rgba(216,214,207,0.72)' : 'rgba(255,255,255,0.10)';
-  const sheetPresented = selectedExercise >= 0 && selectedExercise < exercises.length;
   const finishingWorkout = !editingWorkout && workoutSaveState === 'saving';
-  const sheetExerciseIndex = sheetPresented ? selectedExercise : visibleExerciseIndex;
-  const exercise = sheetExerciseIndex >= 0 && sheetExerciseIndex < exercises.length
-    ? exercises[sheetExerciseIndex]
-    : null;
-  const nextExerciseIndex = sheetPresented
-    ? [
-      ...exercises.slice(selectedExercise + 1).map((_, offset) => selectedExercise + 1 + offset),
-      ...exercises.slice(0, selectedExercise).map((_, index) => index),
-    ].find((index) => completed[index] < exercises[index].total)
-    : undefined;
   const workoutMenu = (
     <Host colorScheme={mode} seedColor={theme.ink} style={styles.topbarControlHost}>
       <Menu
         label="Workout actions"
         systemImage="ellipsis"
         modifiers={[
-          buttonStyle('glass'),
-          buttonBorderShape('circle'),
-          controlSize('large'),
+          ...nativeHeaderGlassButtonModifiers('Workout actions'),
           labelStyle('iconOnly'),
-          frame({ width: 44, height: 44 }),
-          accessibilityLabel('Workout actions'),
         ]}
       >
         <Button
@@ -892,25 +979,9 @@ export function NativeTodayWorkout({
     </Host>
   );
 
-  useEffect(() => {
-    if (!sheetPresented) return;
-    setModalPresented(true);
-    return () => setModalPresented(false);
-  }, [setModalPresented, sheetPresented]);
-
   function selectExercise(index: number) {
-    setSheetPage('exercise');
-    setVisibleExerciseIndex(index);
     onSelectExercise(index);
   }
-
-  const metricEntryField: Record<TrackingMetric, keyof WorkoutSetEntry> = {
-    load: 'weight',
-    reps: 'reps',
-    duration: 'durationSeconds',
-    distance: 'distance',
-    rounds: 'rounds',
-  };
 
   const commonRow = [
     listRowBackground(canvas),
@@ -1218,106 +1289,6 @@ export function NativeTodayWorkout({
             </Group>
           </BottomSheet>
 
-          <BottomSheet
-            isPresented={sheetPresented}
-            modifiers={[environment('colorScheme', mode)]}
-            onDismiss={() => {
-              setSheetPage('exercise');
-              onExerciseSheetDismissed();
-            }}
-            onIsPresentedChange={(presented) => {
-              if (!presented) onSelectExercise(-1);
-            }}
-          >
-            <Group
-              key={sheetPage === 'metric' ? 'metric-sheet-content' : 'exercise-sheet-content'}
-              modifiers={[
-                presentationDetents(exerciseSheetDetents, {
-                  selection: activeExerciseSheetDetent,
-                }),
-                presentationBackgroundInteraction(sheetPage === 'metric'
-                  ? 'disabled'
-                  : { type: 'enabledUpThrough', detent: sheetDetent }),
-                presentationDragIndicator('visible'),
-                presentationBackground(sheetBackgroundColor),
-                environment('colorScheme', mode),
-              ]}
-            >
-              {exercise ? (
-                <TabView
-                  modifiers={[tabViewStyle({ type: 'page', indexDisplayMode: 'never' }), frame({ maxWidth: 1000, maxHeight: 1000 })]}
-                  selection={sheetPage}
-                >
-                    <TabView.Tab value="exercise">
-                      <ExerciseSheetContent
-                        advanceLabel={nextExerciseIndex === undefined ? 'Back to workout' : 'Next exercise'}
-                        completed={completed[sheetExerciseIndex] ?? 0}
-                        exercise={exercise}
-                        exerciseIndex={sheetExerciseIndex}
-                        input={sheetInput}
-                        isLarge
-                        mediaBackground={mediaBackground}
-                        mediaWidth={Math.min(width - spacing.xxl, 560)}
-                        onAdvance={() => {
-                          if (nextExerciseIndex === undefined) {
-                            onSelectExercise(-1);
-                            return;
-                          }
-                          selectExercise(nextExerciseIndex);
-                        }}
-                        onClose={() => onSelectExercise(-1)}
-                        onChooseMetric={(setIndex, metric) => {
-                          const entry = setEntries[sheetExerciseIndex]?.[setIndex];
-                          const values: Record<TrackingMetric, string> = {
-                            load: entry?.weight ?? '',
-                            reps: entry?.reps ?? exercise.detail.match(/(\d+(?:[–-]\d+)?)\s+reps?/i)?.[1] ?? '',
-                            duration: entry?.durationSeconds ?? String(exercise.tracking?.targetDurationSeconds ?? ''),
-                            distance: entry?.distance ?? String(exercise.tracking?.targetDistance ?? ''),
-                            rounds: entry?.rounds ?? String(exercise.tracking?.targetRounds ?? ''),
-                          };
-                          setMetricSetIndex(setIndex);
-                          setSelectedMetric(metric);
-                          setMetricDraft(values[metric]);
-                          setSheetPage('metric');
-                        }}
-                        onOpenStats={() => setSheetPage('stats')}
-                        onToggleSet={onToggleSet}
-                        onUpdateSet={onUpdateSet}
-                        outline={outline}
-                        setEntries={setEntries[sheetExerciseIndex] ?? []}
-                        theme={theme}
-                      />
-                    </TabView.Tab>
-                    <TabView.Tab value="metric">
-                      <MetricPickerPage
-                        exercise={exercise}
-                        metric={selectedMetric}
-                        onCancel={() => setSheetPage('exercise')}
-                        onDone={(value) => {
-                          onUpdateSet(sheetExerciseIndex, metricSetIndex, {
-                            [metricEntryField[selectedMetric]]: value,
-                          }, true);
-                          setSheetPage('exercise');
-                        }}
-                        onSelect={setMetricDraft}
-                        selectedValue={metricDraft}
-                        setIndex={metricSetIndex}
-                        theme={theme}
-                      />
-                    </TabView.Tab>
-                    <TabView.Tab value="stats">
-                      <ExerciseStatsPage
-                        exercise={exercise}
-                        itemBackground={sheetItemBackground}
-                        onBack={() => setSheetPage('exercise')}
-                        onClose={() => onSelectExercise(-1)}
-                        theme={theme}
-                      />
-                    </TabView.Tab>
-                </TabView>
-              ) : <Spacer />}
-            </Group>
-          </BottomSheet>
         </ZStack>
       </Host>
       <AppScreenTopbar
@@ -1351,6 +1322,8 @@ export function NativeTodayWorkout({
 }
 
 const styles = StyleSheet.create({
+  exercisePage: { flex: 1 },
+  exercisePageHost: { flex: 1 },
   topbarControlHost: { width: 44, height: 44 },
   exerciseRow: {
     minHeight: 88,

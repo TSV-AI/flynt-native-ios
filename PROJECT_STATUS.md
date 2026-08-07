@@ -47,11 +47,15 @@ planning state originally captured below:
   Today renders only those controls, workout history formats the recorded
   values, and legacy programs still default to load and repetitions without a
   backfill.
-- Every metric uses one shared native wheel picker. It presents at the system
-  medium detent with Cancel leading and Done trailing, holds edits as a draft,
-  and returns to the same exercise sheet after either action. This behavior is
-  verified for Bike Sprint duration in dark appearance on the iPhone 17 Pro
-  Simulator.
+- Active exercise execution now opens as a native pushed page within Today's
+  nested stack. Metric selectors and exercise stats are subordinate sheets,
+  Previous and Next preserve the workout state, and the shared 44-point glass
+  back control is fixed above the scrolling exercise content.
+- Every metric uses one shared native wheel picker. Metric sheets use Expo UI's
+  native content-fit detent instead of forcing the medium detent, with Cancel
+  leading and Done trailing. Edits remain drafts until Done and dismissal
+  reveals the same exercise page. The reps flow and working back navigation are
+  verified in dark appearance on the iPhone 17 Pro Simulator running iOS 26.5.
 
 ## Current product state
 
@@ -67,6 +71,9 @@ planning state originally captured below:
 - The Talk and Text ElevenLabs experience exists as a standalone native
   consultation prototype.
 - The Text consultation uses the shared chat thread and native glass composer.
+- Today uses a nested native stack for the workout and exercise routes. The
+  exercise page owns active exercise execution; metric and stats sheets do not
+  replace or dismiss that page.
 - The standalone voice prototype still returns a shallow demo plan. The
   production text consultation and backend now use the versioned handoff.
 - Local source contains unrelated uncommitted lifecycle, Settings, theme, and
@@ -150,9 +157,14 @@ records.
   sections.
 - Simulator interaction verifies that completed-workout history scrolls through
   the full sheet content.
-- Simulator interaction verifies the Bike Sprint duration control opens a
-  native wheel picker at the medium detent with Cancel and Done. Done returns
-  to the still-open Bike Sprint exercise sheet.
+- Simulator interaction verifies that an exercise opens with the native stack
+  transition, its reps control opens a content-fit native wheel with Cancel and
+  Done, Done returns to the same exercise page, and the shared glass back button
+  returns to Today.
+- Source and Simulator inspection verify that Today's menu and the exercise
+  back action use the same shared 44-point circular glass control. The Today
+  menu's entire visible circle is an explicit hit-test target, and the menu
+  opens after a fresh Simulator reload.
 
 All local checks ran under Node 22.23.1. The repository requires Node 24.14.0.
 
@@ -576,9 +588,9 @@ should do.
 - Exclusions prevent selection and automatic progression.
 - Recovery can modify the active prescription without asking health questions.
 
-### Exercise sheet
+### Exercise execution page
 
-The current exercise sheet already has sets, reps, load, rest, media, guide
+The current exercise page already has sets, reps, load, rest, media, guide
 steps, and completion controls. The next program-pipeline workstream can add:
 
 - The current progression metric.
@@ -604,26 +616,25 @@ Legacy exercises will default to the current load-and-repetition presentation.
 New prescriptions will emit an explicit tracking kind and allowed metrics. The
 database change must be additive so historical workout sets remain readable.
 
-#### Exercise execution presentation follow-up
+#### Exercise execution presentation milestone
 
-Metric selection is now uniform and safe inside the current exercise sheet,
-but the exercise itself is a primary workout task rather than a short modal
-task. The next Today interaction milestone should:
+The exercise is now treated as a primary workout task rather than a modal. The
+implemented Today interaction is:
 
-1. Move active exercise execution to a navigated workout page that preserves
-   the athlete's place in the workout.
-2. Present metric selectors and exercise stats from that page as subordinate
-   sheets, so dismissal always reveals the same active exercise.
-3. Add Previous and Next exercise navigation without changing completion or
+1. Active exercise execution is a nested native stack route that preserves the
+   athlete's place in the workout.
+2. Metric selectors and exercise stats are subordinate sheets, so dismissal
+   always reveals the same active exercise.
+3. Previous and Next change the active exercise without changing completion or
    persistence semantics.
-4. Keep metric selectors on the shared medium-detent wheel with Cancel and Done
-   unless a metric supports a more direct native control.
-5. Audit every remaining selector for the same Cancel, Done, draft, detent, and
-   return-to-context behavior.
+4. Metric selectors use the shared native wheel, Cancel and Done, draft edits,
+   and a content-fit native detent. Stats retain the approved full sheet detent.
+5. The shared 44-point circular glass header control is used for Today actions
+   and the fixed exercise-page back action.
 
-This is a future interaction milestone, not part of the metric persistence
-migration. Do not add another loading transition or duplicate workout state to
-implement it.
+Remaining interaction work is a full selector audit plus accessibility and
+appearance verification. Previous and Next currently update the routed
+exercise in place; further directional animation is not yet implemented.
 
 Do not expose raw model reasoning, diagnostic language, or medical explanations.
 
@@ -670,9 +681,9 @@ This is the next design session:
 8. Rewrite exercise and image prompts.
 9. Add schema versioning, migrations, validators, and publication
    gates.
-10. Update the exercise sheet and weekly review UI for the new fields. The
-    metric-aware exercise controls are complete; weekly review and the
-    navigated exercise-execution page remain.
+10. Update the exercise page and weekly review UI for the new fields. The
+    metric-aware controls and navigated exercise-execution page are complete;
+    weekly review remains.
 
 ### Workstream D: release validation
 
@@ -691,16 +702,13 @@ This is the next design session:
 1. Talk still uses the standalone ElevenLabs demo-plan contract instead of the
    production consultation handoff.
 2. Equipment and movement preferences are not durable independent resources.
-3. Active exercise execution still uses a sheet. Metric selectors now return
-   correctly to it, but the planned navigated exercise page and Previous/Next
-   controls are not implemented.
-4. Pace and completion-only tracking are not in the current five-metric
+3. Pace and completion-only tracking are not in the current five-metric
    contract.
-5. Current local native work contains unrelated uncommitted changes.
-6. One pre-existing native onboarding source-contract assertion fails against
+4. Current local native work contains unrelated uncommitted changes.
+5. One pre-existing native onboarding source-contract assertion fails against
    unrelated local theme work.
-7. Current consultation and program-pipeline work is not in TestFlight.
-8. Exercise-definition, guide, and image prompt restructuring remains pending.
+6. Current consultation and program-pipeline work is not in TestFlight.
+7. Exercise-definition, guide, and image prompt restructuring remains pending.
 
 ## Acceptance gate for the consultation integration
 

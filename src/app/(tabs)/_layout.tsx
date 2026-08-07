@@ -19,6 +19,7 @@ function NativeAppTabs() {
   const pathname = usePathname();
   const [dayOfMonth, setDayOfMonth] = useState(() => new Date().getDate());
   const isTrainer = pathname.endsWith('/trainer');
+  const isExercise = pathname.endsWith('/today/exercise');
   const selectedColor = PlatformColor('label');
   const unselectedColor = PlatformColor('secondaryLabel');
   const tabContentStyle = { backgroundColor: appSurfaces[mode].primaryBackground };
@@ -56,7 +57,7 @@ function NativeAppTabs() {
   return (
     <NativeTabs
       disableTransparentOnScrollEdge
-      hidden={isModalPresented}
+      hidden={isModalPresented || isExercise}
       iconColor={{ default: unselectedColor, selected: selectedColor }}
       labelStyle={{
         default: { color: unselectedColor },
