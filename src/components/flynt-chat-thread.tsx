@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, type PropsWithChildren, type ReactElement, type ReactNode } from 'react';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -19,6 +19,48 @@ import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
 
 export const flyntAthlete = { _id: 'athlete' } as const;
 export const flyntTrainer = { _id: 'trainer' } as const;
+
+export function FlyntChatComposerOverlay({ children }: PropsWithChildren) {
+  const { mode } = useFlyntTheme();
+  const reduceTransparency = useReduceTransparency();
+
+  return (
+    <SafeAreaView edges={['bottom']} style={styles.composerOverlay}>
+      <View pointerEvents="none" style={[styles.composerScrim, { top: spacing.xs }]}>
+        {!reduceTransparency ? (
+          <MaskedView
+            maskElement={(
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    experimental_backgroundImage: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.72) 72%, black 100%)',
+                  },
+                ]}
+              />
+            )}
+            pointerEvents="none"
+            style={StyleSheet.absoluteFill}
+          >
+            <BlurView
+              intensity={50}
+              pointerEvents="none"
+              style={StyleSheet.absoluteFill}
+              tint={mode === 'dark' ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
+            />
+          </MaskedView>
+        ) : null}
+        <View style={[
+          StyleSheet.absoluteFill,
+          {
+            experimental_backgroundImage: `linear-gradient(180deg, ${appSurfaces[mode].composerEdgeTransparent} 0%, ${appSurfaces[mode].composerEdgeScrim} 72%, ${appSurfaces[mode].primaryBackground} 100%)`,
+          },
+        ]} />
+      </View>
+      {children}
+    </SafeAreaView>
+  );
+}
 
 type FlyntChatThreadProps<TMessage extends IMessage> = {
   composerClearance?: number;
@@ -52,7 +94,6 @@ export function FlyntChatThread<TMessage extends IMessage>({
   const { mode, theme } = useFlyntTheme();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
-  const reduceTransparency = useReduceTransparency();
   const messagesContainerRef = useRef<AnimatedList<TMessage>>(null!);
   const latestMessageId = messages.length ? String(messages[messages.length - 1]._id) : '';
 
@@ -88,48 +129,11 @@ export function FlyntChatThread<TMessage extends IMessage>({
     const composer = renderInputToolbar?.();
     if (!composer || hasExternalComposer) return composer;
     return (
-      <SafeAreaView edges={['bottom']} style={styles.composerOverlay}>
-        <View
-          pointerEvents="none"
-          style={[
-            styles.composerScrim,
-            { top: spacing.xs },
-          ]}
-        >
-          {!reduceTransparency ? (
-            <MaskedView
-              maskElement={(
-                <View
-                  style={[
-                    StyleSheet.absoluteFill,
-                    {
-                      experimental_backgroundImage: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.72) 72%, black 100%)',
-                    },
-                  ]}
-                />
-              )}
-              pointerEvents="none"
-              style={StyleSheet.absoluteFill}
-            >
-              <BlurView
-                intensity={50}
-                pointerEvents="none"
-                style={StyleSheet.absoluteFill}
-                tint={mode === 'dark' ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
-              />
-            </MaskedView>
-          ) : null}
-          <View style={[
-            StyleSheet.absoluteFill,
-            {
-              experimental_backgroundImage: `linear-gradient(180deg, ${appSurfaces[mode].composerEdgeTransparent} 0%, ${appSurfaces[mode].composerEdgeScrim} 72%, ${appSurfaces[mode].primaryBackground} 100%)`,
-            },
-          ]} />
-        </View>
+      <FlyntChatComposerOverlay>
         {composer}
-      </SafeAreaView>
+      </FlyntChatComposerOverlay>
     );
-  }, [hasExternalComposer, mode, reduceTransparency, renderInputToolbar]);
+  }, [hasExternalComposer, renderInputToolbar]);
 
   const listEndClearance = hasExternalComposer
     ? spacing.hero
