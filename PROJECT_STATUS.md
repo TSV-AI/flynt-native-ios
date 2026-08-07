@@ -1951,6 +1951,128 @@ rewriting the workout application.
 - [ ] Android client after iOS product and backend contracts stabilize.
 - [ ] Expanded Siri, Spotlight, Shortcuts, and App Intent surfaces.
 
+## Consultation training-intent ownership correction - 2026-08-06
+
+- The new-account consultation now changes its opening intake based on the
+  selected program-authoring mode. `Build my plan` begins with outcome-led
+  prescription intake, `Bring my own workouts` begins by collecting the
+  athlete's existing workout structure, and `Mix both` begins by separating
+  what FLYNT should build from what the athlete wants to retain.
+- The selected `trainingIntent` is injected into the confirmed consultation
+  instead of depending on model inference. Older completed-consultation
+  snapshots parse as `coached`, while new consultation setup still requires an
+  explicit choice.
+- Source verification passed TypeScript, scoped ESLint, the 18-case native
+  feature-contract suite, and `git diff --check`. The full FLYNT iOS Simulator
+  workspace build succeeded after the parallel StoreKit foundation was
+  completed.
+- Interactive iPhone 17e Simulator verification exercised fresh isolated
+  consultation drafts for every authorship choice. `Build my plan` opened the
+  outcome-led goal intake; `Bring my own workouts` opened full-program,
+  partial-workout, and organization choices; `Mix both` opened retained-lift,
+  FLYNT-base, and blended-approach choices. Runtime accessibility snapshots
+  exposed each setup card and prompt choice as a named button. Temporary
+  preview-only storage suffixes used to isolate those runs were reverted after
+  verification. Light appearance, Dynamic Type, VoiceOver traversal, Reduce
+  Motion, and Reduce Transparency were not repeated for this copy and contract
+  correction.
+- Design evidence: Apple's current Human Interface Guidelines pages for Design
+  Principles, Buttons, and Accessibility were consulted. The existing native
+  selectable cards remain the interaction primitive; intent-specific copy and
+  authoring behavior are FLYNT product decisions under
+  `docs/APPLE_HIG_BASELINE.md` and `docs/INTERACTION_SYSTEM.md`.
+
+## StoreKit subscription foundation - 2026-08-06
+
+- A local Expo StoreKit 2 bridge now supports product loading, purchases,
+  current entitlements, unfinished transactions, restore, transaction updates,
+  transaction finishing, and Apple's subscription-management presentation.
+- Purchase requests accept a server-issued `appAccountToken`, expose the signed
+  transaction JWS to the service boundary, and finish a transaction only after
+  an authoritative server callback accepts it. The monthly product identifier
+  is configured explicitly through
+  `EXPO_PUBLIC_STOREKIT_MONTHLY_PRODUCT_ID`.
+- Verification passed six subscription contract tests, TypeScript, scoped
+  ESLint, copy checking, `git diff --check`, CocoaPods installation, and the
+  complete FLYNT iOS Simulator workspace build. App Store Connect product
+  creation, backend receipt validation, entitlement persistence, paywall
+  placement, and lifecycle gating remain intentionally unimplemented pending
+  the organization conversion and backend product decisions.
+
+## Standalone ElevenLabs voice consultation demo - 2026-08-06
+
+- Added an isolated native voice consultation route that leaves the production
+  consultation and authoritative FLYNT backend unchanged. The ElevenLabs agent
+  owns the temporary demo conversation and returns its final plan through the
+  blocking `deliver_demo_plan` client tool.
+- FLYNT validates the tool payload against a bounded Zod schema before rendering
+  the plan and optional raw JSON. The demo does not persist the conversation or
+  plan and does not write to a FLYNT account or database.
+- Added the official ElevenLabs React Native, LiveKit, and WebRTC dependencies,
+  Expo config plugins, and the iOS microphone-purpose string. A fresh native
+  development build and CocoaPods installation completed successfully.
+- Added ElevenLabs' native Metal orb renderer and shader through an isolated
+  Expo view bridge. The call defaults to the orb-only layout using the
+  selected aqua `#8ED1D0` and teal `#449E9E` palette in both the format preview
+  and live voice session.
+  Two minimal named icon controls provide mute and a
+  two-state `orb only -> orb and conversation` layout cycle. The layout symbol
+  reflects the destination view, the top Close control ends and exits the
+  consultation, and a restart symbol appears only after disconnection. The
+  existing React Native call SDK supplies live input and output volume to the
+  visualizer without adding a second WebRTC implementation.
+- The standalone entry uses one focused preview, an equal-width `Talk` and
+  `Text` segmented selector, and one mode-specific start action. Talk displays
+  a low-cost 24 fps, 36-second reversible loop from the real ElevenLabs Metal
+  shader before starting the WebRTC voice session, then uses the live 60 fps
+  renderer inside the connected consultation. The preview pauses completely
+  after Text settles and resumes only after Talk settles, avoiding offscreen
+  rendering and the prior Metal visibility stall. Reduce Motion retains the
+  existing static gradient fallback. Text
+  displays a realistic FLYNT conversation before starting a microphone-free
+  ElevenLabs WebSocket session using the same agent and JSON handoff contract.
+  The text thread appends the local athlete message immediately because the SDK
+  does not echo outbound text. The headline and preview live in a horizontally
+  paged carousel that can be swiped in either direction. The selector's active
+  pill tracks the page interactively, selector taps page to the requested mode,
+  and the CTA follows the settled page. The carousel now uses a Gesture Handler
+  pan and Reanimated UI-thread translation instead of a native paged ScrollView.
+  This keeps selector taps and horizontal swipes independent of the Metal
+  preview's offscreen native-view lifecycle, which had visibly delayed the
+  return from Text to Talk. Paging changes immediately when Reduce Motion is
+  enabled.
+- Source verification passed TypeScript, scoped ESLint, the 19-case native
+  feature-contract suite, copy checking, and `git diff --check`. The standalone
+  introduction rendered on an iPhone 17 Pro Simulator with named Close and
+  Start controls, and a live ElevenLabs WebRTC session reached the listening
+  state. On 2026-08-06 the iPhone 17 Pro / iOS 26.5 Simulator built and launched
+  the embedded Metal shader, Start Consultation entered the live call without
+  crashing, the Metal orb rendered in the default orb-only layout,
+  both layout states cycled successfully, and Close disconnected the LiveKit
+  room. A later Simulator pass confirmed a restarted session published its
+  microphone track enabled and unmuted, the split transcript removed known
+  ElevenLabs audio-direction tags, and duplicate consecutive SDK messages were
+  collapsed by their cleaned visible text. Starting a new session also clears
+  the prior session transcript. A fresh Simulator launch verified that both
+  format choices fit on one screen with no explanatory choice-card copy. On
+  2026-08-07 the revised selector changed its headline, preview, selection
+  state, and start label in place. The Talk action reached the connected voice
+  interface with an active microphone control, and the Text action reached the
+  live FLYNT composer. A subsequent Simulator pass verified left and right
+  swipes between both format pages, including synchronized selector and CTA
+  state. A later native rebuild verified the aqua-and-teal preview and
+  the Reanimated carousel on iPhone 17 Pro / iOS 26.5. After selecting Text,
+  the first post-tap accessibility snapshot already exposed Talk content and
+  `Start talking` when Talk was selected again, with no prior multi-second
+  Metal visibility delay. A complete spoken intake and final JSON delivery
+  still require a physical-iPhone acceptance run.
+- The ElevenLabs agent draft was published with the JSON handoff tool and exact
+  output contract. The official ElevenLabs React Native SDK documentation and
+  Expo integration guide were used for the native transport. Apple's
+  Accessibility, Buttons, Segmented Controls, and Playing Audio guidance, plus
+  `docs/APPLE_HIG_BASELINE.md` and `docs/INTERACTION_SYSTEM.md`, governed the
+  visible state, microphone disclosure, Reduce Motion behavior, and controls.
+
 ## Current high-risk decisions
 
 - Apple seller identity and bundle identifiers become difficult to change after

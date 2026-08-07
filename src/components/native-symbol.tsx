@@ -1,5 +1,5 @@
 import { Host, Image as SwiftImage, useNativeState } from '@expo/ui/swift-ui';
-import { symbolEffect } from '@expo/ui/swift-ui/modifiers';
+import { font, symbolEffect } from '@expo/ui/swift-ui/modifiers';
 import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import type { ComponentProps } from 'react';
 import { useEffect } from 'react';
@@ -14,12 +14,13 @@ type NativeSymbolProps = {
   color: string;
   name: SFSymbol;
   size?: number;
+  weight?: 'medium' | 'semibold' | 'bold';
 };
 
-export function NativeSymbol({ color, name, size = 18 }: NativeSymbolProps) {
+export function NativeSymbol({ color, name, size = 18, weight }: NativeSymbolProps) {
   return (
     <Host matchContents pointerEvents="none" style={{ width: size, height: size }}>
-      <SwiftImage color={color} size={size} systemName={name} />
+      <SwiftImage color={color} modifiers={weight ? [font({ size, weight })] : undefined} size={size} systemName={name} />
     </Host>
   );
 }

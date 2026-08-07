@@ -1,0 +1,16 @@
+{
+  "name": "flynt-elevenlabs-orb",
+  "version": "1.0.0",
+  "description": "FLYNT's native bridge for the ElevenLabs Swift orb visualizer.",
+  "main": "index.tsx",
+  "types": "index.tsx",
+  "private": true,
+  "dependencies": {
+    "expo-modules-core": "57.0.8"
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

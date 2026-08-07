@@ -37,10 +37,15 @@ function RootNavigator() {
   const router = useRouter();
   const linkingUrl = Linking.useLinkingURL();
   const bootReady = phase === 'ready';
+  const autoOpenVoiceDemo = __DEV__ && process.env.EXPO_PUBLIC_VOICE_DEMO_AUTO_OPEN === '1';
 
   const navigationTheme = mode === 'dark'
     ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: theme.canvas, card: theme.canvas } }
     : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: theme.canvas, card: theme.canvas } };
+
+  useEffect(() => {
+    if (bootReady && autoOpenVoiceDemo) router.replace('/voice-consultation-demo');
+  }, [autoOpenVoiceDemo, bootReady, router]);
 
   useEffect(() => {
     if (!hasSession) restTimer.stop();
@@ -51,13 +56,18 @@ function RootNavigator() {
   }, [phase]);
 
   useEffect(() => {
-    if (!bootReady || destination !== 'ready' || !linkingUrl) return;
+    if (!bootReady || !linkingUrl) return;
     const parsed = Linking.parse(linkingUrl);
     const route = [parsed.hostname, parsed.path]
       .filter(Boolean)
       .join('/')
       .replace(/^\/+|\/+$/g, '');
 
+    if (route.endsWith('voice-consultation-demo')) {
+      router.replace('/voice-consultation-demo');
+      return;
+    }
+    if (destination !== 'ready') return;
     if (route.endsWith('plan')) router.replace('/(tabs)/plan');
     if (route.endsWith('today')) router.replace('/(tabs)/today');
   }, [bootReady, destination, linkingUrl, router]);
@@ -98,6 +108,7 @@ function RootNavigator() {
         <Stack.Protected guard={hasSession}>
           <Stack.Screen name="settings" options={{ headerShown: false, presentation: 'card' }} />
         </Stack.Protected>
+        <Stack.Screen name="voice-consultation-demo" options={{ headerShown: false, presentation: 'card' }} />
         <Stack.Screen name="auth-callback" options={{ contentStyle: { backgroundColor: appSurfaces[signedOutColorMode].primaryBackground }, headerShown: false }} />
       </Stack>
       <RestTimerSheet

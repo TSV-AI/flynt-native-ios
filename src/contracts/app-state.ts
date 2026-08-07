@@ -153,6 +153,7 @@ export const consultationBasicsSchema = z.object({
 });
 
 export const completedConsultationSchema = z.object({
+  trainingIntent: z.enum(['coached', 'self_directed', 'hybrid']).default('coached'),
   summary: conciseText(700),
   coachingPriorities: z.array(conciseText(160)).min(2).max(6),
   profile: z.object({

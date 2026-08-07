@@ -13,6 +13,8 @@ import { firstRunSlides } from '../features/first-run-content.ts';
 import { hasCurrentFlyntAccount } from './auth-admission.ts';
 import { formatLoad, loadPickerOptions, normalizedLoad, normalizedReps, repPickerOptions } from './load-picker.ts';
 import { sentenceCaseMarkdownListItems } from './markdown-presentation.ts';
+import { consultationPromptForTurn } from '../features/consultation-prompts.ts';
+import { parseVoiceDemoPlan } from '../features/voice-demo-plan.ts';
 
 test('load picker preserves current half-pound values and bounded options', () => {
   const options = loadPickerOptions('132.5');
@@ -55,6 +57,30 @@ test('consultation basics require both communication and training intent choices
   assert.equal(consultationBasicsSchema.safeParse({
     name: 'Priya', age: 34, height: 66, weight: 142, experience: 'some',
   }).success, false);
+});
+
+test('training intent visibly changes the opening consultation task', () => {
+  assert.match(consultationPromptForTurn(0, 'Priya', 'coached').title, /training to change/);
+  assert.match(consultationPromptForTurn(0, 'Priya', 'self_directed').title, /workouts do you want to bring/);
+  assert.match(consultationPromptForTurn(0, 'Priya', 'hybrid').title, /what do you want to keep/i);
+});
+
+test('voice consultation demo accepts only structured plan JSON', () => {
+  const plan = parseVoiceDemoPlan({
+    plan_json: JSON.stringify({
+      title: 'Three-day strength foundation',
+      summary: 'A balanced week built around full-body strength and consistent practice.',
+      days: [{
+        day: 'Monday',
+        focus: 'Full-body strength',
+        exercises: [{ name: 'Goblet Squat', sets: 3, reps: '8', restSeconds: 90 }],
+      }],
+      guidance: ['Leave two good repetitions in reserve.'],
+    }),
+  });
+
+  assert.equal(plan.days[0].exercises[0].name, 'Goblet Squat');
+  assert.throws(() => parseVoiceDemoPlan({ plan_json: '{"title":"Incomplete"}' }));
 });
 
 test('provider sign-in admits only an existing account with current legal acceptance', () => {
@@ -138,6 +164,7 @@ test('post-account consultation matches the PWA setup and securely resumes its d
 
 test('Trainer approvals validate consultation and bounded program-change payloads', () => {
   const consultation = completedConsultationSchema.safeParse({
+    trainingIntent: 'coached',
     summary: 'Three balanced training days focused on useful strength.',
     coachingPriorities: ['Build consistency', 'Respect recovery'],
     profile: {

@@ -1,0 +1,13 @@
+{
+  "name": "flynt-storekit",
+  "version": "1.0.0",
+  "description": "FLYNT's native StoreKit 2 bridge for iOS subscriptions.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

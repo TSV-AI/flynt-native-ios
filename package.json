@@ -8,8 +8,13 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@config-plugins/react-native-webrtc": "^15.0.1",
+    "@elevenlabs/react-native": "^1.2.18",
     "@expo/ui": "~57.0.8",
     "@kesha-antonov/react-native-chat": "4.1.0",
+    "@livekit/react-native": "^2.12.0",
+    "@livekit/react-native-expo-plugin": "^1.0.2",
+    "@livekit/react-native-webrtc": "^144.1.2",
     "@supabase/supabase-js": "^2.111.0",
     "expo": "~57.0.9",
     "expo-apple-authentication": "~57.0.1",
@@ -33,7 +38,10 @@
     "expo-web-browser": "~57.0.2",
     "expo-widgets": "~57.0.7",
     "flynt-google-auth": "workspace:*",
+    "flynt-elevenlabs-orb": "workspace:*",
     "flynt-spotify": "workspace:*",
+    "flynt-storekit": "workspace:*",
+    "livekit-client": "^2.21.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
@@ -67,11 +75,12 @@
     "test:auth": "node --test src/lib/auth-flow.test.mjs",
     "test:boot": "node --test src/lib/authoritative-boot.test.mjs",
     "test:navigation": "node --test src/navigation/lifecycle.test.mjs",
+    "test:subscriptions": "node --test src/lib/subscriptions.test.mjs",
     "test:features": "node --test src/lib/native-feature-contracts.test.mjs",
     "typecheck": "tsc --noEmit",
     "copy:check": "node ./scripts/check-copy-style.mjs",
     "doctor": "expo-doctor",
-    "check": "pnpm test:auth && pnpm test:boot && pnpm test:navigation && pnpm test:features && pnpm typecheck && pnpm lint && pnpm copy:check && pnpm doctor"
+    "check": "pnpm test:auth && pnpm test:boot && pnpm test:navigation && pnpm test:subscriptions && pnpm test:features && pnpm typecheck && pnpm lint && pnpm copy:check && pnpm doctor"
   },
   "private": true
 }

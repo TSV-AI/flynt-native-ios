@@ -23,6 +23,7 @@ import type { FlyntSheetPresentationOverride } from '@/constants/sheet';
 import { appSurfaces, radius, spacing, type } from '@/constants/theme';
 import { consultationBasicsSchema, type ConsultationBasics } from '@/contracts/app-state';
 import { consultationIsReadyForReview, consultationReview, messagesWithToolApproval, requestMessages, textFromTrainerMessage, type TrainerMessage } from '@/features/trainer-messages';
+import { consultationPromptForTurn, type ConsultationPrompt } from '@/features/consultation-prompts';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { acceptTerms, confirmConsultation, sendTrainerMessage } from '@/lib/api-client';
 import { deliberateAction, failed, saved, selection } from '@/lib/haptics';
@@ -64,7 +65,7 @@ const metricPickerPresentation = { detent: 'medium' } satisfies FlyntSheetPresen
 
 type ConsultationChatMessage = IMessage & {
   kind: 'assistant' | 'prompt' | 'review' | 'user';
-  prompt?: ReturnType<typeof promptForTurn>;
+  prompt?: ConsultationPrompt;
   review?: NonNullable<ReturnType<typeof consultationReview>>;
 };
 
@@ -100,66 +101,6 @@ function formatHeight(value: string) {
   return `${feet} ft ${inches} in`;
 }
 
-function promptForTurn(turn: number, name: string) {
-  if (turn === 0) return {
-    eyebrow: 'START IN YOUR OWN WORDS', title: `${name || 'Tell me'}, what would you most like training to change?`,
-    detail: 'Choose a starting point or use the message field below.',
-    choices: [
-      ['Feel stronger', 'My main goal is to feel stronger and more capable in everyday life.'],
-      ['Build muscle', 'My main goal is to build visible muscle and change how my body looks.'],
-      ['Move and feel better', 'My main goal is to have more energy, move better, and reduce everyday aches.'],
-      ['Train for something', 'My main goal is to prepare for a sport, event, or performance target. I’m preparing for: . Success would look like: .'],
-    ],
-  };
-  if (turn === 1) return {
-    eyebrow: 'MAKE THE GOAL CONCRETE', title: 'What would make that feel like real progress?', detail: 'This gives FLYNT a clear way to judge success.',
-    choices: [
-      ['Stronger in real life', 'That direction is right. Focus on useful full-body strength. I’ll know it’s working when everyday tasks and the same exercises feel easier and I can steadily do more.'],
-      ['Visible muscle', 'That direction is right. My main focus areas are: . I’ll judge success through progress photos, measurements, how clothes fit, and stronger performance.'],
-      ['Move with confidence', 'That direction is right. Focus on comfortable, confident movement. I’ll know it’s working when I move through daily life and training with less hesitation.'],
-      ['Not quite', 'Not quite. What I mean is: '],
-    ],
-  };
-  if (turn === 2) return {
-    eyebrow: 'YOUR REAL WEEK', title: 'What does training need to fit around?', detail: 'Include your available days, session length, schedule, and other activity.',
-    choices: [
-      ['2 shorter days', 'I can train 2 days per week for up to 45 minutes. I have no major schedule constraints and no regular sport demands.'],
-      ['3 balanced days', 'I can train 3 days per week for up to 60 minutes. I have no major schedule constraints and no regular sport demands.'],
-      ['4 focused days', 'I can train 4 days per week for up to 60 minutes. I have no major schedule constraints and no regular sport demands.'],
-      ['My week varies', 'My schedule changes week to week. A realistic training week looks like: . My session time limit is: . My sports or other regular activities are: .'],
-    ],
-  };
-  if (turn === 3) return {
-    eyebrow: 'YOUR TRAINING BACKGROUND', title: 'What has training felt like so far?', detail: 'Include what you enjoy and anything you would rather avoid.',
-    choices: [
-      ['Starting fresh', 'I’m mostly starting fresh and do not have established movement preferences yet. There are no exercises I already know I want to avoid.'],
-      ['On and off', 'I’ve trained on and off, but consistency has been difficult. I’m open to most movement styles and do not have an exercise preference or avoidance I feel strongly about yet.'],
-      ['Consistent lately', 'I’ve trained consistently recently. What has worked well is: . Movements I prefer are: . Movements I avoid are: .'],
-    ],
-  };
-  if (turn === 4) return {
-    eyebrow: 'WHAT YOU HAVE', title: 'What equipment can you reliably use?', detail: 'Describe your normal environment, not equipment you only sometimes have.',
-    choices: [
-      ['Bodyweight only', 'I usually train with bodyweight only and no equipment.'],
-      ['Home basics', 'I usually train at home. I reliably have dumbbells or kettlebells plus: .'],
-      ['Full gym', 'I train at a fully equipped gym with barbells, dumbbells, cables, machines, benches, and cardio equipment.'],
-      ['Something else', 'My normal training location and complete equipment setup are: '],
-    ],
-  };
-  if (turn === 5) return {
-    eyebrow: 'MOVE AND RECOVER SAFELY', title: 'What should the program respect?', detail: 'Cover pain, movement limits, sleep, stress, and recovery.',
-    choices: [
-      ['Good to go, recover well', 'I have no current pain, injuries, medical restrictions, or movement limitations. My sleep is generally consistent, stress is manageable, and I usually recover well.'],
-      ['Recovery varies', 'I have no current pain, injuries, medical restrictions, or movement limitations, but my sleep, stress, or recovery can be inconsistent. The main issue is: .'],
-      ['One thing to mention', 'I have one injury, pain issue, or movement limitation FLYNT should work around: . It affects these movements: . My sleep, stress, and recovery are generally: .'],
-    ],
-  };
-  return {
-    eyebrow: 'READY WHEN YOU ARE', title: 'Review what FLYNT understood.', detail: 'Nothing is built until you confirm the complete profile.',
-    choices: [['Show my review', 'Show me the complete consultation summary so I can confirm or edit every detail before you build my program.']],
-  };
-}
-
 export default function ConsultationScreen() {
   const { mode, theme } = useFlyntTheme();
   const { appState, refresh, signOut } = useLifecycleNavigation();
@@ -192,7 +133,11 @@ export default function ConsultationScreen() {
   const review = useMemo(() => consultationReview(messages), [messages]);
   const userTurns = messages.filter((item) => item.role === 'user' && textFromTrainerMessage(item).length >= 20).length;
   const readyForReview = useMemo(() => consultationIsReadyForReview(messages), [messages]);
-  const prompt = promptForTurn(userTurns, basics?.name.split(/\s+/)[0] ?? draft.name.split(/\s+/)[0]);
+  const prompt = consultationPromptForTurn(
+    userTurns,
+    basics?.name.split(/\s+/)[0] ?? draft.name.split(/\s+/)[0],
+    basics?.trainingIntent ?? (draft.trainingIntent || 'coached'),
+  );
   const storageKey = `flynt.consultation.${conversation?.id ?? 'pending'}`;
   const draftStorageKey = `${storageKey}.draft`;
   const loaded = loadedStorageKey === storageKey;
@@ -315,7 +260,10 @@ export default function ConsultationScreen() {
         });
       }
       await acceptTerms(legalVersion);
-      await confirmConsultation(review.consultation, conversation.id);
+      await confirmConsultation({
+        ...review.consultation,
+        trainingIntent: basics.trainingIntent,
+      }, conversation.id);
       await SecureStore.deleteItemAsync(storageKey);
       await SecureStore.deleteItemAsync(draftStorageKey);
       await refresh();
@@ -544,7 +492,7 @@ function OptionStep<Value extends string>({ detail, eyebrow, onSelect, options, 
 function ConsultationPromptCard({ disabled, onSelect, prompt, theme }: {
   disabled: boolean;
   onSelect: (message: string) => void;
-  prompt: ReturnType<typeof promptForTurn>;
+  prompt: ConsultationPrompt;
   theme: ReturnType<typeof useFlyntTheme>['theme'];
 }) {
   const { mode } = useFlyntTheme();
