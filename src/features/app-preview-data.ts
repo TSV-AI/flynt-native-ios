@@ -29,6 +29,13 @@ export type PreviewExercise = {
   visualHeight?: number | null;
   visualUrl?: string | null;
   visualWidth?: number | null;
+  tracking?: {
+    metrics: ('load' | 'reps' | 'duration' | 'distance' | 'rounds')[];
+    targetDurationSeconds?: number;
+    targetDistance?: number;
+    distanceUnit?: 'mi' | 'km' | 'm' | 'yd' | 'ft';
+    targetRounds?: number;
+  };
 };
 
 export const previewWeek: PreviewDay[] = [
@@ -77,10 +84,10 @@ export const previewExercisesByDay: PreviewExercise[][] = [
     { name: 'Dumbbell Step-Up', detail: '3 sets · 10 reps each', completed: 0, total: 3, role: 'accessory' },
   ],
   [
-    { name: 'Bike Sprint', detail: '6 rounds · 20 seconds', completed: 0, total: 6 },
+    { name: 'Bike Sprint', detail: '6 rounds · 20 seconds', completed: 0, total: 6, tracking: { metrics: ['duration'], targetDurationSeconds: 20 } },
     { name: 'Kettlebell Swing', detail: '4 sets · 15 reps', completed: 0, total: 4 },
-    { name: 'Sled Push', detail: '4 sets · 20 meters', completed: 0, total: 4 },
-    { name: 'Farmer Carry', detail: '4 sets · 30 meters', completed: 0, total: 4 },
+    { name: 'Sled Push', detail: '4 sets · 20 meters', completed: 0, total: 4, tracking: { metrics: ['distance'], targetDistance: 20, distanceUnit: 'm' } },
+    { name: 'Farmer Carry', detail: '4 sets · 30 meters', completed: 0, total: 4, tracking: { metrics: ['load', 'distance'], targetDistance: 30, distanceUnit: 'm' } },
   ],
   [],
 ];
@@ -98,7 +105,16 @@ export type PreviewWorkoutHistory = {
   exercises: {
     id: string;
     name: string;
-    sets: { load: number; reps: number; rpe?: number; control?: 'controlled' | 'mixed' | 'not_controlled' }[];
+    sets: {
+      load?: number;
+      reps?: number;
+      durationSeconds?: number;
+      distance?: number;
+      distanceUnit?: 'mi' | 'km' | 'm' | 'yd' | 'ft';
+      rounds?: number;
+      rpe?: number;
+      control?: 'controlled' | 'mixed' | 'not_controlled';
+    }[];
   }[];
 };
 

@@ -57,6 +57,13 @@ export const exerciseSchema = z.object({
   ]).optional(),
   progressionRule: z.string().trim().min(1).max(240).optional(),
   tempo: z.string().trim().max(40).optional(),
+  tracking: z.object({
+    metrics: z.array(z.enum(['load', 'reps', 'duration', 'distance', 'rounds'])).min(1).max(2),
+    targetDurationSeconds: z.number().int().min(1).max(24 * 60 * 60).optional(),
+    targetDistance: z.number().positive().max(1000).optional(),
+    distanceUnit: z.enum(['mi', 'km', 'm', 'yd', 'ft']).optional(),
+    targetRounds: z.number().int().min(1).max(100).optional(),
+  }).optional(),
 });
 
 export const workoutOverrideExerciseSchema = exerciseSchema.extend({
@@ -95,6 +102,10 @@ export const normalizedWorkoutSetSchema = z.object({
   prescribed_load: z.coerce.number().min(0).max(3000).nullable().optional(),
   actual_reps: z.number().int().min(0).max(1000),
   actual_load: z.coerce.number().min(0).max(3000),
+  actual_duration_seconds: z.number().int().min(0).max(24 * 60 * 60).nullable().optional(),
+  actual_distance: z.coerce.number().min(0).max(1000).nullable().optional(),
+  distance_unit: z.enum(['mi', 'km', 'm', 'yd', 'ft']).nullable().optional(),
+  actual_rounds: z.number().int().min(0).max(100).nullable().optional(),
   rpe: z.coerce.number().min(1).max(10).nullable(),
   control: z.enum(['controlled', 'mixed', 'not_controlled']).nullable(),
   complete: z.boolean(),

@@ -6,6 +6,7 @@ import {
   appStateSchema,
   completedConsultationSchema,
   consultationBasicsSchema,
+  exerciseSchema,
   normalizedWorkoutSetSchema,
   programChangeSchema,
   workoutOverrideExerciseSchema,
@@ -32,6 +33,41 @@ test('rep picker normalizes prescriptions to a bounded native wheel value', () =
   assert.equal(normalizedReps(''), 1);
   assert.equal(options[0], 1);
   assert.equal(options.at(-1), 99);
+});
+
+test('exercise tracking supports relevant metrics without requiring a legacy backfill', async () => {
+  const legacy = {
+    id: 'legacy-row',
+    name: 'Legacy Row',
+    sets: 3,
+    reps: '8–10',
+    rest: 90,
+    group: 'upper',
+  };
+  assert.equal(exerciseSchema.safeParse(legacy).success, true);
+  assert.equal(exerciseSchema.safeParse({
+    ...legacy,
+    id: 'easy-walk',
+    name: 'Easy Walk',
+    group: 'conditioning',
+    tracking: {
+      metrics: ['duration', 'distance'],
+      targetDurationSeconds: 1200,
+      targetDistance: 1,
+      distanceUnit: 'mi',
+    },
+  }).success, true);
+  assert.equal(exerciseSchema.safeParse({
+    ...legacy,
+    tracking: { metrics: ['load', 'reps', 'duration'] },
+  }).success, false);
+
+  const today = await readFile(new URL('../components/native-today-workout.tsx', import.meta.url), 'utf8');
+  const progress = await readFile(new URL('../app/(tabs)/progress.tsx', import.meta.url), 'utf8');
+  assert.match(today, /exercise\.tracking\?\.metrics \?\? \['load', 'reps'\]/);
+  assert.match(today, /duration: 'durationSeconds'/);
+  assert.match(today, /distance: 'distance'/);
+  assert.match(progress, /formatSetResult/);
 });
 
 test('workout overrides preserve the editable production prescription fields', () => {
@@ -314,12 +350,16 @@ test('shared tab pages match Today with an open leading top bar', async () => {
   assert.match(workoutProvider, /await recordWorkoutSession\(\{/);
   assert.match(workoutProvider, /persistLatestWorkoutState\(immediate \? 0 : 500\)/);
   assert.match(workoutProvider, /NativeAppState\.addEventListener\('change'/);
-  assert.match(today, /function LoadPickerPage/);
-  assert.match(today, /label="Load in pounds"/);
-  assert.match(today, /onChooseLoad=\{\(\) => onChooseLoad\(setIndex\)\}/);
-  assert.match(today, /function RepPickerPage/);
-  assert.match(today, /label="Repetitions"/);
-  assert.match(today, /onChooseReps=\{\(\) => onChooseReps\(setIndex\)\}/);
+  assert.match(today, /function MetricPickerPage/);
+  assert.match(today, /label=\{metricLabel\(metric, exercise\.tracking\)\}/);
+  assert.match(today, /onChooseMetric=\{\(metric\) => onChooseMetric\(setIndex, metric\)\}/);
+  assert.match(today, /metricPickerOptions/);
+  assert.match(today, /sheetPage === 'metric' \? 'medium'/);
+  assert.match(today, /Cancel \$\{metric\} change/);
+  assert.match(today, /Save \$\{metric\} change/);
+  assert.match(today, /repPickerOptions\(\)/);
+  assert.doesNotMatch(today, /function LoadPickerPage/);
+  assert.doesNotMatch(today, /function RepPickerPage/);
   assert.match(today, /const sheetExerciseIndex = sheetPresented \? selectedExercise : visibleExerciseIndex/);
   assert.doesNotMatch(today, /keyboardType\('decimal-pad'/);
   assert.doesNotMatch(today, /onTextChange=\{onRepsChange\}/);

@@ -18,7 +18,10 @@ type HistoryPhase = 'idle' | 'loading' | 'ready' | 'error';
 
 export type WorkoutSetEntry = {
   complete: boolean;
+  distance: string;
+  durationSeconds: string;
   reps: string;
+  rounds: string;
   weight: string;
 };
 
@@ -84,12 +87,18 @@ function workoutSetEntries(
   const stored = Array.isArray(logs[key]) ? logs[key] : [];
   const defaultReps = exercise.reps.match(/\d+/)?.[0] ?? '';
   const defaultWeight = String(exercise.targetLoad ?? savedLoad ?? '');
+  const defaultDuration = String(exercise.tracking?.targetDurationSeconds ?? '');
+  const defaultDistance = String(exercise.tracking?.targetDistance ?? '');
+  const defaultRounds = String(exercise.tracking?.targetRounds ?? '');
   return Array.from({ length: exercise.sets }, (_, index): WorkoutSetEntry => {
     const value = stored[index];
     const entry = value && typeof value === 'object' ? value as Record<string, unknown> : {};
     return {
       complete: entry.complete === true,
+      distance: typeof entry.distance === 'string' || typeof entry.distance === 'number' ? String(entry.distance) : defaultDistance,
+      durationSeconds: typeof entry.durationSeconds === 'string' || typeof entry.durationSeconds === 'number' ? String(entry.durationSeconds) : defaultDuration,
       reps: typeof entry.reps === 'string' || typeof entry.reps === 'number' ? String(entry.reps) : defaultReps,
+      rounds: typeof entry.rounds === 'string' || typeof entry.rounds === 'number' ? String(entry.rounds) : defaultRounds,
       weight: typeof entry.weight === 'string' || typeof entry.weight === 'number' ? String(entry.weight) : defaultWeight,
     };
   });
@@ -120,6 +129,7 @@ function overrideToPreview(exercise: WorkoutOverrideExercise, completed: number)
     role: exercise.role,
     progressionRule: exercise.progressionRule,
     tempo: exercise.tempo,
+    tracking: exercise.tracking,
   };
 }
 
@@ -138,6 +148,7 @@ function previewToOverride(exercise: PreviewExercise): WorkoutOverrideExercise {
     ...(exercise.role ? { role: exercise.role } : {}),
     ...(exercise.progressionRule ? { progressionRule: exercise.progressionRule } : {}),
     ...(exercise.tempo ? { tempo: exercise.tempo } : {}),
+    ...(exercise.tracking ? { tracking: exercise.tracking } : {}),
   };
 }
 
@@ -219,14 +230,20 @@ function normalizeWorkoutHistory(sessions: NormalizedWorkoutSession[]): PreviewW
     const completedSets = session.workout_sets.filter((set) => set.complete);
     const exerciseMap = new Map<string, PreviewWorkoutHistory['exercises'][number]>();
     for (const set of completedSets) {
+      const hasSpecialMetric = set.actual_duration_seconds != null ||
+        set.actual_distance != null || set.actual_rounds != null;
       const exercise = exerciseMap.get(set.exercise_id) ?? {
         id: set.exercise_id,
         name: set.exercise_name,
         sets: [],
       };
       exercise.sets.push({
-        load: set.actual_load,
-        reps: set.actual_reps,
+        ...(!hasSpecialMetric || set.actual_load > 0 ? { load: set.actual_load } : {}),
+        ...(!hasSpecialMetric || set.actual_reps > 0 ? { reps: set.actual_reps } : {}),
+        ...(set.actual_duration_seconds == null ? {} : { durationSeconds: set.actual_duration_seconds }),
+        ...(set.actual_distance == null ? {} : { distance: set.actual_distance }),
+        ...(set.distance_unit == null ? {} : { distanceUnit: set.distance_unit }),
+        ...(set.actual_rounds == null ? {} : { rounds: set.actual_rounds }),
         ...(set.rpe === null ? {} : { rpe: set.rpe }),
         ...(set.control === null ? {} : { control: set.control }),
       });
@@ -501,14 +518,24 @@ export function WorkoutDataProvider({ children }: PropsWithChildren) {
         const entry = dayEntries[exerciseIndex]?.[setIndex];
         const actualReps = Number.parseInt(entry?.reps ?? '', 10) || 0;
         const actualLoad = Number.parseFloat(entry?.weight ?? '') || 0;
+        const actualDurationSeconds = Number.parseInt(entry?.durationSeconds ?? '', 10) || 0;
+        const actualDistance = Number.parseFloat(entry?.distance ?? '') || 0;
+        const actualRounds = Number.parseInt(entry?.rounds ?? '', 10) || 0;
+        const trackingMetrics = exercise.tracking?.metrics ?? ['load', 'reps'];
         return {
           exerciseId: exercise.id ?? `exercise-${exerciseIndex}`,
           exerciseName: exercise.name,
           setIndex,
           ...(prescribedReps ? { prescribedReps } : {}),
           ...(exercise.targetLoad === undefined ? {} : { prescribedLoad: exercise.targetLoad }),
-          actualReps,
-          actualLoad,
+          ...(trackingMetrics.includes('reps') ? { actualReps } : {}),
+          ...(trackingMetrics.includes('load') ? { actualLoad } : {}),
+          ...(trackingMetrics.includes('duration') ? { actualDurationSeconds } : {}),
+          ...(trackingMetrics.includes('distance') ? {
+            actualDistance,
+            ...(exercise.tracking?.distanceUnit ? { distanceUnit: exercise.tracking.distanceUnit } : {}),
+          } : {}),
+          ...(trackingMetrics.includes('rounds') ? { actualRounds } : {}),
           complete: entry?.complete === true,
         };
       },
@@ -528,7 +555,9 @@ export function WorkoutDataProvider({ children }: PropsWithChildren) {
       title: day.title,
       completedSets,
       totalSets,
-      volume: sets.reduce((sum, set) => sum + (set.complete ? set.actualLoad * set.actualReps : 0), 0),
+      volume: sets.reduce((sum, set) => sum + (
+        set.complete ? (set.actualLoad ?? 0) * (set.actualReps ?? 0) : 0
+      ), 0),
       completedAt,
       sets,
     });

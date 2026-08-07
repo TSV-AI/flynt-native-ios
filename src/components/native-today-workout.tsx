@@ -128,18 +128,20 @@ function workoutSectionLabel(exercise: PreviewExercise) {
 
 type NativeSetRowProps = {
   checked: boolean;
+  entry: WorkoutSetEntry;
   exerciseName: string;
   index: number;
   inputColor: string;
+  metrics: TrackingMetric[];
+  onChooseMetric: (metric: TrackingMetric) => void;
   onToggle: () => void;
-  onChooseLoad: () => void;
-  onChooseReps: () => void;
   outlineColor: string;
   prescribedReps: string;
-  reps: string;
   theme: Theme;
-  weight: string;
+  tracking: PreviewExercise['tracking'];
 };
+
+type TrackingMetric = NonNullable<PreviewExercise['tracking']>['metrics'][number];
 
 const dayShape = shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: 'continuous' });
 function exerciseSummary(detail: string): string {
@@ -212,8 +214,32 @@ function ExerciseArtwork({
   );
 }
 
-function NativeSetRow({ checked, exerciseName, index, inputColor, onChooseLoad, onChooseReps, onToggle, outlineColor, prescribedReps, reps: initialReps, theme, weight: initialWeight }: NativeSetRowProps) {
-  const reps = initialReps || prescribedReps;
+function metricLabel(metric: TrackingMetric, tracking: PreviewExercise['tracking']) {
+  if (metric === 'load') return 'LOAD (LBS)';
+  if (metric === 'reps') return 'REPS';
+  if (metric === 'duration') return 'DURATION';
+  if (metric === 'rounds') return 'ROUNDS';
+  return `DISTANCE${tracking?.distanceUnit ? ` (${tracking.distanceUnit.toUpperCase()})` : ''}`;
+}
+
+function formatTrackedDuration(value: string) {
+  const seconds = Number.parseInt(value, 10);
+  if (!Number.isFinite(seconds) || seconds <= 0) return '–';
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return minutes ? `${minutes}:${String(remainder).padStart(2, '0')}` : `${seconds} sec`;
+}
+
+function metricValue(metric: TrackingMetric, entry: WorkoutSetEntry, prescribedReps: string) {
+  if (metric === 'load') return entry.weight || '–';
+  if (metric === 'reps') return entry.reps || prescribedReps || '–';
+  if (metric === 'duration') return formatTrackedDuration(entry.durationSeconds);
+  if (metric === 'distance') return entry.distance || '–';
+  return entry.rounds || '–';
+}
+
+function NativeSetRow({ checked, entry, exerciseName, index, inputColor, metrics, onChooseMetric, onToggle, outlineColor, prescribedReps, theme, tracking }: NativeSetRowProps) {
+  const inputWidth = metrics.length === 1 ? 248 : 118;
   return (
     <VStack modifiers={[padding({ vertical: spacing.xxs })]}>
       <HStack
@@ -222,37 +248,26 @@ function NativeSetRow({ checked, exerciseName, index, inputColor, onChooseLoad, 
           frame({ minHeight: 56, maxWidth: 1000 }),
         ]}
       >
-        <Button
-          onPress={onChooseLoad}
-          modifiers={[
-            buttonStyle('plain'),
-            frame({ width: 88, height: 44 }),
-            background(inputColor, shapes.capsule()),
-            strokeBorder({ color: outlineColor, style: { lineWidth: 0.5 }, shape: 'capsule' }),
-            accessibilityLabel(`${exerciseName} set ${index + 1} load, ${initialWeight || 'not set'}`),
-            accessibilityHint('Opens the load selector'),
-          ]}
-        >
-          <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.ink), monospacedDigit()]}>
-            {initialWeight || '–'}
-          </NativeText>
-        </Button>
-        <Spacer minLength={12} />
-        <Button
-          onPress={onChooseReps}
-          modifiers={[
-            buttonStyle('plain'),
-            frame({ width: 148, height: 52 }),
-            background(inputColor, shapes.capsule()),
-            strokeBorder({ color: outlineColor, style: { lineWidth: 0.5 }, shape: 'capsule' }),
-            accessibilityLabel(`${exerciseName} set ${index + 1} reps, ${reps || 'not set'}`),
-            accessibilityHint('Opens the rep selector'),
-          ]}
-        >
-          <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.ink), monospacedDigit()]}>
-            {reps || '–'}
-          </NativeText>
-        </Button>
+        {metrics.map((metric, metricIndex) => (
+          <Group key={metric}>
+            {metricIndex > 0 ? <Spacer minLength={12} /> : null}
+            <Button
+              onPress={() => onChooseMetric(metric)}
+              modifiers={[
+                buttonStyle('plain'),
+                frame({ width: inputWidth, height: 52 }),
+                background(inputColor, shapes.capsule()),
+                strokeBorder({ color: outlineColor, style: { lineWidth: 0.5 }, shape: 'capsule' }),
+                accessibilityLabel(`${exerciseName} set ${index + 1} ${metric}, ${metricValue(metric, entry, prescribedReps)}`),
+                accessibilityHint(`Opens the ${metric} selector`),
+              ]}
+            >
+              <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.ink), monospacedDigit()]}>
+                {metricValue(metric, entry, prescribedReps)}
+              </NativeText>
+            </Button>
+          </Group>
+        ))}
         <Spacer minLength={12} />
         <Button
           onPress={onToggle}
@@ -361,8 +376,7 @@ function ExerciseSheetContent({
   mediaWidth,
   onAdvance,
   onClose,
-  onChooseLoad,
-  onChooseReps,
+  onChooseMetric,
   onOpenStats,
   onToggleSet,
   onUpdateSet,
@@ -380,8 +394,7 @@ function ExerciseSheetContent({
   mediaWidth: number;
   onAdvance: () => void;
   onClose: () => void;
-  onChooseLoad: (setIndex: number) => void;
-  onChooseReps: (setIndex: number) => void;
+  onChooseMetric: (setIndex: number, metric: TrackingMetric) => void;
   onOpenStats: () => void;
   onToggleSet: (exerciseIndex: number, setIndex: number) => void;
   onUpdateSet: (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>, immediate?: boolean) => void;
@@ -391,6 +404,7 @@ function ExerciseSheetContent({
 }) {
   const { expand: expandRest, timer } = useRestTimer();
   const prescribedReps = exercise.detail.match(/(\d+(?:[–-]\d+)?)\s+reps?/i)?.[1] ?? '';
+  const trackingMetrics = exercise.tracking?.metrics ?? ['load', 'reps'];
   const artwork = exerciseArtworkSource(exercise);
   const guideSteps = exercise.guideSteps === undefined
     ? [
@@ -489,27 +503,21 @@ function ExerciseSheetContent({
         <Divider />
         <VStack spacing={0} modifiers={[padding({ top: spacing.md })]}>
           <HStack spacing={0} modifiers={[padding({ bottom: spacing.xs })]}>
-            <NativeText
-              modifiers={[
-                frame({ width: 88, alignment: 'center' }),
-                font({ textStyle: 'caption2', weight: 'bold' }),
-                foregroundStyle(theme.muted),
-                kerning(0.8),
-              ]}
-            >
-              LOAD (LBS)
-            </NativeText>
-            <Spacer minLength={12} />
-            <NativeText
-              modifiers={[
-                frame({ width: 132, alignment: 'center' }),
-                font({ textStyle: 'caption2', weight: 'bold' }),
-                foregroundStyle(theme.muted),
-                kerning(0.8),
-              ]}
-            >
-              REPS
-            </NativeText>
+            {trackingMetrics.map((metric, metricIndex) => (
+              <Group key={metric}>
+                {metricIndex > 0 ? <Spacer minLength={12} /> : null}
+                <NativeText
+                  modifiers={[
+                    frame({ width: trackingMetrics.length === 1 ? 248 : 118, alignment: 'center' }),
+                    font({ textStyle: 'caption2', weight: 'bold' }),
+                    foregroundStyle(theme.muted),
+                    kerning(0.8),
+                  ]}
+                >
+                  {metricLabel(metric, exercise.tracking)}
+                </NativeText>
+              </Group>
+            ))}
             <Spacer minLength={12} />
             <Spacer modifiers={[frame({ width: 44 })]} />
           </HStack>
@@ -517,17 +525,24 @@ function ExerciseSheetContent({
             <NativeSetRow
               key={setIndex}
               checked={setIndex < completed}
+              entry={setEntries[setIndex] ?? {
+                complete: false,
+                distance: String(exercise.tracking?.targetDistance ?? ''),
+                durationSeconds: String(exercise.tracking?.targetDurationSeconds ?? ''),
+                reps: prescribedReps,
+                rounds: String(exercise.tracking?.targetRounds ?? ''),
+                weight: String(exercise.targetLoad ?? ''),
+              }}
               exerciseName={exercise.name}
               index={setIndex}
               inputColor={input}
-              onChooseLoad={() => onChooseLoad(setIndex)}
-              onChooseReps={() => onChooseReps(setIndex)}
+              metrics={trackingMetrics}
+              onChooseMetric={(metric) => onChooseMetric(setIndex, metric)}
               onToggle={() => onToggleSet(exerciseIndex, setIndex)}
               outlineColor={outline}
               prescribedReps={prescribedReps}
-              reps={setEntries[setIndex]?.reps ?? prescribedReps}
               theme={theme}
-              weight={setEntries[setIndex]?.weight ?? ''}
+              tracking={exercise.tracking}
             />
           ))}
         </VStack>
@@ -578,173 +593,101 @@ function ExerciseSheetContent({
   );
 }
 
-function LoadPickerPage({
-  exercise,
-  onBack,
-  onClose,
-  onSelect,
-  selectedLoad,
-  setIndex,
-  theme,
-}: {
-  exercise: PreviewExercise;
-  onBack: () => void;
-  onClose: () => void;
-  onSelect: (value: string) => void;
-  selectedLoad: string;
-  setIndex: number;
-  theme: Theme;
-}) {
-  const selectedValue = normalizedLoad(selectedLoad);
-  const loadOptions = loadPickerOptions(selectedLoad);
-
-  return (
-    <VStack
-      alignment="leading"
-      spacing={spacing.lg}
-      modifiers={[padding({ horizontal: spacing.lg, top: spacing.xl, bottom: spacing.xl })]}
-    >
-      <HStack alignment="top" spacing={12}>
-        <Button
-          onPress={onBack}
-          modifiers={[
-            buttonStyle('glass'),
-            buttonBorderShape('circle'),
-            frame({ width: 44, height: 44 }),
-            accessibilityLabel('Back to exercise'),
-          ]}
-        >
-          <SwiftUIImage color={theme.ink} size={17} systemName="chevron.left" />
-        </Button>
-        <VStack alignment="leading" spacing={6} modifiers={[frame({ maxWidth: 1000 })]}>
-          <NativeText modifiers={[font({ textStyle: 'title2', weight: 'semibold' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>
-            Choose load
-          </NativeText>
-          <NativeText modifiers={[font({ textStyle: 'footnote' }), foregroundStyle(theme.muted), fixedSize({ vertical: true })]}>
-            {exercise.name}, set {setIndex + 1}
-          </NativeText>
-        </VStack>
-        <Button
-          onPress={onClose}
-          modifiers={[
-            buttonStyle('glass'),
-            buttonBorderShape('circle'),
-            frame({ width: 44, height: 44 }),
-            accessibilityLabel('Close exercise'),
-          ]}
-        >
-          <SwiftUIImage color={theme.ink} size={17} systemName="xmark" />
-        </Button>
-      </HStack>
-      <Picker
-        label="Load in pounds"
-        modifiers={[pickerStyle('wheel'), frame({ maxWidth: 1000, height: 260 })]}
-        onSelectionChange={(value) => onSelect(String(value))}
-        selection={String(selectedValue)}
-      >
-        {loadOptions.map((value) => (
-          <NativeText key={value} modifiers={[tag(String(value))]}>{`${formatLoad(value)} lb`}</NativeText>
-        ))}
-      </Picker>
-      <Button
-        onPress={onBack}
-        modifiers={[
-          buttonStyle('borderedProminent'),
-          buttonBorderShape('capsule'),
-          frame({ minHeight: 52, maxWidth: 1000 }),
-          tint(theme.ink),
-          accessibilityLabel('Done choosing load'),
-        ]}
-      >
-        <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.primaryText)]}>
-          Done
-        </NativeText>
-      </Button>
-    </VStack>
-  );
+function metricPickerOptions(metric: TrackingMetric, selectedValue: string) {
+  if (metric === 'load') return loadPickerOptions(selectedValue).map(String);
+  if (metric === 'reps') return repPickerOptions().map(String);
+  if (metric === 'duration') {
+    return [...new Set([15, 20, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, 2400, 3600, Number(selectedValue)])]
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .sort((a, b) => a - b)
+      .map(String);
+  }
+  if (metric === 'distance') {
+    return [...new Set([0.1, 0.25, 0.5, 1, 1.5, 2, 3, 5, 10, 20, 50, 100, Number(selectedValue)])]
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .sort((a, b) => a - b)
+      .map(String);
+  }
+  return Array.from({ length: 50 }, (_, index) => String(index + 1));
 }
 
-function RepPickerPage({
+function metricPickerValue(metric: TrackingMetric, value: string, tracking: PreviewExercise['tracking']) {
+  if (metric === 'load') return `${formatLoad(Number(value))} lb`;
+  if (metric === 'reps') return `${value} reps`;
+  if (metric === 'duration') return formatTrackedDuration(value);
+  if (metric === 'distance') return `${value} ${tracking?.distanceUnit ?? ''}`.trim();
+  return `${value} rounds`;
+}
+
+function metricPickerSelection(metric: TrackingMetric, selectedValue: string, options: string[]) {
+  if (metric === 'load') return String(normalizedLoad(selectedValue));
+  if (metric === 'reps') return String(normalizedReps(selectedValue));
+  return options.includes(selectedValue) ? selectedValue : options[0];
+}
+
+function MetricPickerPage({
   exercise,
-  onBack,
-  onClose,
+  metric,
+  onCancel,
+  onDone,
   onSelect,
-  selectedReps,
+  selectedValue,
   setIndex,
   theme,
 }: {
   exercise: PreviewExercise;
-  onBack: () => void;
-  onClose: () => void;
+  metric: TrackingMetric;
+  onCancel: () => void;
+  onDone: (value: string) => void;
   onSelect: (value: string) => void;
-  selectedReps: string;
+  selectedValue: string;
   setIndex: number;
   theme: Theme;
 }) {
-  const selectedValue = normalizedReps(selectedReps);
-
+  const options = metricPickerOptions(metric, selectedValue);
+  const selection = metricPickerSelection(metric, selectedValue, options);
   return (
-    <VStack
-      alignment="leading"
-      spacing={spacing.lg}
-      modifiers={[padding({ horizontal: spacing.lg, top: spacing.xl, bottom: spacing.xl })]}
-    >
+    <VStack alignment="leading" spacing={spacing.md} modifiers={[padding({ horizontal: spacing.lg, top: spacing.md, bottom: spacing.lg })]}>
       <HStack alignment="top" spacing={12}>
         <Button
-          onPress={onBack}
+          onPress={onCancel}
           modifiers={[
-            buttonStyle('glass'),
-            buttonBorderShape('circle'),
-            frame({ width: 44, height: 44 }),
-            accessibilityLabel('Back to exercise'),
+            buttonStyle('plain'),
+            frame({ minWidth: 60, minHeight: 44, alignment: 'leading' }),
+            accessibilityLabel(`Cancel ${metric} change`),
           ]}
         >
-          <SwiftUIImage color={theme.ink} size={17} systemName="chevron.left" />
+          <NativeText modifiers={[font({ textStyle: 'body' }), foregroundStyle(theme.ink)]}>Cancel</NativeText>
         </Button>
-        <VStack alignment="leading" spacing={6} modifiers={[frame({ maxWidth: 1000 })]}>
+        <VStack alignment="center" spacing={4} modifiers={[frame({ maxWidth: 1000 })]}>
           <NativeText modifiers={[font({ textStyle: 'title2', weight: 'semibold' }), foregroundStyle(theme.ink), fixedSize({ vertical: true })]}>
-            Choose reps
+            Choose {metric}
           </NativeText>
           <NativeText modifiers={[font({ textStyle: 'footnote' }), foregroundStyle(theme.muted), fixedSize({ vertical: true })]}>
             {exercise.name}, set {setIndex + 1}
           </NativeText>
         </VStack>
         <Button
-          onPress={onClose}
+          onPress={() => onDone(selection)}
           modifiers={[
-            buttonStyle('glass'),
-            buttonBorderShape('circle'),
-            frame({ width: 44, height: 44 }),
-            accessibilityLabel('Close exercise'),
+            buttonStyle('plain'),
+            frame({ minWidth: 60, minHeight: 44, alignment: 'trailing' }),
+            accessibilityLabel(`Save ${metric} change`),
           ]}
         >
-          <SwiftUIImage color={theme.ink} size={17} systemName="xmark" />
+          <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.ink)]}>Done</NativeText>
         </Button>
       </HStack>
       <Picker
-        label="Repetitions"
+        label={metricLabel(metric, exercise.tracking)}
         modifiers={[pickerStyle('wheel'), frame({ maxWidth: 1000, height: 260 })]}
         onSelectionChange={(value) => onSelect(String(value))}
-        selection={String(selectedValue)}
+        selection={selection}
       >
-        {repPickerOptions().map((value) => (
-          <NativeText key={value} modifiers={[tag(String(value))]}>{`${value} reps`}</NativeText>
+        {options.map((value) => (
+          <NativeText key={value} modifiers={[tag(value)]}>{metricPickerValue(metric, value, exercise.tracking)}</NativeText>
         ))}
       </Picker>
-      <Button
-        onPress={onBack}
-        modifiers={[
-          buttonStyle('borderedProminent'),
-          buttonBorderShape('capsule'),
-          frame({ minHeight: 52, maxWidth: 1000 }),
-          tint(theme.ink),
-          accessibilityLabel('Done choosing reps'),
-        ]}
-      >
-        <NativeText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), foregroundStyle(theme.primaryText)]}>
-          Done
-        </NativeText>
-      </Button>
     </VStack>
   );
 }
@@ -885,11 +828,10 @@ export function NativeTodayWorkout({
   const reduceMotion = useReducedMotion();
   const reduceTransparency = useReduceTransparency();
   const { setModalPresented } = useModalPresentation();
-  const [sheetPage, setSheetPage] = useState<'exercise' | 'load' | 'reps' | 'stats'>('exercise');
-  const [loadSetIndex, setLoadSetIndex] = useState(0);
-  const [loadDraft, setLoadDraft] = useState('');
-  const [repSetIndex, setRepSetIndex] = useState(0);
-  const [repDraft, setRepDraft] = useState('');
+  const [sheetPage, setSheetPage] = useState<'exercise' | 'metric' | 'stats'>('exercise');
+  const [metricSetIndex, setMetricSetIndex] = useState(0);
+  const [selectedMetric, setSelectedMetric] = useState<TrackingMetric>('reps');
+  const [metricDraft, setMetricDraft] = useState('');
   const [visibleExerciseIndex, setVisibleExerciseIndex] = useState(-1);
   const contentWidth = width - 32;
   const editListHeight = Math.max(420, height - safeAreaInsets.top - 142);
@@ -905,6 +847,10 @@ export function NativeTodayWorkout({
   const mediaBackground = mode === 'dark' ? exerciseEntryBackground : appSurfaces.light.exerciseSurface;
   const sheetBackgroundColor = flyntSheetBackgroundColor(mode, reduceTransparency);
   const sheetDetent = flyntSheetDetent();
+  const activeExerciseSheetDetent = sheetPage === 'metric' ? 'medium' as const : sheetDetent;
+  const exerciseSheetDetents = sheetPage === 'metric'
+    ? ['medium' as const, sheetDetent]
+    : [sheetDetent];
   const outline = mode === 'light' ? 'rgba(216,214,207,0.72)' : 'rgba(255,255,255,0.10)';
   const sheetPresented = selectedExercise >= 0 && selectedExercise < exercises.length;
   const finishingWorkout = !editingWorkout && workoutSaveState === 'saving';
@@ -958,23 +904,13 @@ export function NativeTodayWorkout({
     onSelectExercise(index);
   }
 
-  function finishChoosingLoad(closeSheet = false) {
-    onUpdateSet(sheetExerciseIndex, loadSetIndex, { weight: loadDraft }, true);
-    if (closeSheet) {
-      onSelectExercise(-1);
-      return;
-    }
-    setSheetPage('exercise');
-  }
-
-  function finishChoosingReps(closeSheet = false) {
-    onUpdateSet(sheetExerciseIndex, repSetIndex, { reps: repDraft }, true);
-    if (closeSheet) {
-      onSelectExercise(-1);
-      return;
-    }
-    setSheetPage('exercise');
-  }
+  const metricEntryField: Record<TrackingMetric, keyof WorkoutSetEntry> = {
+    load: 'weight',
+    reps: 'reps',
+    duration: 'durationSeconds',
+    distance: 'distance',
+    rounds: 'rounds',
+  };
 
   const commonRow = [
     listRowBackground(canvas),
@@ -1294,9 +1230,14 @@ export function NativeTodayWorkout({
             }}
           >
             <Group
+              key={sheetPage === 'metric' ? 'metric-sheet-content' : 'exercise-sheet-content'}
               modifiers={[
-                presentationDetents([sheetDetent]),
-                presentationBackgroundInteraction({ type: 'enabledUpThrough', detent: sheetDetent }),
+                presentationDetents(exerciseSheetDetents, {
+                  selection: activeExerciseSheetDetent,
+                }),
+                presentationBackgroundInteraction(sheetPage === 'metric'
+                  ? 'disabled'
+                  : { type: 'enabledUpThrough', detent: sheetDetent }),
                 presentationDragIndicator('visible'),
                 presentationBackground(sheetBackgroundColor),
                 environment('colorScheme', mode),
@@ -1325,15 +1266,19 @@ export function NativeTodayWorkout({
                           selectExercise(nextExerciseIndex);
                         }}
                         onClose={() => onSelectExercise(-1)}
-                        onChooseLoad={(setIndex) => {
-                          setLoadSetIndex(setIndex);
-                          setLoadDraft(setEntries[sheetExerciseIndex]?.[setIndex]?.weight ?? '');
-                          setSheetPage('load');
-                        }}
-                        onChooseReps={(setIndex) => {
-                          setRepSetIndex(setIndex);
-                          setRepDraft(setEntries[sheetExerciseIndex]?.[setIndex]?.reps ?? exercise.detail.match(/(\d+(?:[–-]\d+)?)\s+reps?/i)?.[1] ?? '');
-                          setSheetPage('reps');
+                        onChooseMetric={(setIndex, metric) => {
+                          const entry = setEntries[sheetExerciseIndex]?.[setIndex];
+                          const values: Record<TrackingMetric, string> = {
+                            load: entry?.weight ?? '',
+                            reps: entry?.reps ?? exercise.detail.match(/(\d+(?:[–-]\d+)?)\s+reps?/i)?.[1] ?? '',
+                            duration: entry?.durationSeconds ?? String(exercise.tracking?.targetDurationSeconds ?? ''),
+                            distance: entry?.distance ?? String(exercise.tracking?.targetDistance ?? ''),
+                            rounds: entry?.rounds ?? String(exercise.tracking?.targetRounds ?? ''),
+                          };
+                          setMetricSetIndex(setIndex);
+                          setSelectedMetric(metric);
+                          setMetricDraft(values[metric]);
+                          setSheetPage('metric');
                         }}
                         onOpenStats={() => setSheetPage('stats')}
                         onToggleSet={onToggleSet}
@@ -1343,25 +1288,20 @@ export function NativeTodayWorkout({
                         theme={theme}
                       />
                     </TabView.Tab>
-                    <TabView.Tab value="load">
-                      <LoadPickerPage
+                    <TabView.Tab value="metric">
+                      <MetricPickerPage
                         exercise={exercise}
-                        onBack={() => finishChoosingLoad()}
-                        onClose={() => finishChoosingLoad(true)}
-                        onSelect={setLoadDraft}
-                        selectedLoad={loadDraft}
-                        setIndex={loadSetIndex}
-                        theme={theme}
-                      />
-                    </TabView.Tab>
-                    <TabView.Tab value="reps">
-                      <RepPickerPage
-                        exercise={exercise}
-                        onBack={() => finishChoosingReps()}
-                        onClose={() => finishChoosingReps(true)}
-                        onSelect={setRepDraft}
-                        selectedReps={repDraft}
-                        setIndex={repSetIndex}
+                        metric={selectedMetric}
+                        onCancel={() => setSheetPage('exercise')}
+                        onDone={(value) => {
+                          onUpdateSet(sheetExerciseIndex, metricSetIndex, {
+                            [metricEntryField[selectedMetric]]: value,
+                          }, true);
+                          setSheetPage('exercise');
+                        }}
+                        onSelect={setMetricDraft}
+                        selectedValue={metricDraft}
+                        setIndex={metricSetIndex}
                         theme={theme}
                       />
                     </TabView.Tab>

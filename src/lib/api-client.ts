@@ -169,8 +169,12 @@ export type WorkoutSessionWrite = {
     setIndex: number;
     prescribedReps?: string;
     prescribedLoad?: number;
-    actualReps: number;
-    actualLoad: number;
+    actualReps?: number;
+    actualLoad?: number;
+    actualDurationSeconds?: number;
+    actualDistance?: number;
+    distanceUnit?: 'mi' | 'km' | 'm' | 'yd' | 'ft';
+    actualRounds?: number;
     control?: 'controlled' | 'mixed' | 'not_controlled';
     complete: boolean;
   }[];

@@ -41,12 +41,17 @@ planning state originally captured below:
   17 Pro Simulator running iOS 26.5.
 - Completed-workout history sheets on Progress now use a native SwiftUI scroll
   container. Scrolling is verified in the same Simulator.
-- The metric-aware prescription contract is implemented in the backend. New
-  prescriptions must explicitly select meaningful metrics from load, reps,
-  duration, distance, and rounds and provide matching targets. Legacy programs
-  remain readable without a backfill. The next isolated milestone is additive
-  workout logging plus native controls and history formatting for those
-  metrics.
+- Backend commit `95a46e4` and the current native milestone implement
+  metric-aware workout logging end to end. New prescriptions select no more
+  than two meaningful metrics from load, reps, duration, distance, and rounds.
+  Today renders only those controls, workout history formats the recorded
+  values, and legacy programs still default to load and repetitions without a
+  backfill.
+- Every metric uses one shared native wheel picker. It presents at the system
+  medium detent with Cancel leading and Done trailing, holds edits as a draft,
+  and returns to the same exercise sheet after either action. This behavior is
+  verified for Bike Sprint duration in dark appearance on the iPhone 17 Pro
+  Simulator.
 
 ## Current product state
 
@@ -85,8 +90,9 @@ planning state originally captured below:
   ownership, the versioned handoff, persistence, and legacy read compatibility.
 - Backend commit `54767c2` enforces ordered program sections while preserving
   compatibility with older published programs.
-- The backend working tree contains the tested metric-aware prescription
-  contract pending its milestone commit.
+- Backend commit `95a46e4` adds metric-aware workout API persistence and the
+  additive workout-set migration. Unrelated exercise-image prompt work remains
+  uncommitted and outside this milestone.
 
 ### Database
 
@@ -94,7 +100,7 @@ The configured FLYNT Supabase project is `nnfxswxzjqocnlkoqsbl`.
 
 The McGlynn Supabase account can access the linked project. The project reports
 `ACTIVE_HEALTHY`. Local and remote migrations match through
-`20260807182427`, and `supabase db lint --linked --schema public --level
+`20260807203000`, and `supabase db lint --linked --schema public --level
 warning` reports no schema errors. A local catalog dump was not run because
 Docker Desktop is not running; this did not block remote migration or lint
 verification.
@@ -132,10 +138,11 @@ records.
 
 ### Native checks run
 
-- TypeScript passes after the consultation, program-section, and Progress sheet
-  changes.
-- Targeted consultation, movement-control, program-section, and native-sheet
-  contract tests pass.
+- TypeScript passes after the consultation, program-section, Progress sheet,
+  and metric-aware workout changes.
+- Metric-aware source-contract tests pass. The broader targeted feature file
+  passes 22 of 23 checks; its only failure is the pre-existing onboarding
+  appearance assertion against unrelated local theme work.
 - Product copy checking passes.
 - The iOS app builds and launches successfully in the iPhone 17 Pro Simulator
   on iOS 26.5.
@@ -143,15 +150,15 @@ records.
   sections.
 - Simulator interaction verifies that completed-workout history scrolls through
   the full sheet content.
-- The full native feature suite currently passes 20 of 21 tests. The remaining
-  failure is a pre-existing onboarding appearance source assertion against
-  unrelated local theme work.
+- Simulator interaction verifies the Bike Sprint duration control opens a
+  native wheel picker at the medium detent with Cancel and Done. Done returns
+  to the still-open Bike Sprint exercise sheet.
 
 All local checks ran under Node 22.23.1. The repository requires Node 24.14.0.
 
 ### Backend checks run
 
-- The full recovery suite passes 101 of 101 tests, including the versioned
+- The full recovery suite passes 102 of 102 tests, including the versioned
   consultation contract, nonclinical exclusion enforcement, program
   prescribing, metric selection, weekly progression, block review, and media
   policy.
@@ -163,6 +170,9 @@ All local checks ran under Node 22.23.1. The repository requires Node 24.14.0.
 - Metric-contract tests verify legacy compatibility, required new-prescription
   tracking, target-to-metric consistency, and prescriber instructions that
   prohibit irrelevant load or repetition fields.
+- The additive workout-set migration is applied to the linked production
+  project, local and remote migration histories match, and live public-schema
+  lint reports no errors.
 
 ### Not yet verified
 
@@ -594,6 +604,27 @@ Legacy exercises will default to the current load-and-repetition presentation.
 New prescriptions will emit an explicit tracking kind and allowed metrics. The
 database change must be additive so historical workout sets remain readable.
 
+#### Exercise execution presentation follow-up
+
+Metric selection is now uniform and safe inside the current exercise sheet,
+but the exercise itself is a primary workout task rather than a short modal
+task. The next Today interaction milestone should:
+
+1. Move active exercise execution to a navigated workout page that preserves
+   the athlete's place in the workout.
+2. Present metric selectors and exercise stats from that page as subordinate
+   sheets, so dismissal always reveals the same active exercise.
+3. Add Previous and Next exercise navigation without changing completion or
+   persistence semantics.
+4. Keep metric selectors on the shared medium-detent wheel with Cancel and Done
+   unless a metric supports a more direct native control.
+5. Audit every remaining selector for the same Cancel, Done, draft, detent, and
+   return-to-context behavior.
+
+This is a future interaction milestone, not part of the metric persistence
+migration. Do not add another loading transition or duplicate workout state to
+implement it.
+
 Do not expose raw model reasoning, diagnostic language, or medical explanations.
 
 ### Weekly review
@@ -631,14 +662,17 @@ This is the next design session:
 2. Final handoff is connected to the prescription prompt.
 3. Ordered Warm Up, Workout, Conditioning, and Recovery generation is
    implemented in source and awaiting commit.
-4. Add metric-aware program exercise prescription and workout logging.
+4. Add metric-aware program exercise prescription and workout logging:
+   complete in backend commit `95a46e4` and the current native milestone.
 5. Finalize the remaining program-exercise schema.
 6. Finalize exercise revision capabilities and canonical relations.
 7. Keep the existing image model and choose the exercise-definition model.
 8. Rewrite exercise and image prompts.
 9. Add schema versioning, migrations, validators, and publication
    gates.
-10. Update the exercise sheet and weekly review UI for the new fields.
+10. Update the exercise sheet and weekly review UI for the new fields. The
+    metric-aware exercise controls are complete; weekly review and the
+    navigated exercise-execution page remain.
 
 ### Workstream D: release validation
 
@@ -657,13 +691,16 @@ This is the next design session:
 1. Talk still uses the standalone ElevenLabs demo-plan contract instead of the
    production consultation handoff.
 2. Equipment and movement preferences are not durable independent resources.
-3. Exercise tracking is still load-and-repetition shaped even when duration,
-   distance, pace, rounds, or completion is the applicable metric.
-4. Current local native work contains unrelated uncommitted changes.
-5. One pre-existing native onboarding source-contract assertion fails against
+3. Active exercise execution still uses a sheet. Metric selectors now return
+   correctly to it, but the planned navigated exercise page and Previous/Next
+   controls are not implemented.
+4. Pace and completion-only tracking are not in the current five-metric
+   contract.
+5. Current local native work contains unrelated uncommitted changes.
+6. One pre-existing native onboarding source-contract assertion fails against
    unrelated local theme work.
-6. Current consultation and program-pipeline work is not in TestFlight.
-7. Exercise-definition, guide, and image prompt restructuring remains pending.
+7. Current consultation and program-pipeline work is not in TestFlight.
+8. Exercise-definition, guide, and image prompt restructuring remains pending.
 
 ## Acceptance gate for the consultation integration
 

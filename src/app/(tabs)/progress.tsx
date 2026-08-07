@@ -101,7 +101,7 @@ function WorkoutHistorySheet({ onDismiss, workout }: { onDismiss: () => void; wo
               {exercise.sets.map((set, index) => (
                 <View key={`${exercise.id}-${index}`} style={[styles.setRow, index > 0 && { borderTopColor: theme.line, borderTopWidth: StyleSheet.hairlineWidth }]}>
                   <Text style={[styles.setIndex, { color: theme.muted }]}>Set {index + 1}</Text>
-                  <Text style={[styles.setResult, { color: theme.ink }]}>{set.load} lb × {set.reps}</Text>
+                  <Text style={[styles.setResult, { color: theme.ink }]}>{formatSetResult(set)}</Text>
                   <Text style={[styles.setMeta, { color: theme.muted }]}>{set.rpe ? `RPE ${set.rpe}` : set.control ? set.control.replace('_', ' ') : ''}</Text>
                 </View>
               ))}
@@ -116,6 +116,23 @@ function WorkoutHistorySheet({ onDismiss, workout }: { onDismiss: () => void; wo
       )}
     </FlyntSheet>
   );
+}
+
+function formatSetResult(set: PreviewWorkoutHistory['exercises'][number]['sets'][number]) {
+  const values = [
+    set.load === undefined ? null : `${set.load} lb`,
+    set.reps === undefined ? null : `${set.reps} reps`,
+    set.durationSeconds === undefined ? null : formatDuration(set.durationSeconds),
+    set.distance === undefined ? null : `${set.distance} ${set.distanceUnit ?? ''}`.trim(),
+    set.rounds === undefined ? null : `${set.rounds} rounds`,
+  ].filter(Boolean);
+  return values.join(' · ') || 'Completed';
+}
+
+function formatDuration(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return minutes ? `${minutes}:${String(remainder).padStart(2, '0')}` : `${seconds} sec`;
 }
 
 function SummaryMetric({ label, value }: { label: string; value: string }) {
