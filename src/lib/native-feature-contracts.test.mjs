@@ -154,6 +154,23 @@ test('voice consultation demo accepts only structured plan JSON', () => {
   assert.throws(() => parseVoiceDemoPlan({ plan_json: '{"title":"Incomplete"}' }));
 });
 
+test('Talk and Text share the validated production consultation handoff', async () => {
+  const source = await readFile(new URL('../components/voice-consultation-demo.tsx', import.meta.url), 'utf8');
+  const contract = await readFile(new URL('../contracts/elevenlabs-consultation.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /\[elevenLabsFinishConsultationTool\.name\]: async/);
+  assert.match(source, /completedConsultationSchema\.safeParse\(parameters\)/);
+  assert.match(source, /conversation\.kind !== 'consultation'/);
+  assert.match(source, /await confirmConsultation\(consultation\.data, conversation\.id\)/);
+  assert.match(source, /await refresh\(\)/);
+  assert.match(source, /router\.replace\('\/program-building'\)/);
+  assert.equal((source.match(/flynt_conversation_id/g) ?? []).length, 2);
+  assert.match(contract, /name: 'finish_consultation'/);
+  assert.match(contract, /z\.toJSONSchema\(completedConsultationSchema/);
+  assert.match(contract, /explicitly confirms/);
+  assert.match(contract, /Do not create or preview the workout program/);
+});
+
 test('provider sign-in admits only an existing account with current legal acceptance', () => {
   assert.equal(hasCurrentFlyntAccount({ exists: false, legal: null }, '2026-07-27'), false);
   assert.equal(hasCurrentFlyntAccount({

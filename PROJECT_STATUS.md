@@ -56,6 +56,14 @@ planning state originally captured below:
   leading and Done trailing. Edits remain drafts until Done and dismissal
   reveals the same exercise page. The reps flow and working back navigation are
   verified in dark appearance on the iPhone 17 Pro Simulator running iOS 26.5.
+- The new Hey FLYNT consultation uses one ElevenLabs agent for both Talk and
+  Text. Talk starts the speech session over WebRTC; Text starts the same agent
+  over WebSocket with text-only mode. Their introduction, chooser, conversation
+  UI, composer, and transitions are unchanged by the handoff milestone.
+- Native source now registers one `finish_consultation` client-tool receiver for
+  both modes. It validates the version `1.0` handoff, submits it to the existing
+  authenticated consultation confirmation endpoint, refreshes authoritative
+  lifecycle state, and opens the existing program-build progress route.
 
 ## Current product state
 
@@ -68,14 +76,20 @@ planning state originally captured below:
   progress, ready-state tabs, Trainer, workout editing, workout persistence,
   subscriptions, notifications, Spotify boundary, and TestFlight build
   configuration exist in source.
-- The Talk and Text ElevenLabs experience exists as a standalone native
-  consultation prototype.
-- The Text consultation uses the shared chat thread and native glass composer.
+- The Hey FLYNT Talk and Text experience uses the same ElevenLabs agent and the
+  same native consultation controller. Text is the agent's text-only transport,
+  not the previous `/api/trainer` consultation.
+- The Text consultation uses the native glass composer. Talk uses the existing
+  voice conversation presentation. The established UI and transition behavior
+  are locked for the current backend-integration work.
 - Today uses a nested native stack for the workout and exercise routes. The
   exercise page owns active exercise execution; metric and stats sheets do not
   replace or dismiss that page.
-- The standalone voice prototype still returns a shallow demo plan. The
-  production text consultation and backend now use the versioned handoff.
+- The shallow `deliver_demo_plan` receiver remains temporarily for compatibility
+  with the currently configured ElevenLabs agent. Native is ready to receive the
+  production versioned handoff through `finish_consultation`, but that tool and
+  the completion instructions still need to be registered on the agent before
+  the legacy receiver can be removed.
 - Local source contains unrelated uncommitted lifecycle, Settings, theme, and
   sheet changes. Those changes must be preserved and reviewed separately.
 
@@ -103,17 +117,19 @@ planning state originally captured below:
 
 ### Consultation-to-program wiring map
 
-The following path is connected in current local source:
+The intended new Talk and Text path is connected through the native receiver,
+with the ElevenLabs agent configuration step still outstanding:
 
-1. Native Text setup collects name, age, height, weight, experience, and
-   `trainingIntent`. The conversation posts through `POST /api/trainer`.
-2. The backend consultation uses `openai/gpt-5.6-luna`. Its server prompt owns
-   the version `1.0` coverage gate, the nonclinical disclosure boundary, and
-   the `finishConsultation` structured tool. The server, not the client,
-   decides when that tool becomes available.
-3. Native renders the validated `tool-finishConsultation` payload for review.
-   Confirmation posts that payload to `POST /api/consultation/confirm` with an
-   idempotency key based on the conversation ID.
+1. The Hey FLYNT introduction offers Talk or Text. Both choices start agent
+   `agent_3501kzcymvw5fs0tqcp946q4e11d`; only the ElevenLabs transport and input
+   presentation differ.
+2. The agent collects the same version `1.0` information in either mode, follows
+   the same nonclinical disclosure boundary, summarizes the result, accepts
+   corrections, and asks for explicit confirmation.
+3. After confirmation, the agent calls `finish_consultation` with the complete
+   structured handoff. Native validates it against `completedConsultationSchema`
+   and posts it to `POST /api/consultation/confirm` using the authoritative
+   FLYNT consultation conversation ID.
 4. Confirmation validates the schema, stores `consultation_snapshot` and
    `trainer_report` on the athlete profile, completes the consultation
    conversation, creates a `program_builds` record, and starts the durable
@@ -138,7 +154,11 @@ confirmed through a production owner journey.
 
 ### Current model and prompt bindings
 
-- Text consultation: `openai/gpt-5.6-luna`, low reasoning.
+- New Talk and Text consultation: the same configured ElevenLabs agent. The
+  agent's underlying language-model setting is owned by ElevenLabs and has not
+  been read or changed from this repository.
+- Previous server-driven text consultation: `openai/gpt-5.6-luna`, low
+  reasoning. This is not the new Hey FLYNT Text path.
 - Initial program prescription: `openai/gpt-5.6-luna`, medium reasoning.
 - Normal Trainer chat: `openai/gpt-5.4-mini`, low reasoning.
 - Exercise identity resolution: `openai/gpt-5.4-mini`.
@@ -191,6 +211,23 @@ is currently embedded in consultation JSON. Exercise relations are stored as
 JSON descriptions and are not guaranteed to resolve to canonical exercise
 records.
 
+### Progression and regression state
+
+- Set-level progression is operational. The weekly engine can advance load or
+  repetitions using deterministic rules and logged performance.
+- Movement control is operational as a guardrail. `mixed` holds automatic
+  progression; `not_controlled` stops automatic progression and flags the
+  movement for regression or substitution review.
+- Exercise guide generation already produces named `progressions`,
+  `regressions`, and `substitutions` with an `intentPreserved` explanation, and
+  stores those arrays on immutable exercise revisions.
+- Those named relationships are not yet operational choices. They are JSON
+  descriptions, not canonical exercise edges, and the prescriber and weekly
+  engine do not currently resolve or select them automatically.
+- The next exercise-pipeline milestone must resolve relationship names through
+  aliases to canonical exercises, store normalized edges, and make those edges
+  available to weekly review, block review, and Trainer-authored changes.
+
 ### TestFlight
 
 - EAS confirms production build `1.0.0 (4)` finished successfully.
@@ -208,9 +245,9 @@ records.
 
 - TypeScript passes after the consultation, program-section, Progress sheet,
   and metric-aware workout changes.
-- Metric-aware source-contract tests pass. The broader targeted feature file
-  passes 22 of 23 checks; its only failure is the pre-existing onboarding
-  appearance assertion against unrelated local theme work.
+- The focused Talk/Text consultation handoff checks pass. The broader feature
+  file passes 22 of 24 checks; its two failures are pre-existing assertions
+  against unrelated local theme and exercise-surface work.
 - Product copy checking passes.
 - The iOS app builds and launches successfully in the iPhone 17 Pro Simulator
   on iOS 26.5.
@@ -712,17 +749,18 @@ Do not expose raw model reasoning, diagnostic language, or medical explanations.
 ### Workstream A: consultation contract, backend schema complete
 
 1. Shared handoff schema in backend and native code: complete.
-2. Text agent policy, server coverage gate, structured review tool, correction,
-   confirmation, and authoritative build handoff: implemented in local source.
-3. Replace the ElevenLabs demo-plan delivery tool with the version `1.0`
-   consultation handoff.
-4. Add server-owned ElevenLabs field-recording and finish webhooks with the
-   same validation and nonclinical boundary as Text.
+2. One native `finish_consultation` receiver for Talk and Text, strict schema
+   validation, authenticated confirmation, lifecycle refresh, and build-progress
+   navigation: implemented and locally tested.
+3. Register `finish_consultation` and its generated JSON schema on the existing
+   ElevenLabs agent. Append the approved summary, correction, confirmation, and
+   nonclinical completion instructions without changing the working greeting.
+4. Run Talk and Text through the configured tool, then remove the legacy
+   `deliver_demo_plan` compatibility receiver.
 5. Confirm minimum audio retention and transcript handling, then update the
    privacy disclosure.
-6. Remove the remaining client prose-regex readiness helper. It currently
-   affects suggested-response timing, not backend completion authority.
-7. Verify Talk and Text produce equivalent validated handoffs.
+6. Verify Talk and Text produce equivalent stored handoffs and each starts only
+   one idempotent program build.
 
 ### Workstream B: persistence
 
@@ -756,7 +794,8 @@ This is the next design session:
 
 ### Workstream D: release validation
 
-1. Resolve the current native feature-contract failure.
+1. Run the complete native feature-contract suite and separate unrelated local
+   theme failures from this milestone.
 2. Run the complete native and backend suites on Node 24.14.0.
 3. Run a fresh-account Talk journey from consultation through ready state.
 4. Repeat with Text and compare stored handoffs.
@@ -768,19 +807,22 @@ This is the next design session:
 
 ## Current blockers
 
-1. Talk still uses the standalone ElevenLabs demo-plan contract instead of the
-   production consultation handoff.
+1. Native is ready for the production handoff, but the existing ElevenLabs
+   agent has not yet been configured to call `finish_consultation`. No
+   ElevenLabs management credential is available in the current environment.
 2. Equipment and movement preferences are not durable independent resources.
 3. Pace and completion-only tracking are not in the current five-metric
    contract.
 4. Current local native work contains unrelated uncommitted changes.
-5. One pre-existing native onboarding source-contract assertion fails against
-   unrelated local theme work.
+5. Two pre-existing native source-contract assertions fail against unrelated
+   local theme and exercise-surface work.
 6. Current consultation and program-pipeline work is not in TestFlight.
 7. Exercise-definition, guide, and image prompt restructuring remains pending.
 8. Semantic exercise-image QA remains disabled.
 9. The local visual v3 master-template change is uncommitted and unverified in
    a complete exercise-generation run.
+10. Named exercise progressions, regressions, and substitutions are stored as
+    revision JSON but are not normalized or consumed automatically.
 
 ## Acceptance gate for the consultation integration
 

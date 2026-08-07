@@ -45,6 +45,10 @@ import { parseVoiceDemoPlan, type VoiceDemoPlan, type VoiceDemoPlanDelivery } fr
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { deliberateAction, selection } from '@/lib/haptics';
 import { composerMinimumHeight, consultationComposerMaximumHeight } from '@/lib/composer-layout';
+import { completedConsultationSchema } from '@/contracts/app-state';
+import { elevenLabsFinishConsultationTool } from '@/contracts/elevenlabs-consultation';
+import { confirmConsultation } from '@/lib/api-client';
+import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 
 const defaultAgentId = 'agent_3501kzcymvw5fs0tqcp946q4e11d';
 const demoAgentId = process.env.EXPO_PUBLIC_ELEVENLABS_DEMO_AGENT_ID ?? defaultAgentId;
@@ -79,6 +83,8 @@ function deduplicatedTranscript(items: TranscriptItem[]) {
 }
 
 export function VoiceConsultationDemo() {
+  const router = useRouter();
+  const { appState, refresh } = useLifecycleNavigation();
   const [plan, setPlan] = useState<VoiceDemoPlan | null>(null);
   const [planJson, setPlanJson] = useState<string | null>(null);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
@@ -102,6 +108,29 @@ export function VoiceConsultationDemo() {
   }, []);
 
   const clientTools = useMemo(() => ({
+    [elevenLabsFinishConsultationTool.name]: async (parameters: Record<string, unknown>) => {
+      const consultation = completedConsultationSchema.safeParse(parameters);
+      const conversation = appState?.conversation;
+      if (!consultation.success) {
+        setDeliveryError('FLYNT could not validate the consultation summary. Ask the agent to correct the handoff and try again.');
+        return 'FLYNT rejected the consultation handoff because it did not match schema version 1.0.';
+      }
+      if (!conversation || conversation.kind !== 'consultation') {
+        setDeliveryError('FLYNT could not find the consultation session. Start the consultation again.');
+        return 'FLYNT rejected the consultation handoff because the authenticated consultation session was unavailable.';
+      }
+      try {
+        await confirmConsultation(consultation.data, conversation.id);
+        setDeliveryError(null);
+        await refresh();
+        router.replace('/program-building');
+        return 'FLYNT validated the consultation and started the athlete program build.';
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'The consultation handoff failed.';
+        setDeliveryError(message);
+        return `FLYNT could not start the program build: ${message}`;
+      }
+    },
     deliver_demo_plan: (parameters: VoiceDemoPlanDelivery) => {
       try {
         const deliveredPlan = parseVoiceDemoPlan(parameters);
@@ -115,7 +144,7 @@ export function VoiceConsultationDemo() {
         return `FLYNT rejected the demo plan JSON: ${message}`;
       }
     },
-  }), []);
+  }), [appState?.conversation, refresh, router]);
 
   const resetDemo = useCallback(() => {
     setPlan(null);
@@ -142,6 +171,7 @@ export function VoiceConsultationDemo() {
       >
         <VoiceConsultationDemoScreen
           deliveryError={deliveryError}
+          flyntConversationId={appState?.conversation?.kind === 'consultation' ? appState.conversation.id : null}
           onReset={resetDemo}
           onLocalUserMessage={(message) => appendTranscript(message, 'user')}
           onSessionStarted={markSessionStarted}
@@ -158,6 +188,7 @@ export function VoiceConsultationDemo() {
 
 function VoiceConsultationDemoScreen({
   deliveryError,
+  flyntConversationId,
   onLocalUserMessage,
   onReset,
   onSessionStarted,
@@ -168,6 +199,7 @@ function VoiceConsultationDemoScreen({
   transcript,
 }: {
   deliveryError: string | null;
+  flyntConversationId: string | null;
   onLocalUserMessage: (message: string) => void;
   onReset: () => void;
   onSessionStarted: () => void;
@@ -340,9 +372,10 @@ function VoiceConsultationDemoScreen({
       connectionType: 'webrtc',
       dynamicVariables: {
         platform: 'FLYNT iOS voice consultation demo',
+        ...(flyntConversationId ? { flynt_conversation_id: flyntConversationId } : {}),
       },
     });
-  }, [beginSessionTransition, onSessionStarted, startSession]);
+  }, [beginSessionTransition, flyntConversationId, onSessionStarted, startSession]);
 
   const startMessageConsultation = useCallback(() => {
     setConsultationMode('message');
@@ -358,9 +391,10 @@ function VoiceConsultationDemoScreen({
       textOnly: true,
       dynamicVariables: {
         platform: 'FLYNT iOS message consultation demo',
+        ...(flyntConversationId ? { flynt_conversation_id: flyntConversationId } : {}),
       },
     });
-  }, [beginSessionTransition, onSessionStarted, startSession]);
+  }, [beginSessionTransition, flyntConversationId, onSessionStarted, startSession]);
 
   const restartConsultation = consultationMode === 'message' ? startMessageConsultation : startVoiceConsultation;
 
