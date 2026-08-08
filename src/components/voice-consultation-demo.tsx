@@ -101,6 +101,7 @@ function consultationValidationIssues(issues: Array<{ message: string; path: Pro
 function ConsultationReviewSheet({
   approved,
   consultation,
+  error,
   isPresented,
   mode,
   onApprove,
@@ -108,6 +109,7 @@ function ConsultationReviewSheet({
 }: {
   approved: boolean;
   consultation: CompletedConsultation;
+  error: string | null;
   isPresented: boolean;
   mode: 'light' | 'dark';
   onApprove: () => void;
@@ -164,6 +166,11 @@ function ConsultationReviewSheet({
               </FlyntSheetCard>
             </ScrollView>
             <View style={[styles.reviewSheetFooter, { borderTopColor: theme.line }]}>
+              {error ? (
+                <Text accessibilityRole="alert" style={[styles.reviewApprovalError, { color: theme.danger }]}>
+                  {error}
+                </Text>
+              ) : null}
               <Pressable
                 accessibilityLabel="Keep talking with FLYNT"
                 accessibilityRole="button"
@@ -180,6 +187,7 @@ function ConsultationReviewSheet({
                 disabled={approved}
                 label={approved ? 'Starting...' : 'Approve and build'}
                 onPress={onApprove}
+                prominence="prominent"
                 state={approved ? 'loading' : 'idle'}
               />
             </View>
@@ -1079,6 +1087,7 @@ function VoiceConsultationDemoScreen({
         <ConsultationReviewSheet
           approved={reviewApproved}
           consultation={consultationReview}
+          error={deliveryError}
           isPresented
           mode={mode}
           onApprove={approveSummary}
@@ -1296,17 +1305,16 @@ const styles = StyleSheet.create({
   reviewFactLabel: { fontSize: 10, lineHeight: 13, fontWeight: '700', letterSpacing: 1.1 },
   reviewDetail: { fontSize: 15, lineHeight: 21 },
   reviewSheetFooter: {
-    minHeight: 78,
+    minHeight: 122,
     borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
+    alignItems: 'stretch',
+    gap: spacing.sm,
     paddingHorizontal: 18,
     paddingVertical: spacing.sm,
   },
-  reviewContinueButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
-  reviewContinueCopy: { fontSize: 16, lineHeight: 20, fontWeight: '600' },
+  reviewApprovalError: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  reviewContinueButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.sm },
+  reviewContinueCopy: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
   messageThreadCopy: { fontSize: 16, lineHeight: 23 },
   messageRestartRow: { minHeight: 88, alignItems: 'center', justifyContent: 'center' },
   restartControl: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },

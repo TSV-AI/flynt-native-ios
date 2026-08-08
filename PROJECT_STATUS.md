@@ -63,6 +63,9 @@ planning state originally captured below:
 - Native source now registers one `review_consultation` client-tool receiver for
   both modes. It validates the version `1.0` handoff and opens a native 75-percent
   inverted review sheet with fixed Keep talking and Approve and build actions.
+  Approve and build is a full-width prominent native glass action. A rejected
+  backend request remains on the sheet and displays its error directly above
+  the actions instead of appearing behind the modal.
   Approval submits the exact reviewed object directly to the authenticated
   consultation confirmation endpoint, refreshes authoritative lifecycle state,
   and opens the existing program-build progress route. The obsolete

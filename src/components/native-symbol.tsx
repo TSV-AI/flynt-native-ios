@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { useReduceTransparency } from '@/hooks/use-reduce-transparency';
+import { palette } from '@/constants/theme';
 
 type SFSymbol = NonNullable<ComponentProps<typeof SwiftImage>['systemName']>;
 
@@ -89,6 +90,7 @@ export function GlassTextButton({
   disabled = false,
   label,
   onPress,
+  prominence = 'regular',
   state = 'idle',
 }: {
   accessibilityLabel: string;
@@ -97,17 +99,22 @@ export function GlassTextButton({
   disabled?: boolean;
   label: string;
   onPress: () => void;
+  prominence?: 'regular' | 'prominent';
   state?: 'idle' | 'loading' | 'success';
 }) {
   const reduceTransparency = useReduceTransparency();
   const reduceMotion = useReducedMotion();
+  const prominent = prominence === 'prominent';
+  const contentColor = prominent
+    ? colorScheme === 'light' ? palette.warmWhite : palette.black
+    : color;
   const content = state === 'loading'
-    ? <ActivityIndicator color={color} size="small" />
+    ? <ActivityIndicator color={contentColor} size="small" />
     : state === 'success'
       ? reduceMotion
-        ? <NativeSymbol color={color} name="checkmark" size={17} />
-        : <DrawnCheckmark color={color} />
-      : <Text style={[styles.textLabel, { color }]}>{label}</Text>;
+        ? <NativeSymbol color={contentColor} name="checkmark" size={17} />
+        : <DrawnCheckmark color={contentColor} />
+      : <Text style={[styles.textLabel, { color: contentColor }]}>{label}</Text>;
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
@@ -115,14 +122,24 @@ export function GlassTextButton({
       accessibilityState={{ busy: state === 'loading', disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.textButtonHost, disabled && state === 'idle' && styles.disabled, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.textButtonHost, prominent && styles.prominentTextButtonHost, disabled && state === 'idle' && styles.disabled, pressed && styles.pressed]}
     >
       {isGlassEffectAPIAvailable() && !reduceTransparency ? (
-        <GlassView colorScheme={colorScheme} glassEffectStyle="regular" isInteractive style={styles.textGlass}>
+        <GlassView
+          colorScheme={colorScheme}
+          glassEffectStyle="regular"
+          isInteractive
+          style={[styles.textGlass, prominent && styles.prominentTextGlass]}
+          tintColor={prominent ? color : undefined}
+        >
           {content}
         </GlassView>
       ) : (
-        <View style={[styles.textGlass, { backgroundColor: colorScheme === 'dark' ? '#2A2A29' : '#E9E8E3' }]}>
+        <View style={[
+          styles.textGlass,
+          prominent && styles.prominentTextGlass,
+          { backgroundColor: prominent ? color : colorScheme === 'dark' ? '#2A2A29' : '#E9E8E3' },
+        ]}>
           {content}
         </View>
       )}
@@ -137,6 +154,8 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.5 },
   textButtonHost: { minWidth: 72, height: 44, borderRadius: 22 },
   textGlass: { minWidth: 72, height: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
+  prominentTextButtonHost: { alignSelf: 'stretch', height: 52, borderRadius: 26 },
+  prominentTextGlass: { width: '100%', height: 52, borderRadius: 26 },
   textLabel: { fontSize: 16, lineHeight: 20, fontWeight: '600' },
   successSymbol: { width: 17, height: 17 },
 });

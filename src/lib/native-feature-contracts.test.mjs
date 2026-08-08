@@ -162,6 +162,8 @@ test('Talk and Text share the validated production consultation handoff', async 
   assert.match(source, /<ConsultationReviewSheet/);
   assert.match(source, /flyntInvertedSheetPresentation\(\{ fraction: 0\.75 \}\)/);
   assert.match(source, /Approve and build/);
+  assert.match(source, /prominence="prominent"/);
+  assert.match(source, /accessibilityRole="alert"[\s\S]*reviewApprovalError/);
   assert.doesNotMatch(source, /elevenLabsFinishConsultationTool|finish_consultation/);
   assert.match(source, /parseElevenLabsConsultationParameters\(parameters\)/);
   assert.match(source, /conversation\.kind !== 'consultation'/);
