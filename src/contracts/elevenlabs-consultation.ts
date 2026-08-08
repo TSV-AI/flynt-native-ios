@@ -2,12 +2,12 @@ import { z } from 'zod';
 
 import { completedConsultationSchema } from './app-state';
 
-export const elevenLabsFinishConsultationTool = {
-  name: 'finish_consultation',
+export const elevenLabsReviewConsultationTool = {
+  name: 'review_consultation',
   parameterName: 'consultation_json',
   description: [
-    'Submit the athlete consultation only after summarizing it and receiving explicit confirmation.',
-    'Return the complete FLYNT consultation handoff. Do not generate a workout program in this tool.',
+    'Present the complete consultation in the native FLYNT review card before final submission.',
+    'Call this after collecting every required field and before asking for approval.',
   ].join(' '),
   parameters: z.toJSONSchema(completedConsultationSchema, {
     target: 'draft-7',
@@ -15,14 +15,29 @@ export const elevenLabsFinishConsultationTool = {
 } as const;
 
 export function parseElevenLabsConsultationParameters(parameters: Record<string, unknown>) {
-  const encoded = parameters[elevenLabsFinishConsultationTool.parameterName];
+  const encoded = parameters[elevenLabsReviewConsultationTool.parameterName];
   if (typeof encoded !== 'string') return completedConsultationSchema.safeParse(parameters);
 
   try {
-    return completedConsultationSchema.safeParse(JSON.parse(encoded));
+    let decoded: unknown = encoded;
+    for (let layer = 0; layer < 4; layer += 1) {
+      if (typeof decoded === 'string') {
+        decoded = JSON.parse(decoded);
+        continue;
+      }
+      if (
+        decoded
+        && typeof decoded === 'object'
+        && elevenLabsReviewConsultationTool.parameterName in decoded
+        && typeof (decoded as Record<string, unknown>)[elevenLabsReviewConsultationTool.parameterName] === 'string'
+      ) {
+        decoded = (decoded as Record<string, unknown>)[elevenLabsReviewConsultationTool.parameterName];
+        continue;
+      }
+      break;
+    }
+    return completedConsultationSchema.safeParse(decoded);
   } catch {
     return completedConsultationSchema.safeParse(null);
   }
 }
-
-export const elevenLabsConsultationCompletionInstructions = `Before finishing, summarize the athlete's goals, schedule, training background, equipment, preferences, exclusions, ownership choice, and readiness in three or four concise sentences. Ask what should be corrected. Call finish_consultation only after the athlete explicitly confirms the summary. Submit schemaVersion 1.0 and every required field. Do not create or preview the workout program inside the conversation. FLYNT builds the program after this handoff is validated.`;

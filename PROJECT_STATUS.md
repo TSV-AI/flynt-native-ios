@@ -60,14 +60,19 @@ planning state originally captured below:
   Text. Talk starts the speech session over WebRTC; Text starts the same agent
   over WebSocket with text-only mode. Their introduction, chooser, conversation
   UI, composer, and transitions are unchanged by the handoff milestone.
-- Native source now registers one `finish_consultation` client-tool receiver for
-  both modes. It validates the version `1.0` handoff, submits it to the existing
-  authenticated consultation confirmation endpoint, refreshes authoritative
-  lifecycle state, and opens the existing program-build progress route.
-- ElevenLabs Main is published with the production consultation prompt and
-  `finish_consultation` client tool. The old `deliver_demo_plan` tool is detached
-  from the agent. The existing first message, Claude Opus 4.7 model, Mark voice,
-  interruptibility, and established conversation style remain unchanged.
+- Native source now registers one `review_consultation` client-tool receiver for
+  both modes. It validates the version `1.0` handoff and opens a native 75-percent
+  inverted review sheet with fixed Keep talking and Approve and build actions.
+  Approval submits the exact reviewed object directly to the authenticated
+  consultation confirmation endpoint, refreshes authoritative lifecycle state,
+  and opens the existing program-build progress route. The obsolete
+  `finish_consultation` regeneration step has been removed.
+- ElevenLabs Main is published as a goal-driven workflow with separate intake,
+  detailed gathering, and summary nodes. Only the summary node can call
+  `review_consultation`. It uses Claude Sonnet 4.5 for reliable structured tool
+  calls, while the Mark voice, interruptibility, and established conversation
+  style remain unchanged. A complete one-message test reached the native review
+  sheet without a null-payload retry.
 
 ## Current product state
 
@@ -119,8 +124,8 @@ planning state originally captured below:
 
 ### Consultation-to-program wiring map
 
-The intended new Talk and Text path is connected through the native receiver,
-with the ElevenLabs agent configuration step still outstanding:
+The new Talk and Text path is connected through the native receiver and the
+published ElevenLabs workflow:
 
 1. The Hey FLYNT introduction offers Talk or Text. Both choices start agent
    `agent_3501kzcymvw5fs0tqcp946q4e11d`; only the ElevenLabs transport and input
@@ -128,37 +133,44 @@ with the ElevenLabs agent configuration step still outstanding:
 2. The agent collects the same version `1.0` information in either mode, follows
    the same nonclinical disclosure boundary, summarizes the result, accepts
    corrections, and asks for explicit confirmation.
-3. After confirmation, the agent calls `finish_consultation` with the complete
-   structured handoff. Native validates it against `completedConsultationSchema`
-   and posts it to `POST /api/consultation/confirm` using the authoritative
-   FLYNT consultation conversation ID.
-4. Confirmation validates the schema, stores `consultation_snapshot` and
+3. The agent calls `review_consultation` with the complete structured handoff.
+   Native validates it against `completedConsultationSchema` and presents the
+   native review sheet. Keep talking returns to the same live conversation.
+4. Approve and build posts that exact reviewed object to
+   `POST /api/consultation/confirm` using the authoritative FLYNT consultation
+   conversation ID. ElevenLabs does not regenerate or resubmit the object.
+5. Confirmation validates the schema, stores `consultation_snapshot` and
    `trainer_report` on the athlete profile, completes the consultation
    conversation, creates a `program_builds` record, and starts the durable
    `programBuildWorkflow`.
-5. The workflow reads the stored consultation and trainer report. Initial
+6. The workflow reads the stored consultation and trainer report. Initial
    prescription uses `openai/gpt-5.6-luna` at medium reasoning with the
    `flynt-ai-prescriber-2026.8` prompt and a structured program schema.
-6. The committed prescriber prompt includes ownership boundaries, seven-day
+7. The committed prescriber prompt includes ownership boundaries, seven-day
    output, ordered Warm Up, Workout, optional Conditioning, optional Recovery,
    three to five specific warm-ups, recovery-day mobility and zone 2 work,
    session-duration limits, nonredundancy, movement exclusions, and explicit
    load, reps, duration, distance, or rounds tracking.
-7. Program validation rejects an invalid day count, session-duration overflow,
+8. Program validation rejects an invalid day count, session-duration overflow,
    missing or disordered sections, umbrella exercise labels, invalid rest or
    recovery days, and metric-target mismatches before publication.
-8. Downstream fulfillment resolves exercise identity, creates missing exercise
+9. Downstream fulfillment resolves exercise identity, creates missing exercise
    records and media, validates fulfillment, publishes the program version,
    schedules weekly progression, and sends the ready notification.
 
-This path is implemented locally but is not in the current TestFlight build or
-confirmed through a production owner journey.
+The native review path is implemented and verified in dark appearance on an
+iPhone 17 Pro Simulator running iOS 26.5, including scrollable content, fixed
+actions, Keep talking, and backend-error retention. Backend approval currently
+stops at production schema validation because `flynt.training` is five commits
+behind the locally verified backend. The five pending backend commits pass the
+focused consultation and program-pipeline suite with 67 of 67 tests. Publishing
+those commits and rerunning Approve and build remain the final production gate.
 
 ### Current model and prompt bindings
 
-- New Talk and Text consultation: the same configured ElevenLabs agent using
-  Claude Opus 4.7. The model was verified in the live dashboard and was not
-  changed during the production-handoff update.
+- New Talk and Text consultation: the same configured ElevenLabs goal-driven
+  workflow. Intake and gathering retain their configured models; the summary
+  node uses Claude Sonnet 4.5 for the `review_consultation` tool call.
 - Previous server-driven text consultation: `openai/gpt-5.6-luna`, low
   reasoning. This is not the new Hey FLYNT Text path.
 - Initial program prescription: `openai/gpt-5.6-luna`, medium reasoning.

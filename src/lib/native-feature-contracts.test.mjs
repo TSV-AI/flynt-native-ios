@@ -158,19 +158,22 @@ test('Talk and Text share the validated production consultation handoff', async 
   const source = await readFile(new URL('../components/voice-consultation-demo.tsx', import.meta.url), 'utf8');
   const contract = await readFile(new URL('../contracts/elevenlabs-consultation.ts', import.meta.url), 'utf8');
 
-  assert.match(source, /\[elevenLabsFinishConsultationTool\.name\]: async/);
+  assert.match(source, /\[elevenLabsReviewConsultationTool\.name\]: async/);
+  assert.match(source, /<ConsultationReviewSheet/);
+  assert.match(source, /flyntInvertedSheetPresentation\(\{ fraction: 0\.75 \}\)/);
+  assert.match(source, /Approve and build/);
+  assert.doesNotMatch(source, /elevenLabsFinishConsultationTool|finish_consultation/);
   assert.match(source, /parseElevenLabsConsultationParameters\(parameters\)/);
   assert.match(source, /conversation\.kind !== 'consultation'/);
-  assert.match(source, /await confirmConsultation\(consultation\.data, conversation\.id\)/);
+  assert.match(source, /onApproveReview=\{async \(consultation\) => \{[\s\S]*await confirmConsultation\(consultation, conversation\.id\)/);
   assert.match(source, /await refresh\(\)/);
   assert.match(source, /router\.replace\('\/program-building'\)/);
   assert.equal((source.match(/flynt_conversation_id/g) ?? []).length, 2);
-  assert.match(contract, /name: 'finish_consultation'/);
+  assert.match(contract, /name: 'review_consultation'/);
   assert.match(contract, /parameterName: 'consultation_json'/);
   assert.match(contract, /z\.toJSONSchema\(completedConsultationSchema/);
-  assert.match(contract, /JSON\.parse\(encoded\)/);
-  assert.match(contract, /explicitly confirms/);
-  assert.match(contract, /Do not create or preview the workout program/);
+  assert.match(contract, /layer < 4[\s\S]*JSON\.parse\(decoded\)/);
+  assert.doesNotMatch(contract, /finish_consultation/);
 });
 
 test('provider sign-in admits only an existing account with current legal acceptance', () => {
@@ -221,35 +224,23 @@ test('authoritative boot normalizes only empty numeric profile sentinels', () =>
   }).success, false);
 });
 
-test('post-account consultation matches the PWA setup and securely resumes its draft', async () => {
+test('post-account lifecycle uses the production ElevenLabs Talk and Text consultation', async () => {
   const source = await readFile(new URL('../app/consultation.tsx', import.meta.url), 'utf8');
+  const consultation = await readFile(new URL('../components/voice-consultation-demo.tsx', import.meta.url), 'utf8');
   const rootNavigation = await readFile(new URL('../app/_layout.tsx', import.meta.url), 'utf8');
   const lifecyclePlaceholder = await readFile(new URL('../components/lifecycle-placeholder.tsx', import.meta.url), 'utf8');
 
-  assert.match(source, /I’m new to this/);
-  assert.match(source, /I’ve trained a bit/);
-  assert.match(source, /I train regularly/);
-  assert.match(source, /Build my plan/);
-  assert.match(source, /Bring my own workouts/);
-  assert.match(source, /Mix both/);
-  assert.match(source, /const draftStorageKey = `\$\{storageKey\}\.draft`/);
-  assert.match(source, /setupDraftSchema\.safeParse\(JSON\.parse\(storedDraft\)\)/);
-  assert.match(source, /SecureStore\.setItemAsync\(draftStorageKey/);
-  assert.match(source, /SecureStore\.deleteItemAsync\(draftStorageKey\)/);
-  assert.match(source, /accessibilityState=\{\{ selected: selected === value \}\}/);
-  assert.match(source, /type MetricPicker = 'age' \| 'height' \| 'weight'/);
-  assert.match(source, /metricPickerPresentation = \{ detent: 'medium' \}/);
-  assert.match(source, /<MetricPickerSheet/);
-  assert.match(source, /<FlyntSheet[\s\S]*pickerStyle\('wheel'\)/);
-  assert.match(source, /label="Height"[\s\S]*formatHeight\(draft\.height\)/);
-  assert.match(source, /accessibilityValue=\{\{ text: accessibilityValue \?\? value \}\}/);
-  assert.match(source, /styles\.selectionIndicator[\s\S]*name="checkmark"/);
-  assert.doesNotMatch(source, /styles\.radio|styles\.radioFill/);
-  assert.match(source, /router\.push\('\/settings'\)/);
-  assert.match(source, /<GlassSymbolButton[\s\S]*name="ellipsis"/);
-  assert.doesNotMatch(source, /styles\.brand/);
+  assert.match(source, /VoiceConsultationDemo/);
+  assert.doesNotMatch(source, /SecureStore|consultationPromptForTurn|sendTrainerMessage/);
+  assert.match(consultation, /Start talking/);
+  assert.match(consultation, /Start texting/);
+  assert.match(consultation, /elevenLabsReviewConsultationTool/);
+  assert.match(consultation, /Approve and build/);
+  assert.match(consultation, /Keep talking/);
+  assert.match(consultation, /router\.push\('\/settings'\)/);
+  assert.match(consultation, /<GlassSymbolButton[\s\S]*name="ellipsis"/);
   assert.match(lifecyclePlaceholder, /router\.push\('\/settings'\)/);
-  assert.doesNotMatch(`${source}\n${rootNavigation}\n${lifecyclePlaceholder}`, /lifecycle-settings/);
+  assert.doesNotMatch(`${source}\n${consultation}\n${rootNavigation}\n${lifecyclePlaceholder}`, /lifecycle-settings/);
 });
 
 test('Trainer approvals validate consultation and bounded program-change payloads', () => {
@@ -317,11 +308,11 @@ test('Trainer uses the maintained native chat shell and native Markdown response
   assert.match(markdownSource, /<EnrichedMarkdownText/);
   assert.match(markdownSource, /flavor="github"/);
   assert.match(markdownSource, /bulletColor/);
-  const consultationSource = await readFile(new URL('../app/consultation.tsx', import.meta.url), 'utf8');
-  assert.match(consultationSource, /<FlyntChatThread<ConsultationChatMessage>/);
-  assert.match(consultationSource, /contentExtendsUnderTopbar/);
-  assert.match(consultationSource, /topInset=\{appTopbarHeight\}/);
-  assert.match(consultationSource, /<FlyntAssistantMessage markdown=\{currentMessage\.text\}/);
+  const consultationSource = await readFile(new URL('../components/voice-consultation-demo.tsx', import.meta.url), 'utf8');
+  assert.match(consultationSource, /<FlyntChatThread<DemoChatMessage>/);
+  assert.match(consultationSource, /extendsUnderStatusBar/);
+  assert.match(consultationSource, /topInset=\{demoTopbarHeight\}/);
+  assert.match(consultationSource, /<TypedAgentMessage message=\{currentMessage\.text\}/);
   assert.match(composerSource, /onContentSizeChange/);
   assert.match(composerSource, /boundedComposerHeight\(event\.nativeEvent\.contentSize\.height, maximumHeight\)/);
   assert.match(composerSource, /sendTarget: \{ position: 'absolute'/);
@@ -330,12 +321,10 @@ test('Trainer uses the maintained native chat shell and native Markdown response
   const composerLayout = await readFile(new URL('./composer-layout.ts', import.meta.url), 'utf8');
   assert.match(composerLayout, /trainerComposerMaximumHeight = 132/);
   assert.match(consultationSource, /consultationComposerMaximumHeight/);
-  assert.match(consultationSource, /consultationIsReadyForReview/);
-  assert.match(consultationSource, /userTurns <= 5 \|\| readyForReview/);
-  assert.match(consultationSource, /onSelect=\{\(value\) => void sendText\(value\)\}/);
-  assert.match(consultationSource, /composerClearance=\{spacing\.xl\}/);
-  assert.match(consultationSource, /TYPICAL RESPONSES/);
-  assert.doesNotMatch(consultationSource, /onSelect=\{setMessage\}/);
+  assert.match(consultationSource, /elevenLabsReviewConsultationTool/);
+  assert.match(consultationSource, /ConsultationReviewSheet/);
+  assert.match(consultationSource, /<NativeMaterialSheet/);
+  assert.doesNotMatch(consultationSource, /\.slice\(-8\)/);
   assert.match(composerSource, /borderWidth: StyleSheet\.hairlineWidth/);
   assert.doesNotMatch(screenSource, /<FlatList/);
   assert.doesNotMatch(screenSource, /scrollToEnd/);

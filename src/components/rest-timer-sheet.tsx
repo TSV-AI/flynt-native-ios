@@ -4,7 +4,7 @@ import Animated from 'react-native-reanimated';
 
 import { NativeMaterialSheet } from '@/components/native-material-sheet';
 import { NativeSymbol } from '@/components/native-symbol';
-import type { FlyntSheetPresentationOverride } from '@/constants/sheet';
+import { flyntInvertedSheetPresentation } from '@/constants/sheet';
 import { fonts, radius, spacing, themeFor, type } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { useSmoothProgress } from '@/hooks/use-smooth-progress';
@@ -26,17 +26,7 @@ function formatTimer(seconds: number) {
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-const restTimerPresentation = {
-  detent: { fraction: 0.36 },
-  backgroundColor: {
-    dark: '#18181ADD',
-    light: '#F7F6F2E8',
-  },
-  opaqueBackgroundColor: {
-    dark: '#18181A',
-    light: '#F7F6F2',
-  },
-} satisfies FlyntSheetPresentationOverride;
+const restTimerPresentation = flyntInvertedSheetPresentation({ fraction: 0.36 });
 
 export function RestTimerSheet({ isPresented, onAdjust, onDismiss, onSkip, timer }: RestTimerSheetProps) {
   const { mode } = useFlyntTheme();

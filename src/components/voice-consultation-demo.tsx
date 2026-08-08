@@ -1,5 +1,6 @@
 import {
   ConversationProvider,
+  type ConversationProviderProps,
   useConversationControls,
   useConversationInput,
   useConversationMode,
@@ -17,6 +18,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -30,7 +32,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { FlyntElevenLabsOrb, type FlyntElevenLabsOrbState } from 'flynt-elevenlabs-orb';
 
-import { GlassSymbolButton, NativeSymbol } from '@/components/native-symbol';
+import { GlassSymbolButton, GlassTextButton, NativeSymbol } from '@/components/native-symbol';
+import { FlyntSheetCard } from '@/components/flynt-sheet';
+import { NativeMaterialSheet } from '@/components/native-material-sheet';
 import {
   FlyntChatComposerOverlay,
   FlyntChatThread,
@@ -40,12 +44,17 @@ import {
 } from '@/components/flynt-chat-thread';
 import { FlyntChatInputToolbar } from '@/components/trainer-composer-accessory';
 import { motion } from '@/constants/motion';
-import { appSurfaces, palette, radius, spacing, type } from '@/constants/theme';
+import { flyntInvertedSheetPresentation } from '@/constants/sheet';
+import { appSurfaces, palette, radius, spacing, themeFor, type } from '@/constants/theme';
 import { parseVoiceDemoPlan, type VoiceDemoPlan, type VoiceDemoPlanDelivery } from '@/features/voice-demo-plan';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { deliberateAction, selection } from '@/lib/haptics';
 import { composerMinimumHeight, consultationComposerMaximumHeight } from '@/lib/composer-layout';
-import { elevenLabsFinishConsultationTool, parseElevenLabsConsultationParameters } from '@/contracts/elevenlabs-consultation';
+import {
+  elevenLabsReviewConsultationTool,
+  parseElevenLabsConsultationParameters,
+} from '@/contracts/elevenlabs-consultation';
+import type { CompletedConsultation } from '@/contracts/app-state';
 import { confirmConsultation } from '@/lib/api-client';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 
@@ -53,6 +62,7 @@ const defaultAgentId = 'agent_3501kzcymvw5fs0tqcp946q4e11d';
 const demoAgentId = process.env.EXPO_PUBLIC_ELEVENLABS_DEMO_AGENT_ID ?? defaultAgentId;
 const orbRestingSize = 214;
 const demoTopbarHeight = 64;
+const consultationReviewSheetPresentation = flyntInvertedSheetPresentation({ fraction: 0.75 });
 
 type TranscriptItem = {
   id: string;
@@ -81,6 +91,105 @@ function deduplicatedTranscript(items: TranscriptItem[]) {
   });
 }
 
+function consultationValidationIssues(issues: Array<{ message: string; path: PropertyKey[] }>) {
+  return issues
+    .slice(0, 8)
+    .map((issue) => `${issue.path.length ? issue.path.join('.') : 'consultation'}: ${issue.message}`)
+    .join('; ');
+}
+
+function ConsultationReviewSheet({
+  approved,
+  consultation,
+  isPresented,
+  mode,
+  onApprove,
+  onContinue,
+}: {
+  approved: boolean;
+  consultation: CompletedConsultation;
+  isPresented: boolean;
+  mode: 'light' | 'dark';
+  onApprove: () => void;
+  onContinue: () => void;
+}) {
+  const { fontScale, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const sheetMode = mode === 'light' ? 'dark' : 'light';
+  const theme = themeFor(sheetMode);
+  const sheetHeight = Math.round((height - insets.top) * (fontScale >= 1.35 ? 0.94 : 0.75));
+  return (
+    <NativeMaterialSheet
+      colorScheme={sheetMode}
+      isPresented={isPresented}
+      onDismiss={onContinue}
+      presentationOverride={consultationReviewSheetPresentation}
+    >
+      <View style={[styles.reviewSheetScreen, { height: sheetHeight }]}>
+        <SafeAreaView edges={['bottom']} style={styles.reviewSheetSafeArea}>
+          <View style={styles.reviewSheetHeader}>
+            <View style={styles.reviewSheetHeaderCopy}>
+              <Text style={[styles.reviewSheetEyebrow, { color: theme.muted }]}>INITIAL CONSULTATION</Text>
+              <Text accessibilityRole="header" style={[styles.reviewSheetTitle, { color: theme.ink }]}>Review your consultation</Text>
+            </View>
+            <GlassSymbolButton
+              accessibilityLabel="Keep talking with FLYNT"
+              color={theme.ink}
+              colorScheme={sheetMode}
+              name="xmark"
+              onPress={onContinue}
+            />
+          </View>
+          <View style={styles.reviewSheetBody}>
+            <ScrollView
+              contentContainerStyle={styles.reviewSheetScroll}
+              showsVerticalScrollIndicator={false}
+              style={styles.reviewSheetScroller}
+            >
+              <FlyntSheetCard mode={sheetMode} style={styles.reviewSheetCard}>
+                <Text style={[styles.reviewSummary, { color: theme.ink }]}>{consultation.summary}</Text>
+                <View style={[styles.reviewDivider, { backgroundColor: theme.line }]} />
+                <View style={styles.reviewFactGroup}>
+                  <Text style={[styles.reviewFactLabel, { color: theme.muted }]}>GOALS</Text>
+                  <Text style={[styles.reviewDetail, { color: theme.ink }]}>{consultation.objectives.primaryGoals.join(', ')}</Text>
+                </View>
+                <View style={styles.reviewFactGroup}>
+                  <Text style={[styles.reviewFactLabel, { color: theme.muted }]}>SCHEDULE</Text>
+                  <Text style={[styles.reviewDetail, { color: theme.ink }]}>{consultation.schedule.daysPerWeek} days per week, {consultation.schedule.sessionMinutes} minutes per session</Text>
+                </View>
+                <View style={styles.reviewFactGroup}>
+                  <Text style={[styles.reviewFactLabel, { color: theme.muted }]}>TRAINING</Text>
+                  <Text style={[styles.reviewDetail, { color: theme.ink }]}>Coached at {consultation.equipmentProfile.environment.replaceAll('_', ' ')}</Text>
+                </View>
+              </FlyntSheetCard>
+            </ScrollView>
+            <View style={[styles.reviewSheetFooter, { borderTopColor: theme.line }]}>
+              <Pressable
+                accessibilityLabel="Keep talking with FLYNT"
+                accessibilityRole="button"
+                disabled={approved}
+                onPress={onContinue}
+                style={({ pressed }) => [styles.reviewContinueButton, pressed && styles.pressed, approved && styles.disabled]}
+              >
+                <Text style={[styles.reviewContinueCopy, { color: theme.ink }]}>Keep talking</Text>
+              </Pressable>
+              <GlassTextButton
+                accessibilityLabel={approved ? 'Consultation approved and program build requested' : 'Approve consultation and build program'}
+                color={theme.ink}
+                colorScheme={sheetMode}
+                disabled={approved}
+                label={approved ? 'Starting...' : 'Approve and build'}
+                onPress={onApprove}
+                state={approved ? 'loading' : 'idle'}
+              />
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+    </NativeMaterialSheet>
+  );
+}
+
 export function VoiceConsultationDemo() {
   const router = useRouter();
   const { appState, refresh } = useLifecycleNavigation();
@@ -90,6 +199,8 @@ export function VoiceConsultationDemo() {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [sessionStarted, setSessionStarted] = useState(false);
+  const [consultationReview, setConsultationReview] = useState<CompletedConsultation | null>(null);
+  const [approvalSubmitting, setApprovalSubmitting] = useState(false);
 
   const appendTranscript = useCallback((message: string, role: TranscriptItem['role']) => {
     setTranscript((current) => {
@@ -102,33 +213,22 @@ export function VoiceConsultationDemo() {
       return [
         ...current,
         { id: `${Date.now()}:${current.length}`, message, role },
-      ].slice(-8);
+      ];
     });
   }, []);
 
   const clientTools = useMemo(() => ({
-    [elevenLabsFinishConsultationTool.name]: async (parameters: Record<string, unknown>) => {
+    [elevenLabsReviewConsultationTool.name]: async (parameters: Record<string, unknown>) => {
       const consultation = parseElevenLabsConsultationParameters(parameters);
-      const conversation = appState?.conversation;
       if (!consultation.success) {
-        setDeliveryError('FLYNT could not validate the consultation summary. Ask the agent to correct the handoff and try again.');
-        return 'FLYNT rejected the consultation handoff because it did not match schema version 1.0.';
+        const issues = consultationValidationIssues(consultation.error.issues);
+        setDeliveryError(`FLYNT could not prepare the consultation review. ${issues}`);
+        return `FLYNT rejected the review payload. Correct these schema version 1.0 fields and call review_consultation again: ${issues}`;
       }
-      if (!conversation || conversation.kind !== 'consultation') {
-        setDeliveryError('FLYNT could not find the consultation session. Start the consultation again.');
-        return 'FLYNT rejected the consultation handoff because the authenticated consultation session was unavailable.';
-      }
-      try {
-        await confirmConsultation(consultation.data, conversation.id);
-        setDeliveryError(null);
-        await refresh();
-        router.replace('/program-building');
-        return 'FLYNT validated the consultation and started the athlete program build.';
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'The consultation handoff failed.';
-        setDeliveryError(message);
-        return `FLYNT could not start the program build: ${message}`;
-      }
+      setConsultationReview(consultation.data);
+      setApprovalSubmitting(false);
+      setDeliveryError(null);
+      return 'FLYNT displayed the native consultation review sheet. Wait for the athlete to approve it or continue the conversation.';
     },
     deliver_demo_plan: (parameters: VoiceDemoPlanDelivery) => {
       try {
@@ -143,7 +243,7 @@ export function VoiceConsultationDemo() {
         return `FLYNT rejected the demo plan JSON: ${message}`;
       }
     },
-  }), [appState?.conversation, refresh, router]);
+  }), []);
 
   const resetDemo = useCallback(() => {
     setPlan(null);
@@ -152,6 +252,8 @@ export function VoiceConsultationDemo() {
     setSessionError(null);
     setTranscript([]);
     setSessionStarted(false);
+    setConsultationReview(null);
+    setApprovalSubmitting(false);
   }, []);
 
   const markSessionStarted = useCallback(() => {
@@ -163,14 +265,40 @@ export function VoiceConsultationDemo() {
     <GestureHandlerRootView style={styles.screen}>
       <ConversationProvider
         agentId={demoAgentId}
-        clientTools={clientTools}
         onConnect={() => setSessionError(null)}
         onError={(message) => setSessionError(message || 'The consultation could not connect.')}
         onMessage={({ message, role }) => appendTranscript(message, role)}
+        onUnhandledClientToolCall={({ tool_name: toolName }) => {
+          setSessionError(`FLYNT could not handle the ${toolName} consultation action.`);
+        }}
       >
         <VoiceConsultationDemoScreen
+          clientTools={clientTools}
           deliveryError={deliveryError}
           flyntConversationId={appState?.conversation?.kind === 'consultation' ? appState.conversation.id : null}
+          consultationReview={consultationReview}
+          reviewApproved={approvalSubmitting}
+          onApproveReview={async (consultation) => {
+            const conversation = appState?.conversation;
+            if (!conversation || conversation.kind !== 'consultation') {
+              setDeliveryError('FLYNT could not find the consultation session. Start the consultation again.');
+              return;
+            }
+            setApprovalSubmitting(true);
+            setDeliveryError(null);
+            try {
+              await confirmConsultation(consultation, conversation.id);
+              await refresh();
+              router.replace('/program-building');
+            } catch (error) {
+              setApprovalSubmitting(false);
+              setDeliveryError(error instanceof Error ? error.message : 'Your program could not be started.');
+            }
+          }}
+          onContinueReview={() => {
+            setConsultationReview(null);
+            setApprovalSubmitting(false);
+          }}
           onReset={resetDemo}
           onLocalUserMessage={(message) => appendTranscript(message, 'user')}
           onSessionStarted={markSessionStarted}
@@ -186,24 +314,34 @@ export function VoiceConsultationDemo() {
 }
 
 function VoiceConsultationDemoScreen({
+  clientTools,
+  consultationReview,
   deliveryError,
   flyntConversationId,
+  onApproveReview,
+  onContinueReview,
   onLocalUserMessage,
   onReset,
   onSessionStarted,
   plan,
   planJson,
+  reviewApproved,
   sessionError,
   sessionStarted,
   transcript,
 }: {
+  clientTools: NonNullable<ConversationProviderProps['clientTools']>;
+  consultationReview: CompletedConsultation | null;
   deliveryError: string | null;
   flyntConversationId: string | null;
   onLocalUserMessage: (message: string) => void;
+  onApproveReview: (consultation: CompletedConsultation) => Promise<void>;
+  onContinueReview: () => void;
   onReset: () => void;
   onSessionStarted: () => void;
   plan: VoiceDemoPlan | null;
   planJson: string | null;
+  reviewApproved: boolean;
   sessionError: string | null;
   sessionStarted: boolean;
   transcript: TranscriptItem[];
@@ -368,13 +506,14 @@ function VoiceConsultationDemoScreen({
     shouldUnmuteOnConnect.current = true;
     startSession({
       agentId: demoAgentId,
+      clientTools,
       connectionType: 'webrtc',
       dynamicVariables: {
         platform: 'FLYNT iOS voice consultation demo',
         ...(flyntConversationId ? { flynt_conversation_id: flyntConversationId } : {}),
       },
     });
-  }, [beginSessionTransition, flyntConversationId, onSessionStarted, startSession]);
+  }, [beginSessionTransition, clientTools, flyntConversationId, onSessionStarted, startSession]);
 
   const startMessageConsultation = useCallback(() => {
     setConsultationMode('message');
@@ -386,6 +525,7 @@ function VoiceConsultationDemoScreen({
     void deliberateAction();
     startSession({
       agentId: demoAgentId,
+      clientTools,
       connectionType: 'websocket',
       textOnly: true,
       dynamicVariables: {
@@ -393,18 +533,32 @@ function VoiceConsultationDemoScreen({
         ...(flyntConversationId ? { flynt_conversation_id: flyntConversationId } : {}),
       },
     });
-  }, [beginSessionTransition, flyntConversationId, onSessionStarted, startSession]);
+  }, [beginSessionTransition, clientTools, flyntConversationId, onSessionStarted, startSession]);
 
   const restartConsultation = consultationMode === 'message' ? startMessageConsultation : startVoiceConsultation;
 
   const sendMessage = useCallback(() => {
     const nextMessage = message.trim();
     if (!connected || !nextMessage) return;
+    if (consultationReview) onContinueReview();
     onLocalUserMessage(nextMessage);
     sendUserMessage(nextMessage);
     setMessage('');
     setComposerHeight(composerMinimumHeight);
-  }, [connected, message, onLocalUserMessage, sendUserMessage]);
+  }, [connected, consultationReview, message, onContinueReview, onLocalUserMessage, sendUserMessage]);
+
+  const approveSummary = useCallback(() => {
+    if (!consultationReview || reviewApproved) return;
+    void deliberateAction();
+    void onApproveReview(consultationReview);
+    setMessage('');
+    setComposerHeight(composerMinimumHeight);
+  }, [consultationReview, onApproveReview, reviewApproved]);
+
+  const continueReview = useCallback(() => {
+    onContinueReview();
+    setMessage('I need to change: ');
+  }, [onContinueReview]);
 
   useEffect(() => {
     if (
@@ -921,6 +1075,16 @@ function VoiceConsultationDemoScreen({
           </Animated.View>
         ) : null}
       </View>
+      {consultationReview ? (
+        <ConsultationReviewSheet
+          approved={reviewApproved}
+          consultation={consultationReview}
+          isPresented
+          mode={mode}
+          onApprove={approveSummary}
+          onContinue={continueReview}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -1116,6 +1280,33 @@ const styles = StyleSheet.create({
   messageSession: { flex: 1, paddingHorizontal: spacing.sm },
   messageChat: { flex: 1 },
   externalComposerLayer: { position: 'absolute', inset: 0, zIndex: 2147483647 },
+  reviewSheetScreen: { flex: 1 },
+  reviewSheetSafeArea: { flex: 1 },
+  reviewSheetHeader: { minHeight: 94, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: 18, paddingTop: spacing.md, paddingBottom: spacing.xs },
+  reviewSheetHeaderCopy: { flex: 1, minWidth: 0, paddingBottom: spacing.xxs },
+  reviewSheetEyebrow: { marginBottom: 5, fontSize: 11, lineHeight: 14, fontWeight: '700', letterSpacing: 1.3 },
+  reviewSheetTitle: { fontSize: 28, lineHeight: 33, fontWeight: '600', letterSpacing: -0.9 },
+  reviewSheetBody: { flex: 1, minHeight: 0 },
+  reviewSheetScroller: { flex: 1 },
+  reviewSheetScroll: { paddingHorizontal: 18, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  reviewSheetCard: { padding: spacing.lg, gap: spacing.md },
+  reviewSummary: { fontSize: 17, lineHeight: 24, fontWeight: '500' },
+  reviewDivider: { height: StyleSheet.hairlineWidth },
+  reviewFactGroup: { gap: spacing.xxs },
+  reviewFactLabel: { fontSize: 10, lineHeight: 13, fontWeight: '700', letterSpacing: 1.1 },
+  reviewDetail: { fontSize: 15, lineHeight: 21 },
+  reviewSheetFooter: {
+    minHeight: 78,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingHorizontal: 18,
+    paddingVertical: spacing.sm,
+  },
+  reviewContinueButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
+  reviewContinueCopy: { fontSize: 16, lineHeight: 20, fontWeight: '600' },
   messageThreadCopy: { fontSize: 16, lineHeight: 23 },
   messageRestartRow: { minHeight: 88, alignItems: 'center', justifyContent: 'center' },
   restartControl: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
