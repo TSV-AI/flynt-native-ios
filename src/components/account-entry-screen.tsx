@@ -63,6 +63,11 @@ function authErrorDetail(error: unknown) {
   return `${error.name}${status}: ${error.message}`;
 }
 
+function isAccountNotFoundError(error: unknown) {
+  return error instanceof ExistingAccountRequiredError
+    || (error instanceof Error && /signups not allowed for otp|otp_disabled/i.test(error.message));
+}
+
 function authErrorCopy(
   error: unknown,
   context?: { intent: EmailAuthMode; provider: 'apple' | 'google'; stage: ProviderAuthStage },
@@ -71,7 +76,7 @@ function authErrorCopy(
     return 'Authentication is not configured in this development build yet.';
   }
   if (error instanceof ExistingAccountRequiredError) {
-    return 'No existing FLYNT account was found. Choose Create account and accept the Terms to continue.';
+    return 'It looks like you don’t have a FLYNT account yet.';
   }
   if (context?.stage === 'account-admission') {
     const fallback = context.intent === 'create'
@@ -82,7 +87,7 @@ function authErrorCopy(
   }
   if (error instanceof Error) {
     if (/signups not allowed for otp|otp_disabled/i.test(error.message)) {
-      return 'We couldn’t send a code for that email. Try Google or create a new account.';
+      return 'It looks like you don’t have a FLYNT account yet.';
     }
     if (/over_email_send_rate_limit/i.test(error.message)) {
       return 'Email delivery is temporarily unavailable. Try again later or continue with Google.';
@@ -99,6 +104,7 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
   const { mode: colorMode, theme } = useFlyntTheme();
   const { refresh, retry } = useLifecycleNavigation();
   const [authMode, setAuthMode] = useState<EmailAuthMode>(mode);
+  const [accountNotFound, setAccountNotFound] = useState(false);
   const [email, setEmail] = useState('');
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
@@ -133,7 +139,19 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
     setEmail('');
     setEmailOtp('');
     setError(null);
+    setAccountNotFound(false);
     setSentTo(null);
+  }
+
+  function startCreatingAccount() {
+    setAuthMode('create');
+    setRecoveryMode(false);
+    setEmailOpen(true);
+    setEmailOtp('');
+    setError(null);
+    setAccountNotFound(false);
+    setSentTo(null);
+    setTermsAccepted(false);
   }
 
   function toggleMode() {
@@ -195,6 +213,7 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
             stage,
           });
         }
+        setAccountNotFound(isAccountNotFoundError(providerError));
         setError(authErrorCopy(providerError, { intent: authMode, provider, stage }));
         await failed();
       }
@@ -205,12 +224,14 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
 
   async function submitEmail() {
     if (!isValidEmail(email)) {
+      setAccountNotFound(false);
       setError('Enter a valid email address.');
       return;
     }
     if (requiresConsent && !termsAccepted) return;
     const normalized = normalizeEmail(email);
     setError(null);
+    setAccountNotFound(false);
     setPending('email');
     try {
       await requestEmailOtp(normalized, recoveryMode ? 'sign-in' : authMode);
@@ -218,6 +239,7 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
       setEmailOtp('');
       await saved();
     } catch (emailError) {
+      setAccountNotFound(isAccountNotFoundError(emailError));
       setError(authErrorCopy(emailError));
       await failed();
     } finally {
@@ -228,6 +250,7 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
   async function submitEmailOtp() {
     if (!sentTo || !isValidEmailOtp(emailOtp)) return;
     setError(null);
+    setAccountNotFound(false);
     setPending('email');
     try {
       await verifyEmailOtp(sentTo, emailOtp);
@@ -361,7 +384,10 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
                       keyboardType="email-address"
                       onChangeText={(value) => {
                         setEmail(value);
-                        if (error) setError(null);
+                        if (error) {
+                          setError(null);
+                          setAccountNotFound(false);
+                        }
                       }}
                       onSubmitEditing={() => void submitEmail()}
                       placeholder="you@example.com"
@@ -396,7 +422,10 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
                       disabled={isBusy}
                       onChange={(value) => {
                         setEmailOtp(value);
-                        if (error) setError(null);
+                        if (error) {
+                          setError(null);
+                          setAccountNotFound(false);
+                        }
                       }}
                       theme={theme}
                       value={emailOtp}
@@ -481,7 +510,24 @@ export function AccountEntryScreen({ mode }: AccountEntryScreenProps) {
               </View>
             ) : null}
 
-            {error ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+            {error ? (
+              <View style={styles.errorGroup}>
+                <Text accessibilityLiveRegion="polite" style={[styles.error, { color: theme.danger }]}>{error}</Text>
+                {accountNotFound ? (
+                  <Pressable
+                    accessibilityHint="Keeps this email and opens account creation"
+                    accessibilityRole="button"
+                    onPress={startCreatingAccount}
+                    style={({ pressed }) => [
+                      styles.createAccountRecovery,
+                      { backgroundColor: theme.primaryFill, opacity: pressed ? 0.8 : 1 },
+                    ]}
+                  >
+                    <Text style={[styles.createAccountRecoveryCopy, { color: theme.primaryText }]}>Create account</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
 
             {!emailOpen && !sentTo && !recoveryMode ? (
               <View style={styles.secondaryActions}>
@@ -532,6 +578,7 @@ function OtpCodeField({
         accessibilityLabel="Six-digit code"
         autoComplete="one-time-code"
         autoFocus
+        caretHidden
         editable={!disabled}
         keyboardType="number-pad"
         maxLength={6}
@@ -629,7 +676,7 @@ const styles = StyleSheet.create({
   inlineContinueCopy: { fontSize: 12, fontWeight: '700' },
   verifyButton: { width: '100%', minHeight: 52, borderCurve: 'continuous', borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   otpField: { position: 'relative', height: 58 },
-  otpInput: { position: 'absolute', inset: 0, zIndex: 2, opacity: 0.01, color: 'transparent' },
+  otpInput: { position: 'absolute', inset: 0, zIndex: 2, backgroundColor: 'transparent', color: 'transparent' },
   otpSlots: { position: 'absolute', inset: 0, flexDirection: 'row', gap: 8 },
   otpSlot: { flex: 1, alignItems: 'center', justifyContent: 'center', borderCurve: 'continuous', borderRadius: 14, borderWidth: StyleSheet.hairlineWidth },
   otpDigit: { fontFamily: 'ui-monospace', fontSize: 20, fontWeight: '600' },
@@ -642,7 +689,10 @@ const styles = StyleSheet.create({
   consentText: { fontSize: 11, lineHeight: 17 },
   legalLinks: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 5 },
   legalLink: { fontSize: 11, lineHeight: 17, fontWeight: '700', textDecorationLine: 'underline' },
-  error: { marginTop: 3, fontSize: 12, lineHeight: 17, textAlign: 'center' },
+  errorGroup: { marginTop: 3, gap: spacing.sm },
+  error: { fontSize: 12, lineHeight: 17, textAlign: 'center' },
+  createAccountRecovery: { minHeight: 44, borderCurve: 'continuous', borderRadius: 13, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
+  createAccountRecoveryCopy: { fontSize: 14, lineHeight: 19, fontWeight: '700' },
   secondaryActions: { marginTop: 7, alignItems: 'center', gap: 1 },
   secondaryAction: { minHeight: 32, alignItems: 'center', justifyContent: 'center' },
   smallActionCopy: { fontSize: 11, lineHeight: 16, textAlign: 'center' },

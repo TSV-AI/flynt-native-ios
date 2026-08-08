@@ -154,7 +154,7 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
               onPress={onFinish}
               style={({ pressed }) => [styles.signInButton, pressed && styles.pressed]}
             >
-              <Text style={[styles.signInCopy, { color: colors.dark.muted }]}>Sign in</Text>
+              <Text style={[styles.signInCopy, { color: colors.dark.muted }]}>Create account</Text>
               <Text accessibilityElementsHidden style={[styles.chevron, { color: colors.dark.muted }]}>›</Text>
             </Pressable>
           ) : null}

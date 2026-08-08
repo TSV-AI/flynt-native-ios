@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { appSurfaces, radius, spacing, type } from '@/constants/theme';
+import { GlassSymbolButton } from '@/components/native-symbol';
 import type { AuthoritativeBootFailure } from '@/lib/authoritative-boot';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
@@ -36,6 +37,15 @@ export default function BootScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: appSurfaces[mode].primaryBackground }]} testID="screen-authoritative-boot-error">
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <View style={styles.topbar}>
+          <GlassSymbolButton
+            accessibilityLabel="Open menu and settings"
+            color={theme.ink}
+            colorScheme={mode}
+            name="ellipsis"
+            onPress={openSettings}
+          />
+        </View>
         <View style={styles.copy}>
           <Text style={[styles.eyebrow, { color: theme.muted }]}>FLYNT</Text>
           <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>Your training did not load.</Text>
@@ -55,9 +65,6 @@ export default function BootScreen() {
           >
             <Text style={[styles.primaryButtonText, { color: theme.primaryText }]}>Try again</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={openSettings} style={styles.textButton}>
-            <Text style={[styles.textButtonCopy, { color: theme.ink }]}>Settings</Text>
-          </Pressable>
           <Pressable accessibilityRole="button" onPress={leaveAccount} style={styles.textButton}>
             <Text style={[styles.textButtonCopy, { color: theme.danger }]}>Sign out</Text>
           </Pressable>
@@ -70,6 +77,7 @@ export default function BootScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   safeArea: { flex: 1, justifyContent: 'space-between', padding: spacing.lg },
+  topbar: { minHeight: 44, alignItems: 'flex-end' },
   copy: { flex: 1, justifyContent: 'center', gap: spacing.md },
   eyebrow: { ...type.label },
   title: { ...type.title, maxWidth: 350 },

@@ -288,6 +288,13 @@ export function queueProgramChange(change: ProgramChange, toolCallId: string) {
   }));
 }
 
+export function recoverProgramBuild() {
+  return currentAccessToken().then((accessToken) => requestJson('/api/program/recover', acceptedBuildSchema, {
+    accessToken,
+    method: 'POST',
+  }));
+}
+
 const programStatusSchema = z.object({
   lifecycle: z.enum([
     'account_required',

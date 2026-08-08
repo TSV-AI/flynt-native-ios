@@ -10,6 +10,10 @@ export const lifecycleDestinations = [
 
 export type LifecycleDestination = (typeof lifecycleDestinations)[number];
 
+export function destinationHasAppAccess(destination: LifecycleDestination) {
+  return destination === 'ready';
+}
+
 export function destinationForLifecycle(
   lifecycle: LifecycleStatus,
 ): Exclude<LifecycleDestination, 'signed-out'> {

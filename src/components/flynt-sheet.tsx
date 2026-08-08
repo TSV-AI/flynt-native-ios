@@ -18,6 +18,7 @@ type FlyntSheetProps = PropsWithChildren<{
   nativeScroll?: boolean;
   onBack?: () => void;
   onDismiss: () => void;
+  onDismissed?: () => void;
   presentationOverride?: FlyntSheetPresentationOverride;
   scroll?: boolean;
   title: string;
@@ -34,6 +35,7 @@ export function FlyntSheet({
   nativeScroll = false,
   onBack,
   onDismiss,
+  onDismissed,
   presentationOverride,
   scroll = true,
   title,
@@ -49,6 +51,7 @@ export function FlyntSheet({
       isPresented={isPresented}
       nativeScroll={nativeScroll}
       onDismiss={onDismiss}
+      onDismissed={onDismissed}
       presentationOverride={presentationOverride}
     >
       <SafeAreaView edges={['bottom']} style={styles.safeArea}>

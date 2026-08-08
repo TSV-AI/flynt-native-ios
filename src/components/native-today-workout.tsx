@@ -950,7 +950,6 @@ export function NativeTodayWorkout({
   const editHeaderContentGap = 36;
   const canvas = appSurfaces[mode].todayBackground;
   const input = appSurfaces[mode].exerciseSurface;
-  const exerciseEntryBackground = 'rgba(34,34,34,0.90)';
   const sheetBackgroundColor = flyntSheetBackgroundColor(mode, reduceTransparency);
   const sheetDetent = flyntSheetDetent();
   const outline = mode === 'light' ? 'rgba(216,214,207,0.72)' : 'rgba(255,255,255,0.10)';

@@ -51,6 +51,7 @@ import { NativeSymbol } from '@/components/native-symbol';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { selection } from '@/lib/haptics';
 import { savePersonalBasics, savePreferences } from '@/lib/api-client';
+import { destinationHasAppAccess } from '@/navigation/lifecycle';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
 import { useSettingsPreferences } from '@/providers/settings-preferences-provider';
 
@@ -178,6 +179,7 @@ function ProfileEditSheet({
   visible,
   kind,
   onClose,
+  onDismissed,
   name,
   setName,
   age,
@@ -198,6 +200,7 @@ function ProfileEditSheet({
   visible: boolean;
   kind: Exclude<ProfileSheet, null>;
   onClose: () => void;
+  onDismissed: () => void;
   name: string;
   setName: (value: string) => void;
   age: string;
@@ -230,7 +233,7 @@ function ProfileEditSheet({
 
   if (kind === 'personal') {
     return (
-      <FlyntSheet isPresented={visible} onDismiss={onClose} title="Personal Details">
+      <FlyntSheet isPresented={visible} onDismiss={onClose} onDismissed={onDismissed} title="Personal Details">
         <FlyntSheetCard style={styles.personalEditFields}>
           <EditField label="Name" onChangeText={setName} value={name} />
           <EditField keyboardType="number-pad" label="Age" onChangeText={setAge} value={age} />
@@ -248,6 +251,7 @@ function ProfileEditSheet({
       mode={sheetMode}
       onBack={activeRow ? () => setActiveTrainingChoice(null) : undefined}
       onDismiss={onClose}
+      onDismissed={onDismissed}
       title={activeRow?.label ?? 'Training Profile'}
     >
       <FlyntSheetCard mode={sheetMode} style={styles.trainingChoices}>
@@ -298,7 +302,8 @@ export default function SettingsScreen() {
   const { mode, preference, setPreference, theme } = useFlyntTheme();
   const primaryBackground = appSurfaces[mode].primaryBackground;
   const itemBackground = appSurfaces[mode].itemBackground;
-  const { appState, signOut } = useLifecycleNavigation();
+  const { appState, destination, signOut } = useLifecycleNavigation();
+  const hasAppAccess = destinationHasAppAccess(destination);
   const {
     reminders,
     setReminders,
@@ -323,6 +328,7 @@ export default function SettingsScreen() {
   const trainingDays = appState?.program?.filter((day) => day.dayType !== 'rest' && day.exercises.length > 0).length ?? 0;
   const [panel, setPanel] = useState<Panel>('profile');
   const [profileSheet, setProfileSheet] = useState<ProfileSheet>(null);
+  const [profileSheetPresented, setProfileSheetPresented] = useState(false);
   const [name, setName] = useState(profile?.fullName || profile?.email.split('@')[0] || 'Your profile');
   const [age, setAge] = useState(profile?.age == null ? 'Not set' : String(profile.age));
   const [height, setHeight] = useState(formatHeight(profile?.heightInches ?? null));
@@ -386,9 +392,17 @@ export default function SettingsScreen() {
   }
 
   function closeProfileSheet() {
-    const closingSheet = profileSheet;
+    setProfileSheetPresented(false);
+  }
+
+  function finishProfileSheetDismissal() {
+    if (profileSheet === 'personal') void persistPersonalBasics();
     setProfileSheet(null);
-    if (closingSheet === 'personal') void persistPersonalBasics();
+  }
+
+  function openProfileSheet(kind: Exclude<ProfileSheet, null>) {
+    setProfileSheet(kind);
+    setProfileSheetPresented(true);
   }
 
   async function performSignOut() {
@@ -440,7 +454,26 @@ export default function SettingsScreen() {
     ]);
   }
 
+  function explainConsultationGate() {
+    Alert.alert(
+      'Complete your consultation first',
+      'Your answers give FLYNT the context needed to build your program and unlock Trainer.',
+    );
+  }
+
+  function openTrainingProfile() {
+    if (!hasAppAccess) {
+      explainConsultationGate();
+      return;
+    }
+    openProfileSheet('training');
+  }
+
   function openTrainer() {
+    if (!hasAppAccess) {
+      explainConsultationGate();
+      return;
+    }
     router.dismissTo('/(tabs)/trainer');
   }
 
@@ -486,8 +519,8 @@ export default function SettingsScreen() {
                 </View>
               </View>
               <Text accessibilityRole="header" style={[styles.profileName, { color: theme.ink }]}>{name || 'Your profile'}</Text>
-              <Text style={[styles.profileIdentity, { color: theme.muted }]}>{experience}</Text>
-              <Pressable accessibilityRole="button" onPress={() => setProfileSheet('personal')} style={({ pressed }) => [styles.editProfileButton, { backgroundColor: itemBackground, borderColor: theme.line, opacity: pressed ? 0.55 : 1 }]}>
+              <Text style={[styles.profileIdentity, { color: theme.muted }]}>{hasAppAccess ? experience : 'Consultation not complete'}</Text>
+              <Pressable accessibilityRole="button" onPress={() => openProfileSheet('personal')} style={({ pressed }) => [styles.editProfileButton, { backgroundColor: itemBackground, borderColor: theme.line, opacity: pressed ? 0.55 : 1 }]}>
                 <Text style={[styles.editProfileText, { color: theme.ink }]}>Edit Personal Details</Text>
               </Pressable>
             </View>
@@ -507,14 +540,14 @@ export default function SettingsScreen() {
 
             <View style={[styles.trainerContext, { backgroundColor: itemBackground }]}>
               <Text style={[styles.contextEyebrow, { color: theme.muted }]}>TRAINER CONTEXT</Text>
-              <Text style={[styles.contextTitle, { color: theme.ink }]}>Built around {schedule.toLowerCase()} of focused training.</Text>
-              <Text style={[styles.contextBody, { color: theme.muted }]}>Your current plan prioritizes {goal.toLowerCase()} with {equipment.toLowerCase()} access and recovery-aware progression.</Text>
+              <Text style={[styles.contextTitle, { color: theme.ink }]}>{hasAppAccess ? `Built around ${schedule.toLowerCase()} of focused training.` : 'Complete your consultation to unlock Trainer.'}</Text>
+              <Text style={[styles.contextBody, { color: theme.muted }]}>{hasAppAccess ? `Your current plan prioritizes ${goal.toLowerCase()} with ${equipment.toLowerCase()} access and recovery-aware progression.` : 'Your answers give FLYNT the context needed to build your program and make Trainer useful from the first conversation.'}</Text>
               <View style={styles.contextActions}>
-                <Pressable accessibilityRole="button" onPress={() => setProfileSheet('training')} style={({ pressed }) => [styles.primaryProfileAction, { backgroundColor: theme.primaryFill, opacity: pressed ? 0.72 : 1 }]}>
-                  <Text style={[styles.primaryProfileActionText, { color: theme.primaryText }]}>Edit Training Profile</Text>
+                <Pressable accessibilityHint={hasAppAccess ? undefined : 'Complete your consultation to unlock this feature'} accessibilityRole="button" onPress={openTrainingProfile} style={({ pressed }) => [styles.primaryProfileAction, { backgroundColor: theme.primaryFill, opacity: pressed ? 0.72 : hasAppAccess ? 1 : 0.56 }]}>
+                  <Text style={[styles.primaryProfileActionText, { color: theme.primaryText }]}>{hasAppAccess ? 'Edit Training Profile' : 'Training Profile Locked'}</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" onPress={openTrainer} style={({ pressed }) => [styles.secondaryProfileAction, { borderColor: theme.line, opacity: pressed ? 0.55 : 1 }]}>
-                  <Text style={[styles.secondaryProfileActionText, { color: theme.ink }]}>Open Trainer</Text>
+                <Pressable accessibilityHint={hasAppAccess ? undefined : 'Complete your consultation to unlock this feature'} accessibilityRole="button" onPress={openTrainer} style={({ pressed }) => [styles.secondaryProfileAction, { borderColor: theme.line, opacity: pressed ? 0.55 : hasAppAccess ? 1 : 0.56 }]}>
+                  <Text style={[styles.secondaryProfileActionText, { color: theme.ink }]}>{hasAppAccess ? 'Open Trainer' : 'Trainer Locked'}</Text>
                 </Pressable>
               </View>
             </View>
@@ -597,6 +630,7 @@ export default function SettingsScreen() {
           kind={profileSheet}
           name={name}
           onClose={closeProfileSheet}
+          onDismissed={finishProfileSheetDismissal}
           schedule={schedule}
           setAge={setAge}
           setEquipment={setEquipment}
@@ -606,7 +640,7 @@ export default function SettingsScreen() {
           setName={setName}
           setSchedule={setSchedule}
           setWeight={setWeight}
-          visible
+          visible={profileSheetPresented}
           weight={weight}
         />
       ) : null}

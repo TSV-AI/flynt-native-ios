@@ -23,10 +23,11 @@ type NativeMaterialSheetProps = {
   isPresented: boolean;
   nativeScroll?: boolean;
   onDismiss: () => void;
+  onDismissed?: () => void;
   presentationOverride?: FlyntSheetPresentationOverride;
 };
 
-export function NativeMaterialSheet({ children, colorScheme, isPresented, nativeScroll = false, onDismiss, presentationOverride }: NativeMaterialSheetProps) {
+export function NativeMaterialSheet({ children, colorScheme, isPresented, nativeScroll = false, onDismiss, onDismissed, presentationOverride }: NativeMaterialSheetProps) {
   const { fontScale, width } = useWindowDimensions();
   const reduceTransparency = useReduceTransparency();
   const { setModalPresented } = useModalPresentation();
@@ -45,7 +46,7 @@ export function NativeMaterialSheet({ children, colorScheme, isPresented, native
         isPresented={isPresented}
         modifiers={[environment('colorScheme', colorScheme)]}
         onIsPresentedChange={(presented) => {
-          if (!presented) onDismiss();
+          if (!presented) (onDismissed ?? onDismiss)();
         }}
       >
         <Group

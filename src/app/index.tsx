@@ -16,7 +16,7 @@ export default function HomeScreen() {
         if (!mounted) return;
         if (seen) {
           setShowIntroduction(false);
-          router.replace('/sign-in');
+          router.replace('/create-account');
           return;
         }
 
@@ -32,7 +32,7 @@ export default function HomeScreen() {
   }, []);
 
   function finishIntroduction() {
-    router.push('/sign-in');
+    router.push('/create-account');
   }
 
   if (showIntroduction === null) {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  destinationHasAppAccess,
   destinationForLifecycle,
   lifecycleDestinations,
   routeForDestination,
@@ -26,5 +27,12 @@ test('every native destination has a concrete route', () => {
   assert.deepEqual(
     lifecycleDestinations.map(routeForDestination),
     ['/', '/consultation', '/program-building', '/today', '/build-attention'],
+  );
+});
+
+test('only a ready lifecycle unlocks app features', () => {
+  assert.deepEqual(
+    lifecycleDestinations.map((destination) => destinationHasAppAccess(destination)),
+    [false, false, false, true, false],
   );
 });

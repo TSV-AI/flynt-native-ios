@@ -429,7 +429,7 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   const themeProvider = await readFile(new URL('../providers/flynt-theme-provider.tsx', import.meta.url), 'utf8');
 
   assert.match(theme, /signedOutColorMode: ColorMode = 'dark'/);
-  assert.match(themeProvider, /!hasSession\s*\|\| destination === 'consultation'/);
+  assert.match(themeProvider, /phase !== 'ready'[\s\S]*!hasSession && !voiceDemoPreview/);
   assert.match(themeProvider, /usesOnboardingAppearance[\s\S]*signedOutColorMode/);
 
   assert.doesNotMatch(introduction, /styles\.skip|skipCopy/);
@@ -445,7 +445,7 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   assert.doesNotMatch(introduction, /marketing-stage-[a-z]+\.png/);
   assert.match(introduction, /appSurfaces\.dark\.primaryBackground/);
   assert.match(introduction, /<StatusBar animated style="light"/);
-  assert.match(introduction, />Sign in</);
+  assert.match(introduction, />Create account</);
   assert.match(account, /Continue with Google/);
   assert.match(account, /pending === 'apple' \? 'Signing in with Apple'/);
   assert.match(account, /styles\.appleProgress/);
@@ -497,6 +497,22 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   assert.match(account, /if \(authMode === 'create' && !recoveryMode\) \{\s*await refresh\(\);\s*return;/);
 });
 
+test('signed-out entry defaults to account creation and recovers an unknown sign-in email', async () => {
+  const account = await readFile(new URL('../components/account-entry-screen.tsx', import.meta.url), 'utf8');
+  const entry = await readFile(new URL('../app/index.tsx', import.meta.url), 'utf8');
+  const introduction = await readFile(new URL('../components/first-run-introduction.tsx', import.meta.url), 'utf8');
+
+  assert.match(introduction, />Create account</);
+  assert.match(entry, /router\.replace\('\/create-account'\)/);
+  assert.match(entry, /router\.push\('\/create-account'\)/);
+  assert.match(account, /It looks like you don’t have a FLYNT account yet/);
+  assert.match(account, /setAccountNotFound\(isAccountNotFoundError\(emailError\)\)/);
+  assert.match(account, /accessibilityHint="Keeps this email and opens account creation"/);
+  assert.match(account, /createAccountRecovery: \{ minHeight: 44/);
+  assert.match(account, /accessibilityLabel="Six-digit code"[\s\S]*caretHidden/);
+  assert.doesNotMatch(account, /otpInput: \{[^}]*opacity: 0\.01/);
+});
+
 test('session resolution stays behind the native launch screen', async () => {
   const rootLayout = await readFile(new URL('../app/_layout.tsx', import.meta.url), 'utf8');
   const boot = await readFile(new URL('../app/boot.tsx', import.meta.url), 'utf8');
@@ -543,6 +559,20 @@ test('program building reports real progress and asks for notifications in conte
   assert.match(rootLayout, /shouldShowBanner: true/);
 });
 
+test('program recovery resumes the saved build once and refreshes authoritative state', async () => {
+  const screen = await readFile(new URL('../app/build-attention.tsx', import.meta.url), 'utf8');
+  const api = await readFile(new URL('./api-client.ts', import.meta.url), 'utf8');
+  const placeholder = await readFile(new URL('../components/lifecycle-placeholder.tsx', import.meta.url), 'utf8');
+
+  assert.match(api, /requestJson\('\/api\/program\/recover'[\s\S]*method: 'POST'/);
+  assert.match(screen, /if \(recoveryInFlight\.current\) return/);
+  assert.match(screen, /await recoverProgramBuild\(\);[\s\S]*await refresh\(\)/);
+  assert.match(screen, /actionDisabled=\{recovering\}/);
+  assert.match(screen, /Your reviewed information is still safe/);
+  assert.match(placeholder, /disabled=\{actionDisabled\}/);
+  assert.match(placeholder, /accessibilityState=\{\{ disabled: actionDisabled \}\}/);
+});
+
 test('exercise media and entry controls share the approved semantic surface', async () => {
   const theme = await readFile(new URL('../constants/theme.ts', import.meta.url), 'utf8');
   const today = await readFile(new URL('../components/native-today-workout.tsx', import.meta.url), 'utf8');
@@ -550,8 +580,8 @@ test('exercise media and entry controls share the approved semantic surface', as
 
   assert.match(theme, /exerciseSurface: '#D4D3D0'/);
   assert.match(today, /appSurfaces\[mode\]\.exerciseSurface/);
-  assert.match(today, /sheetInput = mode === 'dark' \? '#282828' : appSurfaces\.light\.exerciseSurface/);
-  assert.match(today, /mediaBackground = mode === 'dark' \? exerciseEntryBackground : appSurfaces\.light\.exerciseSurface/);
+  assert.match(today, /input = mode === 'dark' \? '#282828' : appSurfaces\.light\.exerciseSurface/);
+  assert.match(today, /mediaBackground = mode === 'dark' \? 'rgba\(34,34,34,0\.90\)' : appSurfaces\.light\.exerciseSurface/);
   assert.match(editor, /backgroundColor: appSurfaces\[mode\]\.exerciseSurface/);
   assert.match(editor, /onSelectField\('load'\)/);
   assert.match(editor, /loadPickerOptions\(exercise\.targetLoad\)/);

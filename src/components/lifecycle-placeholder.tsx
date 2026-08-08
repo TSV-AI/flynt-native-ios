@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GlassSymbolButton } from '@/components/native-symbol';
 import { radius, spacing, type } from '@/constants/theme';
 import { useFlyntTheme } from '@/hooks/use-flynt-theme';
 import { useLifecycleNavigation } from '@/providers/lifecycle-navigation-provider';
@@ -11,6 +12,7 @@ type LifecyclePlaceholderProps = {
   title: string;
   body: string;
   actionLabel?: string;
+  actionDisabled?: boolean;
   onAction?: () => void;
 };
 
@@ -19,9 +21,10 @@ export function LifecyclePlaceholder({
   title,
   body,
   actionLabel,
+  actionDisabled = false,
   onAction,
 }: LifecyclePlaceholderProps) {
-  const { theme } = useFlyntTheme();
+  const { mode, theme } = useFlyntTheme();
   const { signOut: clearAuthenticatedFlow } = useLifecycleNavigation();
 
   async function openSettings() {
@@ -36,6 +39,15 @@ export function LifecyclePlaceholder({
   return (
     <View style={[styles.container, { backgroundColor: theme.canvas }]}>
       <SafeAreaView style={styles.content} edges={['top', 'bottom']}>
+        <View style={styles.topbar}>
+          <GlassSymbolButton
+            accessibilityLabel="Open menu and settings"
+            color={theme.ink}
+            colorScheme={mode}
+            name="ellipsis"
+            onPress={openSettings}
+          />
+        </View>
         <View style={styles.copy}>
           <Text style={[styles.eyebrow, { color: theme.muted }]}>{eyebrow}</Text>
           <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
@@ -46,10 +58,15 @@ export function LifecyclePlaceholder({
           {actionLabel && onAction ? (
             <Pressable
               accessibilityRole="button"
+              accessibilityState={{ disabled: actionDisabled }}
+              disabled={actionDisabled}
               onPress={onAction}
               style={({ pressed }) => [
                 styles.primaryButton,
-                { backgroundColor: theme.primaryFill, opacity: pressed ? 0.82 : 1 },
+                {
+                  backgroundColor: theme.primaryFill,
+                  opacity: actionDisabled ? 0.55 : pressed ? 0.82 : 1,
+                },
               ]}
             >
               <Text style={[styles.primaryButtonText, { color: theme.primaryText }]}>
@@ -57,9 +74,6 @@ export function LifecyclePlaceholder({
               </Text>
             </Pressable>
           ) : null}
-          <Pressable accessibilityRole="button" onPress={openSettings} style={styles.textButton}>
-            <Text style={[styles.textButtonCopy, { color: theme.ink }]}>Settings</Text>
-          </Pressable>
           <Pressable accessibilityRole="button" onPress={signOut} style={styles.textButton}>
             <Text style={[styles.textButtonCopy, { color: theme.danger }]}>Sign out</Text>
           </Pressable>
@@ -77,6 +91,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xl,
   },
+  topbar: { minHeight: 44, alignItems: 'flex-end' },
   copy: { flex: 1, justifyContent: 'center', gap: spacing.md },
   eyebrow: { ...type.label },
   title: { ...type.title, maxWidth: 350 },

@@ -1,6 +1,6 @@
 # FLYNT Current State and Consultation Integration Hub
 
-Updated: 2026-08-07
+Updated: 2026-08-08
 
 ## Purpose
 
@@ -21,6 +21,22 @@ are the next workstream and are intentionally not redesigned here.
 
 The consultation and first pipeline milestones are now implemented beyond the
 planning state originally captured below:
+
+- The production Supabase project was reset to a clean test-account state on
+  2026-08-08. Seven test Auth users, their identities, sessions, and cascading
+  athlete-owned consultation and program data were removed. All 31 public
+  tables and all 264 shared exercise-library records remained intact. One new
+  email test account was then created and verified through the native app. It
+  currently has one Auth identity, one session, and one athlete profile, with
+  no program build started yet.
+- Signed-out entry now defaults to Create account. Returning athletes retain an
+  explicit Sign in path. Attempting email sign-in for an unknown account now
+  reports that no FLYNT account exists and presents a prominent 44-point Create
+  account recovery action. The action preserves the entered email and switches
+  into the consent-bearing account-creation flow. The six-digit OTP input no
+  longer uses the iOS non-hittable 0.01 alpha threshold, so the visible code
+  slots accept focus and typing while the native input text and caret remain
+  visually hidden.
 
 - Native commit `3cbaee5` and backend commit `0762aac` replace routine pain
   scoring with nonclinical movement control.
@@ -256,6 +272,33 @@ records.
 - Installation and a complete owner journey on build 4 remain unverified.
 - The current local consultation work is not in TestFlight.
 
+### Build 5 release candidate - 2026-08-08
+
+- The complete current native working tree is the requested TestFlight release
+  candidate. It includes the production Talk and Text consultation lifecycle,
+  review and build flow, account-entry corrections, lifecycle recovery action,
+  sheet consistency work, program progress presentation, and current workout
+  surfaces.
+- The authenticated Simulator completed the existing failed program through the
+  bounded recovery endpoint. The saved consultation and staged prescription
+  were preserved, exactly six missing written guides were generated, and the
+  program reached `ready` without rerunning Opus.
+- Six missing exercise images were then generated as an owner-approved bounded
+  batch. Database verification confirmed all six visuals are complete,
+  published, and attached to catalog revisions. Simulator verification showed
+  World's Greatest Stretch rendering its new image and written guide.
+- The full native release command ran 54 tests successfully: 8 auth, 11 boot, 3
+  lifecycle navigation, 6 subscription, and 26 feature contracts. TypeScript
+  and copy-style checks passed. Lint reported one existing array-style warning
+  in `voice-consultation-demo.tsx` and no errors.
+- Expo Doctor could not complete its online schema check because `exp.host` did
+  not resolve in the local environment. It also reported the existing local
+  module gitignore warning and a recommended minor version of
+  `react-native-keyboard-controller` different from the installed version.
+  These are recorded as release warnings, not claimed as passing checks.
+- Production EAS build and TestFlight submission remain pending at this
+  checkpoint.
+
 ## Verification state on 2026-08-07
 
 ### Native checks run
@@ -280,6 +323,13 @@ records.
   back action use the same shared 44-point circular glass control. The Today
   menu's entire visible circle is an explicit hit-test target, and the menu
   opens after a fresh Simulator reload.
+- The signed-out account recovery contract test passes. TypeScript, copy style,
+  and targeted lint pass for the account-entry change. On an iPhone 17 Pro
+  Simulator running iOS 26.5, a fresh relaunch opens Create account, the Sign in
+  path reports an unknown email accurately, and its Create account action
+  preserves the email while returning to account creation. The OTP slots accept
+  all six digits, enable Verify, complete the Supabase session, persist Terms
+  acceptance, and reach the new-account consultation introduction.
 
 All local checks ran under Node 22.23.1. The repository requires Node 24.14.0.
 

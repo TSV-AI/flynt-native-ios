@@ -105,7 +105,7 @@ function RootNavigator() {
         <Stack.Protected guard={bootReady && destination === 'attention'}>
           <Stack.Screen name="build-attention" options={{ headerShown: false }} />
         </Stack.Protected>
-        <Stack.Protected guard={hasSession}>
+        <Stack.Protected guard={hasSession || autoOpenVoiceDemo}>
           <Stack.Screen name="settings" options={{ headerShown: false, presentation: 'card' }} />
         </Stack.Protected>
         <Stack.Screen name="voice-consultation-demo" options={{ headerShown: false, presentation: 'card' }} />

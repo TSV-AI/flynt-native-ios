@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, processLock, type SupabaseClient } from '@supabase/supabase-js';
+import * as Crypto from 'expo-crypto';
 
 import { secureSessionStorage, sessionKey } from '@/lib/secure-session';
 
@@ -10,6 +11,23 @@ export class AuthConfigurationError extends Error {
 }
 
 let client: SupabaseClient | null = null;
+
+function ensureSecureRandomValues() {
+  if (typeof globalThis.crypto?.getRandomValues === 'function') return;
+
+  if (globalThis.crypto) {
+    Object.defineProperty(globalThis.crypto, 'getRandomValues', {
+      configurable: true,
+      value: Crypto.getRandomValues,
+    });
+    return;
+  }
+
+  Object.defineProperty(globalThis, 'crypto', {
+    configurable: true,
+    value: { getRandomValues: Crypto.getRandomValues },
+  });
+}
 
 function configuration() {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
@@ -42,12 +60,14 @@ export function isSupabaseConfigured() {
 export function getSupabaseClient() {
   if (client) return client;
   const { publishableKey, url } = configuration();
+  ensureSecureRandomValues();
 
   client = createClient(url, publishableKey, {
     auth: {
       autoRefreshToken: true,
       detectSessionInUrl: false,
       flowType: 'pkce',
+      lock: processLock,
       persistSession: true,
       storage: secureSessionStorage,
       storageKey: sessionKey,
