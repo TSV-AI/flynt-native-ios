@@ -26,8 +26,8 @@ export const firstRunSlides: readonly {
     kind: 'progress',
   },
   {
-    title: 'A trainer that knows your plan.',
-    body: 'Talk through movement changes, schedule changes, or a hard session and review every adjustment before it happens.',
+    title: 'Your program starts with a real conversation.',
+    body: 'Talk naturally about your goals, experience, schedule, equipment, and what you want training to change. FLYNT listens for the details and builds around you.',
     kind: 'trainer',
   },
   {

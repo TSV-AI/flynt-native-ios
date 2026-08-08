@@ -10,7 +10,7 @@ export const lifecycleStatusSchema = z.enum([
 ]);
 
 export const preferencesSchema = z.object({
-  appearance: z.enum(['system', 'light', 'dark']).default('system'),
+  appearance: z.enum(['system', 'light', 'dark']).default('dark'),
   spotifyPlayerDisplay: z.enum(['pill', 'bar', 'hidden']).default('pill'),
   reminderEnabled: z.boolean().default(false),
   reminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default('08:00'),

@@ -19,7 +19,7 @@ export function FlyntThemeProvider({ children }: PropsWithChildren) {
   const { appState, hasSession, phase } = useLifecycleNavigation();
   const systemMode: ColorMode = useColorScheme() === 'dark' ? 'dark' : 'light';
   const voiceDemoPreview = __DEV__ && process.env.EXPO_PUBLIC_VOICE_DEMO_AUTO_OPEN === '1';
-  const previewPreference: ThemePreference = __DEV__ && (process.env.EXPO_PUBLIC_FLYNT_PREVIEW === 'ready' || voiceDemoPreview) ? 'dark' : 'system';
+  const defaultPreference: ThemePreference = 'dark';
   const accountKey = appState?.profile.email ?? 'signed-out';
   const [localPreference, setLocalPreference] = useState<{ accountKey: string; value: ThemePreference } | null>(null);
   const usesOnboardingAppearance = phase !== 'ready'
@@ -28,7 +28,7 @@ export function FlyntThemeProvider({ children }: PropsWithChildren) {
     ? signedOutColorMode
     : localPreference?.accountKey === accountKey
       ? localPreference.value
-      : appState?.preferences.appearance ?? previewPreference;
+      : appState?.preferences.appearance ?? defaultPreference;
   const setPreference = (value: ThemePreference) => setLocalPreference({ accountKey, value });
   const mode = preference === 'system' ? systemMode : preference;
   const value = { mode, preference, setPreference, theme: themeFor(mode) };

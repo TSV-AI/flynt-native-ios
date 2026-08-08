@@ -22,6 +22,7 @@ import Svg, {
   G,
   LinearGradient,
   Pattern,
+  Path,
   RadialGradient,
   Rect,
   Stop,
@@ -154,7 +155,7 @@ export function FirstRunIntroduction({ onFinish }: FirstRunIntroductionProps) {
               onPress={onFinish}
               style={({ pressed }) => [styles.signInButton, pressed && styles.pressed]}
             >
-              <Text style={[styles.signInCopy, { color: colors.dark.muted }]}>Create account</Text>
+              <Text style={[styles.signInCopy, { color: colors.dark.muted }]}>Next</Text>
               <Text accessibilityElementsHidden style={[styles.chevron, { color: colors.dark.muted }]}>›</Text>
             </Pressable>
           ) : null}
@@ -459,26 +460,67 @@ function StatMetric({ detail, label, value }: { detail: string; label: string; v
 
 function TrainerPreview() {
   return (
-    <View style={styles.trainerPreview}>
-      <Text style={styles.kickerMuted}>FLYNT TRAINER</Text>
-      <Text style={styles.trainerTitle}>Today&apos;s session</Text>
-      <Text style={styles.userMessage}>
-        Hey, the shoulder press is kind of bugging my right shoulder. Is there something else I could do?
-      </Text>
-      <View style={styles.trainerMessage}>
-        <Text style={styles.trainerLabel}>FLYNT</Text>
-        <Text style={styles.trainerCopy}>Yeah, let&apos;s not push through that. I can swap it for a half-kneeling landmine press, which keeps the same strength focus without forcing you straight overhead. Are the rest of today&apos;s exercises feeling good so far?</Text>
+    <View style={styles.consultationPreview}>
+      <View style={styles.consultationHeading}>
+        <Text style={styles.kickerMuted}>FLYNT CONSULTATION</Text>
+        <View style={styles.liveStatus}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveCopy}>LIVE</Text>
+        </View>
       </View>
-      <View style={styles.proposal}>
-        <Text style={styles.trainerLabel}>WORKOUT CHANGE</Text>
-        <Text style={styles.proposalTitle}>Overhead Press → Landmine Press</Text>
-        <Text style={styles.proposalDetail}>Same 4 sets · shoulder-friendly angle</Text>
-        <View style={styles.proposalActions}>
-          <Text style={styles.keepCurrent}>Keep current</Text>
-          <Text style={styles.approveChange}>Approve change</Text>
+      <ConsultationOrbPreview />
+      <View style={styles.consultationTranscript}>
+        <Text style={styles.consultationLabel}>FLYNT</Text>
+        <Text style={styles.consultationPrompt}>What would you love to be able to do that feels out of reach today?</Text>
+      </View>
+      <View style={styles.consultationControls}>
+        <View style={styles.consultationMic}>
+          <Svg height={18} viewBox="0 0 24 24" width={18}>
+            <Path d="M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11a3.5 3.5 0 0 1-7 0Z" fill="none" stroke="#171716" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.65} />
+            <Path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6" fill="none" stroke="#171716" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.65} />
+          </Svg>
+        </View>
+        <View>
+          <Text style={styles.listeningTitle}>FLYNT is listening</Text>
+          <Text style={styles.listeningDetail}>Talk naturally. Nothing to prepare.</Text>
         </View>
       </View>
     </View>
+  );
+}
+
+function ConsultationOrbPreview() {
+  return (
+    <Svg height={142} style={styles.consultationOrb} viewBox="0 0 142 142" width={142}>
+      <Defs>
+        <RadialGradient cx="36%" cy="30%" id="consultationOrbBase" r="76%">
+          <Stop offset="0%" stopColor="#F2FFFF" />
+          <Stop offset="20%" stopColor="#C7EEF1" />
+          <Stop offset="57%" stopColor="#86B4C8" />
+          <Stop offset="100%" stopColor="#334A5D" />
+        </RadialGradient>
+        <RadialGradient cx="40%" cy="27%" id="consultationOrbLight" r="66%">
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.78} />
+          <Stop offset="48%" stopColor="#D6F8F9" stopOpacity={0.25} />
+          <Stop offset="100%" stopColor="#6A9EB6" stopOpacity={0} />
+        </RadialGradient>
+        <Filter height="150%" id="consultationOrbGlow" width="150%" x="-25%" y="-25%">
+          <FeGaussianBlur stdDeviation="5" />
+        </Filter>
+      </Defs>
+      <Circle cx={71} cy={71} fill="#8FCBD8" filter="url(#consultationOrbGlow)" opacity={0.24} r={63} />
+      <Circle cx={71} cy={71} fill="url(#consultationOrbBase)" r={61} />
+      <Circle cx={71} cy={71} fill="url(#consultationOrbLight)" r={58} />
+      <G fill="none" opacity={0.33} origin="71, 71" rotation={-18} stroke="#EDFFFF" strokeWidth={0.85}>
+        <Circle cx={61} cy={69} r={39} />
+        <Circle cx={80} cy={71} r={34} />
+      </G>
+      <G fill="none" opacity={0.2} origin="71, 71" rotation={31} stroke="#E3FCFF" strokeWidth={0.8}>
+        <Circle cx={69} cy={61} r={43} />
+        <Circle cx={75} cy={82} r={29} />
+      </G>
+      <Circle cx={71} cy={71} fill="none" opacity={0.24} r={58} stroke="#E9FDFF" strokeWidth={0.8} />
+    </Svg>
   );
 }
 
@@ -628,18 +670,19 @@ const styles = StyleSheet.create({
   metricLabel: { color: '#858580', fontSize: 7, letterSpacing: 1 },
   metricValue: { marginTop: 12, color: '#F3F1EB', fontFamily: 'ui-monospace', fontSize: 15, fontWeight: '500' },
   metricDetail: { marginTop: 5, color: '#777772', fontSize: 6.5 },
-  trainerPreview: { flex: 1, padding: 16 },
+  consultationPreview: { flex: 1, paddingHorizontal: 18, paddingTop: 19, paddingBottom: 16 },
+  consultationHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   kickerMuted: { color: '#858580', fontSize: 7, fontWeight: '700', letterSpacing: 1.25 },
-  trainerTitle: { marginTop: 6, color: '#F3F1EB', fontSize: 20, lineHeight: 23, fontWeight: '700', letterSpacing: -0.9 },
-  userMessage: { maxWidth: '88%', alignSelf: 'flex-end', marginTop: 15, paddingHorizontal: 12, paddingVertical: 11, borderRadius: 14, borderBottomRightRadius: 5, backgroundColor: '#F2F0EA', color: '#171716', fontSize: 10, lineHeight: 14.8 },
-  trainerMessage: { maxWidth: '88%', marginTop: 15 },
-  trainerLabel: { color: '#73736E', fontSize: 6, fontWeight: '700', letterSpacing: 0.9 },
-  trainerCopy: { marginTop: 5, color: '#BBB9B4', fontSize: 10, lineHeight: 14.8 },
-  proposal: { marginTop: 14, padding: 12, borderCurve: 'continuous', borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.045)' },
-  proposalTitle: { marginTop: 7, color: '#F3F1EB', fontSize: 10, fontWeight: '700' },
-  proposalDetail: { marginTop: 4, color: '#797974', fontSize: 7 },
-  proposalActions: { marginTop: 11, flexDirection: 'row', gap: 6 },
-  keepCurrent: { flex: 1, minHeight: 31, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', color: '#9B9A95', fontSize: 7, textAlign: 'center', paddingTop: 11 },
-  approveChange: { flex: 1.2, minHeight: 31, borderRadius: 10, backgroundColor: '#EFEDE7', color: '#171716', fontSize: 7, fontWeight: '700', textAlign: 'center', paddingTop: 11 },
+  liveStatus: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#B0E9E9', shadowColor: '#B0E9E9', shadowOpacity: 0.8, shadowRadius: 5 },
+  liveCopy: { color: '#AAA9A4', fontSize: 6, fontWeight: '700', letterSpacing: 0.8 },
+  consultationOrb: { alignSelf: 'center', marginTop: 17, marginBottom: 12 },
+  consultationTranscript: { minHeight: 67, alignItems: 'center' },
+  consultationLabel: { color: '#858580', fontSize: 6, fontWeight: '700', letterSpacing: 0.95 },
+  consultationPrompt: { maxWidth: 264, marginTop: 7, color: '#D4D2CC', fontSize: 11, lineHeight: 15.7, letterSpacing: -0.1, textAlign: 'center' },
+  consultationControls: { minHeight: 56, marginTop: 'auto', paddingHorizontal: 11, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 10, borderCurve: 'continuous', borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.09)', backgroundColor: 'rgba(255,255,255,0.04)' },
+  consultationMic: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFEDE7' },
+  listeningTitle: { color: '#D5D3CD', fontSize: 9, fontWeight: '700' },
+  listeningDetail: { marginTop: 4, color: '#777772', fontSize: 7 },
   spotifyImage: { alignSelf: 'flex-start' },
 });

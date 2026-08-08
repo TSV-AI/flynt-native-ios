@@ -37,6 +37,13 @@ planning state originally captured below:
   longer uses the iOS non-hittable 0.01 alpha threshold, so the visible code
   slots accept focus and typing while the native input text and caret remain
   visually hidden.
+- Native first-run marketing now presents the live FLYNT consultation instead
+  of the retired workout-change preview. The final first-run action is the
+  compact `Next` label and retains the existing account-creation destination.
+  First-run, authentication, consultation, program-building, and authenticated
+  app surfaces now resolve to dark by default. Light, Dark, and System remain
+  explicit persisted choices in Settings. Native typecheck, focused lint, copy
+  validation, and all 26 feature-contract tests pass for this milestone.
 
 - Native commit `3cbaee5` and backend commit `0762aac` replace routine pain
   scoring with nonclinical movement control.

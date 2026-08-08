@@ -409,7 +409,7 @@ test('signed-out onboarding preserves the approved PWA story and unified account
       ['timer', 'The right rest is already built in.'],
       ['guide', 'A custom guide for every exercise.'],
       ['progress', 'Progress you can actually use.'],
-      ['trainer', 'A trainer that knows your plan.'],
+      ['trainer', 'Your program starts with a real conversation.'],
       ['spotify', 'Your music stays in the workout.'],
     ],
   );
@@ -427,8 +427,11 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   const packageConfig = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'));
   const theme = await readFile(new URL('../constants/theme.ts', import.meta.url), 'utf8');
   const themeProvider = await readFile(new URL('../providers/flynt-theme-provider.tsx', import.meta.url), 'utf8');
+  const appStateContract = await readFile(new URL('../contracts/app-state.ts', import.meta.url), 'utf8');
 
   assert.match(theme, /signedOutColorMode: ColorMode = 'dark'/);
+  assert.match(appStateContract, /appearance: z\.enum\(\['system', 'light', 'dark'\]\)\.default\('dark'\)/);
+  assert.match(themeProvider, /defaultPreference: ThemePreference = 'dark'/);
   assert.match(themeProvider, /phase !== 'ready'[\s\S]*!hasSession && !voiceDemoPreview/);
   assert.match(themeProvider, /usesOnboardingAppearance[\s\S]*signedOutColorMode/);
 
@@ -436,6 +439,9 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   assert.match(introduction, /function MarketingStageBackground/);
   assert.match(introduction, /id="sageCream"[\s\S]*id="blueGrey"[\s\S]*id="bronzeBlue"/);
   assert.match(introduction, /FeGaussianBlur stdDeviation="22"/);
+  assert.match(introduction, /FLYNT CONSULTATION/);
+  assert.match(introduction, /function ConsultationOrbPreview/);
+  assert.match(introduction, /FLYNT is listening/);
   assert.match(introduction, /id="stageInsetBlur"[\s\S]*stdDeviation="19"/);
   assert.doesNotMatch(introduction, /stageInsetBlackBlur/);
   assert.match(introduction, /stroke="#FFFFFF"[\s\S]*strokeOpacity=\{0\.3\}[\s\S]*strokeWidth="28"[\s\S]*transform="translate\(-20 -20\)"/);
@@ -445,7 +451,7 @@ test('signed-out onboarding preserves the approved PWA story and unified account
   assert.doesNotMatch(introduction, /marketing-stage-[a-z]+\.png/);
   assert.match(introduction, /appSurfaces\.dark\.primaryBackground/);
   assert.match(introduction, /<StatusBar animated style="light"/);
-  assert.match(introduction, />Create account</);
+  assert.match(introduction, />Next</);
   assert.match(account, /Continue with Google/);
   assert.match(account, /pending === 'apple' \? 'Signing in with Apple'/);
   assert.match(account, /styles\.appleProgress/);
@@ -502,7 +508,7 @@ test('signed-out entry defaults to account creation and recovers an unknown sign
   const entry = await readFile(new URL('../app/index.tsx', import.meta.url), 'utf8');
   const introduction = await readFile(new URL('../components/first-run-introduction.tsx', import.meta.url), 'utf8');
 
-  assert.match(introduction, />Create account</);
+  assert.match(introduction, />Next</);
   assert.match(entry, /router\.replace\('\/create-account'\)/);
   assert.match(entry, /router\.push\('\/create-account'\)/);
   assert.match(account, /It looks like you don’t have a FLYNT account yet/);
