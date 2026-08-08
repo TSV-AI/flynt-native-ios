@@ -296,8 +296,12 @@ records.
   module gitignore warning and a recommended minor version of
   `react-native-keyboard-controller` different from the installed version.
   These are recorded as release warnings, not claimed as passing checks.
-- Production EAS build and TestFlight submission remain pending at this
-  checkpoint.
+- Production EAS build `1.0.0 (5)` completed successfully from commit
+  `7ff7751`. EAS build ID is `3dcc2761-5770-4ee6-963b-031e6b8447a7`.
+- Automatic submission `6d4b5ec2-57bb-47f5-a186-fd64affb2768` uploaded the
+  signed binary successfully to App Store Connect. Apple is processing the
+  binary for TestFlight. Installation and an owner journey on build 5 remain
+  unverified until processing completes and the build is installed.
 
 ## Verification state on 2026-08-07
 
